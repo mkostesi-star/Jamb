@@ -23,7 +23,7 @@ const DEFAULT_RULES={cols:['down','up','free','ann'],dice:5,kenta:'roll',k1:66,k
 const PRESETS={
   classic:{},
   quick:{cols:['free']},
-  family:{cols:['down','up','free','ann','hand']},
+  family:{cols:['down','up','free']},
   six:{dice:6},
   full:{cols:['down','up','free','mid','tomid','ann','hand']}
 };

@@ -539,6 +539,43 @@ Object.assign(D.sr,MORE.hr,MORE.sr);
 Object.assign(D.bs,MORE.hr,MORE.bs);
 Object.assign(D.sl,MORE.sl);Object.assign(D.mk,MORE.mk);Object.assign(D.de,MORE.de);
 
+/* Global first: world dice terms in English and German, local names for the computer players in every language. */
+const GLOBAL={
+en:{'row.kenta':'Straight','row.triling':'3 of a kind','row.ful':'Full house','row.poker':'4 of a kind',
+  'col.ann':'Call','col.hand':'First roll',p_full:'Everything',profScore:'Professor: {s}',noMistakes:'No real mistakes. The Professor approves.',
+  howNote:'Five of a kind also counts as a full house, 4 of a kind or 3 of a kind. Change any of this under House rules.',
+  'ch.ema.name':'Little Emma','ch.ema.mono':'LE','ch.nono.name':'Grandpa Al','ch.nono.mono':'GA','ch.mira.name':'Aunt Rosie','ch.mira.mono':'AR',
+  'ch.joza.name':'Uncle Frank','ch.joza.mono':'UF','ch.profesor.name':'Professor','ch.profesor.mono':'PR',
+  'ch.ema.quote':'Is a full house better than a straight?','ch.mira.quote':'Five of a kind or nothing, darling.',
+  'ch.mira.greet':['Come, darling, let’s see what the dice say.','I feel a Jamb coming today.'],'ch.mira.yourJamb':['Oh no! That one was mine!'],
+  'ch.joza.habit':'loves calling his shot','ch.joza.greet':['Hey, my friend! Let’s see what you’ve got.','Pour something, this will take a while.'],
+  'ch.joza.win':['Uncle Frank wins again. Tell everyone.']},
+de:{'row.kenta':'Straße','row.triling':'Dreierpasch','row.ful':'Full House','row.poker':'Viererpasch',
+  'col.ann':'Ansage','col.hand':'Erster Wurf',p_full:'Alles',profScore:'Professor: {s}',noMistakes:'Keine echten Fehler. Der Professor ist zufrieden.',
+  howNote:'Fünf gleiche zählen auch als Full House, Viererpasch oder Dreierpasch. Alles davon lässt sich in den Hausregeln ändern.',
+  'ch.ema.name':'Kleine Emma','ch.ema.mono':'KE','ch.nono.name':'Opa Willi','ch.nono.mono':'OW','ch.mira.name':'Tante Rosi','ch.mira.mono':'TR',
+  'ch.joza.name':'Onkel Franz','ch.joza.mono':'OF','ch.profesor.name':'Professor','ch.profesor.mono':'PR',
+  'ch.ema.quote':'Ist ein Full House besser als eine Straße?','ch.mira.yourJamb':['Oh nein! Der hätte mir gehört!'],
+  'ch.joza.greet':['Na, mein Freund! Zeig mal, was du kannst.','Schenk was ein, das dauert.'],'ch.joza.win':['Onkel Franz gewinnt wieder. Sag es allen.']},
+hr:{'ch.ema.name':'Mala Ema','ch.ema.mono':'ME','ch.nono.name':'Nono Bepi','ch.nono.mono':'NB','ch.mira.name':'Teta Mira','ch.mira.mono':'TM',
+  'ch.joza.name':'Kum Joza','ch.joza.mono':'KJ','ch.profesor.name':'Profesor','ch.profesor.mono':'PR'},
+sr:{'ch.nono.name':'Deda Bora','ch.nono.mono':'DB','ch.mira.name':'Tetka Mira','ch.joza.name':'Kum Žika','ch.joza.mono':'KŽ',
+  'ch.joza.win':['Kum Žika opet pobeđuje. Reci svima.']},
+bs:{'ch.nono.name':'Dedo Avdo','ch.nono.mono':'DA','ch.mira.name':'Tetka Mira','ch.joza.name':'Kum Edo','ch.joza.mono':'KE',
+  'ch.joza.win':['Kum Edo opet pobjeđuje. Reci svima.']},
+sl:{'ch.ema.name':'Mala Ema','ch.ema.mono':'ME','ch.nono.name':'Dedek Tone','ch.nono.mono':'DT','ch.mira.name':'Teta Mira','ch.mira.mono':'TM',
+  'ch.joza.name':'Boter Jože','ch.joza.mono':'BJ','ch.profesor.name':'Profesor','ch.profesor.mono':'PR',p_full:'Vse',
+  'ch.mira.quote':'Pet enakih ali nič, srček.','ch.mira.greet':['Pridi, srček, poglejva, kaj pravijo kocke.','Danes čutim, da bo padel Jamb.'],
+  'ch.joza.greet':['Prijatelj! Poglejmo, kaj znaš.','Natoči kaj, to bo trajalo.'],'ch.joza.win':['Boter Jože spet zmaga. Povej vsem.']},
+mk:{'ch.ema.name':'Мала Ема','ch.ema.mono':'МЕ','ch.nono.name':'Дедо Благоја','ch.nono.mono':'ДБ','ch.mira.name':'Тетка Мира','ch.mira.mono':'ТМ',
+  'ch.joza.name':'Кум Миле','ch.joza.mono':'КМ','ch.profesor.name':'Професор','ch.profesor.mono':'ПР','ch.joza.win':['Кум Миле пак победува. Кажи им на сите.']}
+};
+Object.assign(D.en,GLOBAL.en);Object.assign(D.de,GLOBAL.de);
+Object.assign(D.hr,GLOBAL.hr);
+Object.assign(D.sr,GLOBAL.hr,GLOBAL.sr);
+Object.assign(D.bs,GLOBAL.hr,GLOBAL.bs);
+Object.assign(D.sl,GLOBAL.sl);Object.assign(D.mk,GLOBAL.mk);
+
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
 const LAT2CYR=[['DŽ','Џ'],['Dž','Џ'],['dž','џ'],['LJ','Љ'],['Lj','Љ'],['lj','љ'],['NJ','Њ'],['Nj','Њ'],['nj','њ'],
   ['A','А'],['B','Б'],['V','В'],['G','Г'],['D','Д'],['Đ','Ђ'],['E','Е'],['Ž','Ж'],['Z','З'],['I','И'],['J','Ј'],['K','К'],['L','Л'],['M','М'],['N','Н'],['O','О'],['P','П'],['R','Р'],['S','С'],['T','Т'],['Ć','Ћ'],['U','У'],['F','Ф'],['H','Х'],['C','Ц'],['Č','Ч'],['Š','Ш'],

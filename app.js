@@ -2,13 +2,16 @@
 (function(){
 'use strict';
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
+const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v5';
+const VERSION='v5.1';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
 const CHAR_ORDER=['ema','nono','mira','joza','profesor'];
-const CHARS={ema:{mono:'ME',ring:'#2E7D4F',name:'Mala Ema'},nono:{mono:'NB',ring:'#1F3FA6',name:'Nono Bepi'},mira:{mono:'TM',ring:'#C8322B',name:'Teta Mira'},joza:{mono:'KJ',ring:'#B5651D',name:'Kum Joza'},profesor:{mono:'PR',ring:'#2A1D12',name:'Profesor'}};
+const CHARS={ema:{ring:'#2E7D4F'},nono:{ring:'#1F3FA6'},mira:{ring:'#C8322B'},joza:{ring:'#B5651D'},profesor:{ring:'#2A1D12'}};
+/* Character names and initials follow the interface language. */
+for(const k in CHARS)Object.defineProperties(CHARS[k],{name:{get(){return t('ch.'+k+'.name');}},mono:{get(){return t('ch.'+k+'.mono');}}});
 const PKEY='jamb4-prefs',SKEY='jamb4-stats',OKEY='jamb4-online',SLOT='jamb4-slot-';
 const LOG_MODES=['cpu','pp','daily','duel'];
 const reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -19,7 +22,17 @@ const uid=()=>{const a=new Uint8Array(6);try{crypto.getRandomValues(a);}catch(e)
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}},del(k){try{localStorage.removeItem(k);}catch(e){}}};
 const jget=(k,d)=>{try{const v=JSON.parse(store.get(k)||'null');return v==null?d:v;}catch(e){return d;}};
 
-let prefs=Object.assign({lang:'en',sound:true,ambience:false,haptics:true,shake:true,hints:true,name:null,rules:E.normRules({}),sets:[],char:'mira',screen:'home',mode:null},jget(PKEY,{}));
+function detectLang(){
+  let list=[];try{list=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||'en'];}catch(e){}
+  for(const raw of list){
+    const l=String(raw||'').toLowerCase();
+    if(l.startsWith('sr'))return /latn/.test(l)?'sr':'sr-Cyrl';
+    const b=l.split('-')[0];
+    if(['en','hr','bs','sl','mk','de'].includes(b))return b;
+  }
+  return 'en';
+}
+let prefs=Object.assign({lang:detectLang(),sound:true,ambience:false,haptics:true,shake:true,hints:true,name:null,rules:E.normRules({}),sets:[],char:'mira',screen:'home',mode:null},jget(PKEY,{}));
 prefs.rules=E.normRules(prefs.rules);
 if(!I.has(prefs.lang))prefs.lang='en';
 if(!prefs.cid){prefs.cid=uid()+uid();store.set(PKEY,JSON.stringify(prefs));}
@@ -83,7 +96,10 @@ const turnNo=i=>E.filled(G.rules,G.players[i].sheet);
 const allFull=()=>G.players.every(p=>E.full(G.rules,p.sheet));
 function getView(){return G.mode==='online'?(ui.view==null?G.current:ui.view):G.view;}
 function setView(p){if(G.mode==='online')ui.view=p;else G.view=p;}
-function shouldLog(){return LOG_MODES.includes(G.mode)&&G.players[G.current].kind==='human';}
+const soloHuman=g=>g.players.filter(p=>p.kind!=='cpu').length===1;
+/* The coach only helps when no other real person is playing. */
+const coachGame=g=>!!g&&(g.mode==='cpu'||((g.mode==='pp'||g.mode==='table')&&soloHuman(g)));
+function shouldLog(){return LOG_MODES.includes(G.mode)&&G.players[G.current].kind==='human'&&(G.mode!=='pp'||soloHuman(G));}
 function logEvent(ev){ev.p=G.current;ev.sheet=clone(cur().sheet);G.log.push(ev);}
 function untouched(){
   if(G.mode==='table')return G.turn.roll===1&&!G.turn.announced&&G.turn.dice.every(v=>v===0);
@@ -105,11 +121,11 @@ function rollCore(after){
   if(shouldLog())logEvent({k:'roll',turn:before,out:next.dice.slice()});
   G.undo=null;ui.sel=null;ui.tip=null;ui.tipText='';setView(p);
   const held=before.roll===0?before.held.map(()=>false):before.held.slice();
-  const moved=held.filter(h=>!h).length;
+  const moved=held.filter(h=>!h).length,idx=held.map((h,i)=>h?-1:i).filter(i=>i>=0);
   const finish=()=>{
     ui.rolling=false;
     if(G!==g)return;
-    G.turn=next;A.land(moved);saveGame();render();
+    G.turn=next;A.land(moved,LAND_STEP);saveGame();render();landFx(idx);
     const pend=net.pending;net.pending=null;if(pend&&(pend.rev||0)>(G.rev||0))applyRemote(pend);
     if(after)after();
   };
@@ -142,6 +158,18 @@ function doAnnounce(r){
   if(shouldLog())logEvent({k:'ann',turn:clone(G.turn),r});
   G.turn.announced=r;ui.sel=null;ui.tip=null;ui.tipText='';A.write();saveGame();render();
 }
+/* Each moved die settles with a small squash, one after another, in time with the landing sounds. */
+function landFx(idx){
+  if(FX.reduce)return;
+  const ds=document.querySelectorAll('#dice .die');
+  idx.forEach((i,k)=>{const d=ds[i];if(!d)return;d.style.animationDelay=(k*LAND_STEP)+'ms';FX.pulse(d,'landed',380+k*LAND_STEP);});
+}
+/* The written score floats up from the sheet; a Jamb throws confetti and nudges the table. */
+function writeFx(p,r,s){
+  const w=document.querySelector('.paper .w.just');
+  if(w)FX.floatText(w,s>0?'+'+fmt(s):'0',s>0?'':'zero',s>0?PCOL[p%6]:'');
+  if(r==='jamb'&&s>0){FX.confetti(false);FX.pulse($('game'),'fxshake',450);}
+}
 function writeCore(c,r){
   if(!legal(c,r))return;
   const p=G.current,sheet=cur().sheet,before=clone(G.turn);
@@ -153,13 +181,13 @@ function writeCore(c,r){
   sheet[c][r]=s;
   ui.sel=null;ui.botPick=null;ui.tip=null;ui.tipText='';ui.just={p,c,r};ui.pick=-1;
   if(s===0)A.zero();else if(r==='jamb')A.jamb();else A.write();
-  if(!hadBonus&&E.colTotals(G.rules,sheet[c]).bonus>0)setTimeout(()=>A.bonus(),320);
+  if(!hadBonus&&E.colTotals(G.rules,sheet[c]).bonus>0)setTimeout(()=>{A.bonus();FX.burstAt(document.querySelector(`.chip[data-p="${p}"]`));},320);
   react(p,r,s);
   setView(p);
   if(allFull())G.over=true;
   else{G.current=(G.current+1)%G.players.length;G.turn=freshTurn(G);}
   if(G.mode==='online')G.status=G.over?'over':'playing';
-  saveGame();render();
+  saveGame();render();writeFx(p,r,s);
   setTimeout(()=>{ui.just=null;},700);
   if(G.over)finishGame();else maybeBot();
 }
@@ -173,7 +201,7 @@ function doUndo(){
   G.undo=null;ui.sel=null;ui.just=null;saveGame();render();
 }
 function hintsAllowed(){
-  if(!prefs.hints||!G||G.mode==='daily'||G.mode==='duel'||!mayAct()||ui.rolling)return false;
+  if(!prefs.hints||!coachGame(G)||!mayAct()||ui.rolling)return false;
   return G.mode==='table'?diceSet():G.turn.roll>=1;
 }
 function describe(a,dice){
@@ -237,7 +265,8 @@ function finishGame(){
   stats.played=(stats.played||0)+1;
   if(me>=0){const ms=E.total(G.rules,G.players[me].sheet);if(ms>(stats.best||0))stats.best=ms;if(st[0].i===me&&G.players.length>1&&st[0].score>st[1].score)stats.wins=(stats.wins||0)+1;}
   if(botSeats().length){const w=st[0].i,b=isBot(w)?w:someBot(-1);if(b>=0)setTimeout(()=>say(b,b===w?'win':'lose'),900);}
-  if(me>=0&&st[0].i===me)setTimeout(()=>A.win(),700);
+  const many=G.players.length>1;
+  if(me>=0&&st[0].i===me)setTimeout(()=>{A.win();if(many&&screen==='game')FX.confetti(true);},700);
   if(G.mode==='daily')finishDaily();
   if(G.mode==='duel'){stats.duels[G.duel.id]={score:E.total(G.rules,G.players[0].sheet),at:Date.now(),from:G.duel.from||null};}
   saveStats();
@@ -355,7 +384,7 @@ function showScreen(s){
   $('home').hidden=s!=='home';$('game').hidden=s!=='game';$('tray').hidden=s!=='game';
   document.documentElement.lang=I.locale(prefs.lang);
   applyAudio();
-  if(s==='home'){A.motion.stop();renderHome();}else{render();setupMotion();}
+  if(s==='home'){A.motion.stop();renderHome();FX.enter($('home'));}else{render();setupMotion();FX.enter($('game'));FX.enter($('tray'),'trayin');}
   try{window.scrollTo(0,0);}catch(e){}
 }
 function openGame(g){
@@ -535,7 +564,7 @@ function renderGame(){
       <span><span class="cn">${esc(name(i))}</span><span class="cw">${esc(w)}</span></span><span class="cs">${fmt(sc)}</span></button>`;
   }).join('');
   $('game').innerHTML=`<div class="wrap">
-    <header class="gtop"><button type="button" class="ibtn" data-act="exit" aria-label="${esc(t('exit'))}">${ICON.back}</button><div class="chips${g.players.length>=4?' many':''}">${chips}</div>
+    <header class="gtop"><button type="button" class="ibtn" data-act="exit" aria-label="${esc(t('exit'))}">${ICON.back}</button><div class="chips${g.players.length>=3?' many n'+g.players.length:''}">${chips}</div>
       <button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></header>
     ${onlineBanner()}
     <div class="bubbleRow" id="bubbleRow">${bubbleHTML()}</div>
@@ -631,10 +660,37 @@ function render(){
   renderGame();renderTray();
   if(key){const el=[...document.querySelectorAll('[data-act]')].find(e=>[e.dataset.act,e.dataset.i||'',e.dataset.c||'',e.dataset.r||'',e.dataset.p||''].join('|')===key);if(el&&!el.disabled){try{el.focus({preventScroll:true});}catch(e){}}}
   const tr=$('tray');if(tr)document.documentElement.style.setProperty('--tray-h',tr.offsetHeight+'px');
+  chipFx();turnFx();
+}
+/* Totals count up and the chip bumps when a player scores. */
+function chipFx(){
+  if(!G)return;
+  const tot=G.players.map(p=>E.total(G.rules,p.sheet));
+  if(ui.totKey!==G.id||!ui.tot||ui.tot.length!==tot.length){ui.totKey=G.id;ui.tot=tot;return;}
+  tot.forEach((v,i)=>{
+    const o=ui.tot[i];
+    if(v>o){const chip=document.querySelector(`.chip[data-p="${i}"]`),cs=chip&&chip.querySelector('.cs');if(cs){FX.countUp(cs,o,v,550,fmt);FX.pulse(chip,'bump',460);}}
+  });
+  ui.tot=tot;
+}
+/* When the turn passes to someone playing on this phone, their name drops in with a soft chime. */
+function turnFx(){
+  if(!G||G.over||G.players.length<2)return;
+  const k=G.id+':'+G.current+':'+progress(G);
+  if(ui.turnKey===k)return;
+  const fresh=!ui.turnKey||ui.turnKey.split(':')[0]!==G.id;
+  ui.turnKey=k;
+  if(fresh||G.turn.roll!==0)return;
+  const c=G.current;
+  if(isBot(c)||(G.mode==='online'&&c!==mySeat())||(G.mode==='online'&&G.status!=='playing'))return;
+  setTimeout(()=>{if(G&&!G.over&&ui.turnKey===k&&screen==='game'&&!ui.modal){FX.banner(name(c),t('toPlay'),PCOL[c%6]);A.turn();}},480);
 }
 
 /* ---------- modals ---------- */
 function openModal(kind,o){
+  const M=$('modal'),wasOpen=!M.hidden&&!M.classList.contains('closing');
+  clearTimeout(ui.closeT);M.classList.remove('closing');
+  if(!wasOpen)A.swish();
   if(!ui.modal)ui.lastFocus=document.activeElement;
   ui.modal=Object.assign({kind},o||{});
   if(kind==='rules')ui.draft=clone(o&&o.rules?o.rules:prefs.rules);
@@ -644,7 +700,14 @@ function openModal(kind,o){
 function closeModal(){
   if(ui.modal&&ui.modal.kind==='scan')SC.close();
   ui.back=null;
-  ui.modal=null;$('modal').hidden=true;$('panel').innerHTML='';
+  const M=$('modal'),was=!!ui.modal&&!M.hidden;
+  ui.modal=null;
+  clearTimeout(ui.closeT);
+  if(!was||FX.reduce){M.hidden=true;M.classList.remove('closing');$('panel').innerHTML='';}
+  else{
+    A.swish(true);M.classList.add('closing');
+    ui.closeT=setTimeout(()=>{M.classList.remove('closing');if(!ui.modal){M.hidden=true;$('panel').innerHTML='';}},200);
+  }
   if(ui.lastFocus&&ui.lastFocus.isConnected){try{ui.lastFocus.focus();}catch(e){}}
 }
 function back(){const b=ui.back;ui.back=null;if(b){if(ui.modal&&ui.modal.kind==='scan')SC.close();ui.modal=null;openModal(b.kind,b);}else closeModal();}
@@ -772,7 +835,7 @@ function receiptHTML(day){
   return `<div class="receipt"><div class="c b">JAMB · ${esc(t('daily').toUpperCase())} #${r.n}</div><div class="c" style="font-size:12px;color:#6B655C">${esc(dateLabel(day))} · ${esc(t('dailySame'))}</div><div class="hr"></div>
     <div class="grid">${r.grid.map(x=>`<i style="--q:${q[x]}"></i>`).join('')}</div><div class="hr"></div>
     <div class="ln tot"><span>${esc(t('total').toUpperCase())}</span><span>${r.score}</span></div>
-    <div class="ln"><span>Profesor</span><span>${r.prof!=null?r.prof:'…'}</span></div>
+    <div class="ln"><span>${esc(CHARS.profesor.name)}</span><span>${r.prof!=null?r.prof:'…'}</span></div>
     <div class="ln"><span>${esc(t('streakShort'))}</span><span>${stats.daily.streak||1}</span></div><div class="hr"></div><div class="c" style="font-size:12px">${esc(t('dailyNext'))}</div></div>`;
 }
 function dailyModalHTML(day){
@@ -1046,6 +1109,8 @@ function nextChar(list,from){const used=list.filter(p=>p.kind==='cpu').map(p=>p.
 /* ---------- events ---------- */
 document.addEventListener('pointerdown',e=>{
   A.unlock();
+  const btn=e.target.closest('button');
+  if(btn&&!btn.disabled&&!btn.matches('.die,.cell,.glass,.picker button'))A.press();
   const gl=e.target.closest('.glass[data-act="roll"]');
   if(gl&&canRoll()){
     askMotion();
@@ -1061,9 +1126,19 @@ document.addEventListener('pointerup',e=>{
   doRoll();
 });
 document.addEventListener('pointercancel',()=>{if(ui.shaking){ui.shaking=false;ui.pressAt=0;A.rattleStop();}});
+const SOFT=new Set(['exit','results','daily','resume','endask','endno','endsaved','pickchar','open','close','editrules','pladd','pladdbot','plrm','plchar',
+  'startcpu','startpp','starttable','startonline','startduel','acceptduel','rematch','host','join','setlang','saverules','userules','loadset','preset']);
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]');if(!el)return;
   const d=el.dataset;
+  if(SOFT.has(d.act)&&!(d.act==='open'&&(d.k==='scan'||d.k==='install'))&&!FX.reduce){
+    if(el._soft)return;el._soft=true;
+    setTimeout(()=>{el._soft=false;act(el,d);},90);
+    return;
+  }
+  act(el,d);
+});
+function act(el,d){
   switch(d.act){
     case 'roll':if(ui.skipClick){ui.skipClick=false;break;}doRoll();break;
     case 'hold':toggleHold(+d.i);break;
@@ -1145,7 +1220,7 @@ document.addEventListener('click',e=>{
       if(G&&G.mode==='table'&&ui.modal.found){const f=ui.modal.found;G.turn.dice=G.turn.dice.map((v,i)=>f[i]||v);ui.pick=G.turn.dice.findIndex(x=>x===0);saveGame();}
       closeModal();render();break;}
   }
-});
+}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.modal){if(ui.back)back();else closeModal();}});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;});
 document.addEventListener('visibilitychange',()=>{
