@@ -1,16 +1,20 @@
-/* Jamb computer opponent: plans each turn exactly (every hold, every reroll, Najava),
-   judging each box by what it is usually worth. Weaker levels pick worse options more often. */
+/* Jamb computer players and coach.
+   Each turn is planned exactly: every hold, every reroll and every Najava call, judging each box by what it is
+   usually worth under the current house rules. Characters differ in how sharply they prefer the best option
+   and in small habits (favourite column, chasing Jamb, loving Najava). The same evaluation drives hints,
+   move review and the luck meter. */
 (function(root){
 'use strict';
-const ROWS=['1','2','3','4','5','6','max','min','kenta','triling','ful','poker','jamb'];
-const P6=[1,6,36,216,1296,7776],N=46656,FACT=[1,1,2,6,24,120];
+const E=root.JambEngine||(typeof require!=='undefined'?require('./engine.js'):null);
+const ROWS=E.ROWS;
+const B=7,P=[1,7,49,343,2401,16807],N=117649,FACT=[1,1,2,6,24,120,720];
 
-/* Dice are held as counts per face; a multiset key is sum(count[i]*6^i), so adding dice adds keys. */
+/* A multiset of dice is a key: sum(count[f] * 7^f). Adding dice adds keys. */
 const OUTS=[];
-for(let k=0;k<=5;k++){
+for(let k=0;k<=6;k++){
   const list=[],c=[0,0,0,0,0,0];
   const rec=(i,left)=>{
-    if(i===5){c[5]=left;let m=FACT[k],key=0;for(let j=0;j<6;j++){m/=FACT[c[j]];key+=c[j]*P6[j];}list.push([key,m/Math.pow(6,k)]);return;}
+    if(i===5){c[5]=left;let m=FACT[k],key=0;for(let j=0;j<6;j++){m/=FACT[c[j]];key+=c[j]*P[j];}list.push([key,m/Math.pow(6,k)]);return;}
     for(let x=0;x<=left;x++){c[i]=x;rec(i+1,left-x);}
   };
   rec(0,k);OUTS.push(list);
@@ -18,38 +22,22 @@ for(let k=0;k<=5;k++){
 const DEC=new Array(N),HOLDS=new Array(N);
 function decode(key){
   let c=DEC[key];if(c)return c;
-  c=new Int8Array(6);let k=key;for(let i=0;i<6;i++){c[i]=k%6;k=(k-c[i])/6;}
+  c=new Int8Array(6);let k=key;for(let i=0;i<6;i++){c[i]=k%B;k=(k-c[i])/B;}
   DEC[key]=c;return c;
 }
 function holds(key){
   let h=HOLDS[key];if(h)return h;
   const c=decode(key);h=[];
-  const rec=(i,n,hk)=>{if(i===6){h.push([hk,n]);return;}for(let v=0;v<=c[i];v++)rec(i+1,n+v,hk+v*P6[i]);};
+  const rec=(i,n,hk)=>{if(i===6){h.push([hk,n]);return;}for(let v=0;v<=c[i];v++)rec(i+1,n+v,hk+v*P[i]);};
   rec(0,0,0);HOLDS[key]=h;return h;
 }
-function keyOf(dice){let k=0;for(const v of dice)k+=P6[v-1];return k;}
-
-function scoreC(ri,c,roll){
-  if(ri<6)return c[ri]*(ri+1);
-  let sum=0;for(let i=0;i<6;i++)sum+=c[i]*(i+1);
-  if(ri<8)return sum;
-  if(ri===8){
-    for(let i=1;i<5;i++)if(c[i]!==1)return 0;
-    return (c[0]===1||c[5]===1)?[66,56,46][Math.min(Math.max(roll,1),3)-1]:0;
-  }
-  if(ri===9){for(let i=5;i>=0;i--)if(c[i]>=3)return 3*(i+1)+10;return 0;}
-  if(ri===10){let t3=false,t2=false;for(let i=0;i<6;i++){if(c[i]===3)t3=true;else if(c[i]===2)t2=true;else if(c[i]===5)return sum+30;}return t3&&t2?sum+30:0;}
-  if(ri===11){for(let i=5;i>=0;i--)if(c[i]>=4)return 4*(i+1)+40;return 0;}
-  for(let i=5;i>=0;i--)if(c[i]===5)return 5*(i+1)+50;
-  return 0;
+function keyOf(dice){let k=0;for(const v of dice)k+=P[v-1];return k;}
+function heldKey(dice,held){let k=0,n=0;dice.forEach((v,i)=>{if(held[i]){k+=P[v-1];n++;}});return[k,n];}
+function holdMask(hk,dice){
+  const hc=Array.from(decode(hk));
+  return dice.map(v=>{if(hc[v-1]>0){hc[v-1]--;return true;}return false;});
 }
 
-/* What a box is usually worth when you go for it (3 rolls), and from a single roll (column R).
-   Measured with this engine; upper rows nudged up because good players fill them opportunistically. */
-let PAR_S=[2.5,5,7.5,10,12.5,15,25,9.5,22,22,28,22,8];
-let PAR_H=[1,2,3,4,5,6,19,16,4,6,4,2,0.5];
-
-/* Memo tables reused across solves; a generation stamp marks which entries are current. */
 let gen=0;
 const wS=[null,new Int32Array(N),new Int32Array(N),new Int32Array(N)],wV=[null,new Float64Array(N),new Float64Array(N),new Float64Array(N)];
 const vS=[null,new Int32Array(N),new Int32Array(N)],vV=[null,new Float64Array(N),new Float64Array(N)];
@@ -60,9 +48,8 @@ function W(ctx,key,roll){
   wS[roll][key]=gen;wV[roll][key]=best;return best;
 }
 function holdValue(ctx,hk,n,roll){
-  const outs=OUTS[5-n];let e=0;
-  if(ctx.myopic){for(let i=0;i<outs.length;i++)e+=outs[i][1]*W(ctx,hk+outs[i][0],roll+1);}
-  else{for(let i=0;i<outs.length;i++)e+=outs[i][1]*V(ctx,hk+outs[i][0],roll+1);}
+  const outs=OUTS[ctx.nd-n];let e=0;
+  for(let i=0;i<outs.length;i++)e+=outs[i][1]*V(ctx,hk+outs[i][0],roll+1);
   return e;
 }
 function V(ctx,key,roll){
@@ -75,75 +62,102 @@ function V(ctx,key,roll){
   }
   vS[roll][key]=gen;vV[roll][key]=best;return best;
 }
+function firstRollValue(ctx){let e=0;for(const [k,p] of OUTS[ctx.nd])e+=p*V(ctx,k,1);return e;}
 
-/* Expected final value of a column if open boxes end up at par; writing a box changes it by u(). */
-function pBonus(W0,open,par){
-  if(W0>=60)return 1;
-  if(!open.length)return 0;
-  let mx=W0,ex=W0;for(const i of open){mx+=5*(i+1);ex+=par[i];}
-  if(mx<60)return 0;
-  const sd=2.5+2.2*Math.sqrt(open.length);
-  return 1/(1+Math.exp(-(ex-60)/sd));
+/* What a box is usually worth, measured for these rules, then adjusted for how real games go
+   (good players fill boxes when the dice offer them, so most boxes end up above the "go for it" value). */
+const MULT_S=[1.19,1.19,1.19,1.19,1.19,1.19,0,0,1.6,1.34,1.57,1.37,2.5],ADD_S=[0,0,0,0,0,0,1.7,-2.2,0,0,0,0,0];
+const MULT_H=[1.2,1.2,1.2,1.2,1.2,1.2,0,0,2,1.37,2.1,1.85,10],ADD_H=[0,0,0,0,0,0,1.5,-1.5,0,0,0,0,0];
+const PAR_CACHE={};
+function parsFor(rules){
+  const key=JSON.stringify([rules.dice,rules.kenta,rules.k1,rules.k2,rules.k3,rules.ks,rules.kb,rules.tri,rules.ful,rules.poker,rules.jamb]);
+  if(PAR_CACHE[key])return PAR_CACHE[key];
+  const nd=rules.dice,S=[],H=[];
+  for(let ri=0;ri<13;ri++){
+    const sign=ri===7?-1:1,box={u:(c,roll)=>sign*E.scoreC(rules,ri,c,roll)};
+    gen++;
+    const ctx={nd,legal:[null,[box],[box],[box]],cont:[null,true,true]};
+    const d3=sign*firstRollValue(ctx);
+    gen++;
+    let d1=0;for(const [k,p] of OUTS[nd])d1+=p*W(ctx,k,1);d1*=sign;
+    S.push(ri===6||ri===7?d3+ADD_S[ri]:d3*MULT_S[ri]);
+    H.push(ri===6||ri===7?d1+ADD_H[ri]:d1*MULT_H[ri]);
+  }
+  return PAR_CACHE[key]={S,H};
 }
-function colModel(col,par){
+
+function pBonus(rules,W0,open,par){
+  if(W0>=rules.bonusAt)return 1;
+  if(!open.length||rules.bonus<=0)return 0;
+  let mx=W0,ex=W0;for(const i of open){mx+=5*(i+1);ex+=par[i];}
+  if(mx<rules.bonusAt)return 0;
+  const sd=2.5+2.2*Math.sqrt(open.length);
+  return 1/(1+Math.exp(-(ex-rules.bonusAt)/sd));
+}
+function colModel(rules,col,par){
   const open=[];let UW=0;
   for(let i=0;i<6;i++){const v=col[ROWS[i]];if(v===null)open.push(i);else UW+=v;}
-  return{par,open,UW,pb:pBonus(UW,open,par),
-    Emax:col.max!==null?col.max:par[6],Emin:col.min!==null?col.min:par[7],E1:col['1']!==null?col['1']:par[0]};
+  const ones=rules.mid==='plain'?1:(col['1']!==null?col['1']:par[0]);
+  return{par,open,UW,pb:pBonus(rules,UW,open,par),Emax:col.max!==null?col.max:par[6],Emin:col.min!==null?col.min:par[7],E1:ones};
 }
-function makeBox(m,c,r){
-  const ri=ROWS.indexOf(r),par=m.par;
+function makeBox(rules,m,c,r,prof){
+  const ri=ROWS.indexOf(r),par=m.par,mult=(prof&&prof.mult&&prof.mult[r])||1,bias=(prof&&prof.colBias&&prof.colBias[c])||0;
   let u;
   if(ri<6){
     const rest=m.open.filter(i=>i!==ri),tbl=[];
-    for(let n=0;n<=5;n++){
-      const s=n*(ri+1);
-      let d=s-par[ri]+30*(pBonus(m.UW+s,rest,par)-m.pb);
-      if(ri===0)d+=(m.Emax-m.Emin)*(s-par[0]);
-      tbl.push(d);
+    for(let n=0;n<=6;n++){
+      const s=Math.min(n,5)*(ri+1);
+      let d=s*mult-par[ri]+rules.bonus*(pBonus(rules,m.UW+s,rest,par)-m.pb);
+      if(ri===0&&rules.mid!=='plain')d+=(m.Emax-m.Emin)*(s-par[0]);
+      tbl.push(d+bias);
     }
     u=cc=>tbl[cc[ri]];
-  }else if(ri===6)u=(cc,roll)=>(scoreC(6,cc,roll)-par[6])*m.E1;
-  else if(ri===7)u=(cc,roll)=>(par[7]-scoreC(7,cc,roll))*m.E1;
-  else u=(cc,roll)=>scoreC(ri,cc,roll)-par[ri];
+  }else if(ri===6)u=(cc,roll)=>(E.scoreC(rules,6,cc,roll)-par[6])*m.E1+bias;
+  else if(ri===7)u=(cc,roll)=>(par[7]-E.scoreC(rules,7,cc,roll))*m.E1+bias;
+  else u=(cc,roll)=>E.scoreC(rules,ri,cc,roll)*mult-par[ri]+bias;
   return{c,r,ri,u};
 }
-
-function nextDown(col){return ROWS.find(r=>col[r]===null);}
-function nextUp(col){for(let i=ROWS.length-1;i>=0;i--)if(col[ROWS[i]]===null)return ROWS[i];return undefined;}
-function legalSets(g,mk){
-  const {cols,sheet,turn}=g,later=[],first=[];
-  if(turn.announced){const b=mk('ann',turn.announced);return{l1:[b],l2:[b],l3:[b],cont:true};}
-  for(const c of cols){
-    const col=sheet[c];
-    if(c==='down'){const r=nextDown(col);if(r)later.push(mk(c,r));}
-    else if(c==='up'){const r=nextUp(col);if(r)later.push(mk(c,r));}
-    else if(c==='free'){for(const r of ROWS)if(col[r]===null)later.push(mk(c,r));}
-    else{for(const r of ROWS)if(col[r]===null)first.push(mk(c,r));}
+function buildCtx(g,prof){
+  const {rules,sheet,turn}=g,pars=parsFor(rules),models={};
+  for(const col of rules.cols)models[col]=colModel(rules,sheet[col],col==='hand'?pars.H:pars.S);
+  const mk=(col,r)=>makeBox(rules,models[col],col,r,prof);
+  let l1,l2;
+  if(turn.announced){const b=mk('ann',turn.announced);l1=[b];l2=[b];}
+  else{
+    l1=[];l2=[];
+    for(const col of rules.cols){
+      const d=E.COLS[col],open=E.nextBoxes(col,sheet[col]);
+      for(const r of open){const b=mk(col,r);l1.push(b);if(!d.first&&!d.announce)l2.push(b);}
+    }
   }
-  return{l1:later.concat(first),l2:later,l3:later,cont:later.length>0};
-}
-function holdMask(hk,dice){
-  const hc=Array.from(decode(hk));
-  return dice.map(v=>{if(hc[v-1]>0){hc[v-1]--;return true;}return false;});
-}
-function argmaxBox(L,c,roll){
-  let best=null,bu=-1e9;
-  for(const b of L){const u=b.u(c,roll);if(u>bu){bu=u;best=b;}}
-  return{box:best,u:bu};
+  const cont=!!turn.announced||l2.length>0;
+  return{nd:rules.dice,legal:[null,l1,l2,l2],cont:[null,cont,cont],mk};
 }
 
-/* Every level plays the full game (all columns, Najava, Ručna). Skill comes from how sharply it
-   prefers the best option: temp 0 always takes the best; higher temps pick weaker options more often.
-   bias nudges what a box is worth, which gives characters their habits. */
-const PROFILES={
-  easy:{temp:3,bias:null},
-  medium:{temp:1.2,bias:null},
-  hard:{temp:0,bias:null}
-};
-function biased(par,bias){
-  if(!bias)return par;
-  return par.map((v,i)=>v+(bias[ROWS[i]]||0));
+/* All options at this decision, each with its value in points relative to "par". */
+function options(g,prof){
+  const {rules,sheet,turn}=g,roll=turn.roll,key=keyOf(turn.dice),c=decode(key);
+  const ctx=buildCtx(g,prof);
+  gen++;
+  const opts=[];
+  for(const b of ctx.legal[roll])opts.push({t:'w',c:b.c,r:b.r,v:b.u(c,roll)});
+  if(roll<3&&ctx.cont[roll]){
+    for(const [hk,n] of holds(key))opts.push({t:'h',hk,n,v:holdValue(ctx,hk,n,roll)});
+  }
+  if(roll===1&&!turn.announced&&rules.cols.includes('ann')){
+    const annBias=(prof&&prof.annBias)||0;
+    for(const r of ROWS){
+      if(sheet.ann[r]!==null)continue;
+      const b=ctx.mk('ann',r);
+      gen++;
+      const rc={nd:ctx.nd,legal:[null,[b],[b],[b]],cont:[null,true,true]};
+      const wNow=b.u(c,1);
+      let h=null,he=-1e9;
+      for(const [hk,n] of holds(key)){const e=holdValue(rc,hk,n,1);if(e>he){he=e;h=hk;}}
+      if(he>wNow+0.75)opts.push({t:'a',r,hk:h,v:he+annBias,raw:he});
+    }
+  }
+  return opts;
 }
 function pick(opts,temp,rnd){
   let best=opts[0];
@@ -154,41 +168,64 @@ function pick(opts,temp,rnd){
   for(let i=0;i<opts.length;i++){r-=w[i];if(r<=0)return opts[i];}
   return best;
 }
-function decide(g,level,rnd,profile){
-  rnd=rnd||Math.random;
-  const P=profile||PROFILES[level]||PROFILES.medium;
-  const {cols,sheet,turn}=g,roll=turn.roll,key=keyOf(turn.dice),c=decode(key);
-  const parS=biased(PAR_S,P.bias),parH=biased(PAR_H,P.bias);
-  const models={};
-  for(const col of cols)models[col]=colModel(sheet[col],col==='hand'?parH:parS);
-  const mk=(col,r)=>makeBox(models[col],col,r);
-  const sets=legalSets(g,mk);
-  const ctx={legal:[null,sets.l1,sets.l2,sets.l3],cont:[null,sets.cont,sets.cont],myopic:false};
-  gen++;
-  const opts=[];
-  for(const b of ctx.legal[roll])opts.push({t:'w',b,v:b.u(c,roll)});
-  if(roll<3&&ctx.cont[roll]){
-    for(const [hk,n] of holds(key))opts.push({t:'h',hk,v:holdValue(ctx,hk,n,roll)});
-  }
-  if(roll===1&&!turn.announced&&cols.includes('ann')){
-    for(const r of ROWS){
-      if(sheet.ann[r]!==null)continue;
-      const b=mk('ann',r);
-      gen++;
-      const rc={legal:[null,[b],[b],[b]],cont:[null,true,true],myopic:false};
-      const wNow=b.u(c,1);
-      let h=null,he=-1e9;
-      for(const [hk,n] of holds(key)){const e=holdValue(rc,hk,n,1);if(e>he){he=e;h=hk;}}
-      if(he>wNow+0.75)opts.push({t:'a',r,hk:h,v:he});
-    }
-  }
-  const o=pick(opts,P.temp,rnd);
-  if(o.t==='w')return{type:'write',c:o.b.c,r:o.b.r};
-  if(o.t==='a')return{type:'announce',r:o.r,held:holdMask(o.hk,turn.dice)};
-  return{type:'hold',held:holdMask(o.hk,turn.dice)};
+function toAction(o,dice){
+  if(o.t==='w')return{type:'write',c:o.c,r:o.r};
+  if(o.t==='a')return{type:'announce',r:o.r,held:holdMask(o.hk,dice)};
+  return{type:'hold',held:holdMask(o.hk,dice)};
 }
 
-const API={decide,ROWS,PROFILES,_:{OUTS,decode,holds,keyOf,scoreC,V,W,holdValue,bump:()=>++gen,setPar:(s,h)=>{PAR_S=s;PAR_H=h;},getPar:()=>({PAR_S,PAR_H})}};
+const CHARACTERS={
+  ema:{temp:4.2,level:0},
+  nono:{temp:2.4,level:1,colBias:{down:2.5,up:-1},annBias:-4},
+  mira:{temp:1.6,level:2,mult:{jamb:1.6,poker:1.25}},
+  joza:{temp:0.5,level:3,annBias:2.5},
+  profesor:{temp:0,level:4}
+};
+const LEVELS={easy:{temp:3},medium:{temp:1.2},hard:{temp:0}};
+function profileOf(p){if(!p)return CHARACTERS.profesor;if(typeof p==='string')return CHARACTERS[p]||LEVELS[p]||CHARACTERS.profesor;return p;}
+
+function decide(g,prof,rnd){
+  rnd=rnd||Math.random;
+  const P0=profileOf(prof),opts=options(g,P0);
+  if(!opts.length)return null;
+  return toAction(pick(opts,P0.temp,rnd),g.turn.dice);
+}
+
+/* Coach: best option and how the chosen one compares. */
+function best(g){
+  const opts=options(g,null);
+  if(!opts.length)return null;
+  let b=opts[0];for(const o of opts)if(o.v>b.v)b=o;
+  let second=-1e9;for(const o of opts)if(o!==b&&o.v>second)second=o.v;
+  return{opt:b,action:toAction(b,g.turn.dice),value:b.v,margin:b.v-second,opts};
+}
+function judge(g,action){
+  const r=best(g);if(!r)return null;
+  let chosen=null;
+  if(action.type==='write')chosen=r.opts.find(o=>o.t==='w'&&o.c===action.c&&o.r===action.r);
+  else if(action.type==='announce')chosen=r.opts.find(o=>o.t==='a'&&o.r===action.r);
+  else{const [hk]=heldKey(g.turn.dice,action.held);chosen=r.opts.find(o=>o.t==='h'&&o.hk===hk);}
+  if(!chosen&&action.type==='announce'){
+    const ctx=buildCtx(g,null),b=ctx.mk('ann',action.r);gen++;
+    const rc={nd:ctx.nd,legal:[null,[b],[b],[b]],cont:[null,true,true]},key=keyOf(g.turn.dice);
+    let he=-1e9;for(const [hk,n] of holds(key)){const e=holdValue(rc,hk,n,1);if(e>he)he=e;}
+    chosen={t:'a',r:action.r,v:he};
+  }
+  const cv=chosen?chosen.v:r.value;
+  return{best:r.action,bestValue:r.value,chosenValue:cv,loss:Math.max(0,r.value-cv)};
+}
+/* Luck of one roll: value of what came up minus the value you could expect before rolling. */
+function luck(g,afterDice){
+  const ctx=buildCtx(g,null),t=g.turn;
+  gen++;
+  let exp;
+  if(t.roll===0)exp=firstRollValue(ctx);
+  else{const [hk,n]=heldKey(t.dice,t.held);exp=holdValue(ctx,hk,n,t.roll);}
+  const got=V(ctx,keyOf(afterDice),t.roll+1);
+  return got-exp;
+}
+
+const API={decide,best,judge,luck,CHARACTERS,LEVELS,parsFor,_:{OUTS,decode,holds,keyOf,V,W,holdValue,bump:()=>++gen}};
 root.JambAI=API;
 if(typeof module!=='undefined'&&module.exports)module.exports=API;
 })(typeof self!=='undefined'?self:this);

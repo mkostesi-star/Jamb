@@ -1,7 +1,7 @@
 {
   "name": "Jamb",
   "short_name": "Jamb",
-  "description": "Jamb, the Croatian dice game. Play the computer, pass one phone around, or play on two phones.",
+  "description": "Jamb, the Balkan dice game: daily dice, fair duels, house rules, characters, a coach and a real-dice score sheet.",
   "lang": "hr",
   "start_url": "./",
   "scope": "./",
