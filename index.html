@@ -434,7 +434,7 @@ body[data-cur="1"] .tray{--pen-lite:var(--pen2-lite)}
       <p class="lvl-d" id="lvlD"></p>
       <label class="check"><input type="checkbox" id="optHand3"><span id="lHand3"></span></label>
       <p class="fine warnline" id="cpuWarn" hidden style="margin-top:14px"></p>
-      <button class="btn primary" type="submit" id="startCpuBtn">Start game</button>
+      <button class="btn primary" type="button" data-act="startcpu" id="startCpuBtn">Start game</button>
     </form>
     <form id="setupForm" hidden>
       <label class="field f1"><span id="l1">Player 1</span><input id="p1name" maxlength="16" autocomplete="off"></label>
@@ -466,10 +466,24 @@ body[data-cur="1"] .tray{--pen-lite:var(--pen2-lite)}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
-<script src="ai.js"></script>
+<script src="ai.js?v=3"></script>
+<script>
+(function(){
+  const show=msg=>{
+    let el=document.getElementById('errbar');
+    if(!el){el=document.createElement('div');el.id='errbar';el.setAttribute('role','alert');
+      el.style.cssText='position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));z-index:99;padding:10px 12px;border-radius:10px;background:#A3401A;color:#fff;font:600 14px/1.4 system-ui,sans-serif';
+      document.body.appendChild(el);}
+    el.textContent='Something went wrong: '+msg+' (v3)';
+  };
+  window.addEventListener('error',e=>show(e.message||'script error'));
+  window.addEventListener('unhandledrejection',e=>show(String(e.reason&&e.reason.message||e.reason)));
+})();
+</script>
 <script>
 (function(){
 'use strict';
+const APP_VERSION='v3';
 const ROWS=['1','2','3','4','5','6','max','min','kenta','triling','ful','poker','jamb'];
 const UPPER=['1','2','3','4','5','6'];
 const LOWER=['kenta','triling','ful','poker','jamb'];
@@ -1445,7 +1459,7 @@ function applyStatic(){
   $('mOnT').textContent=t.mOnT;$('mOnD').textContent=t.mOnD;
   $('installT').textContent=t.installT;$('installBtn').textContent=t.installBtn;$('installTitle').textContent=t.installTitle;
   $('installBody').innerHTML=isIOS()?t.instIOS:(/Android/i.test(navigator.userAgent)?t.instAndroid:t.instDesktop);
-  $('rulesTitle').textContent=t.rulesTitle;$('rulesBody').innerHTML=t.rulesHTML;
+  $('rulesTitle').textContent=t.rulesTitle;$('rulesBody').innerHTML=t.rulesHTML+`<p class="fine" style="margin-top:16px">${APP_VERSION}</p>`;
   $('setupTitle').textContent=t.setupTitle;$('segCpu').textContent=t.segCpu;$('segOne').textContent=t.segOne;$('segTwo').textContent=t.segTwo;
   $('lCpuName').textContent=t.yourName;$('lLvl').textContent=t.difficulty;
   $('lvlEasy').textContent=t.lvlCap.easy;$('lvlMedium').textContent=t.lvlCap.medium;$('lvlHard').textContent=t.lvlCap.hard;
@@ -1519,6 +1533,7 @@ function rollHero(){
   },70);
 }
 
+function safe(fn){try{fn();}catch(err){setTimeout(()=>{throw err;});}}
 function bind(){
   document.addEventListener('click',e=>{
     const el=e.target.closest('[data-act]');if(!el)return;
@@ -1548,6 +1563,7 @@ function bind(){
       case 'install':doInstall();break;
       case 'hero':rollHero();break;
       case 'joincode':joinGame($('joinCode').value);break;
+      case 'startcpu':e.preventDefault();safe(startCpu);break;
       case 'share':shareLink();break;
       case 'copy':copyLink();break;
     }
@@ -1567,9 +1583,9 @@ function bind(){
     }
     save();closeModals();render();
   });
-  $('cpuForm').addEventListener('submit',e=>{e.preventDefault();startCpu();});
-  $('setupForm').addEventListener('submit',e=>{e.preventDefault();startPP();});
-  $('onForm').addEventListener('submit',e=>{e.preventDefault();hostGame();});
+  $('cpuForm').addEventListener('submit',e=>{e.preventDefault();safe(startCpu);});
+  $('setupForm').addEventListener('submit',e=>{e.preventDefault();safe(startPP);});
+  $('onForm').addEventListener('submit',e=>{e.preventDefault();safe(hostGame);});
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState!=='visible')return;
     if(screen==='game'&&S&&S.turn.roll>0)wake();

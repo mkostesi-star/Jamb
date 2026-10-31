@@ -1,7 +1,5 @@
-/* Jamb computer opponent.
-   Easy: greedy for points on the table right now.
-   Medium: weighs each box against what it is usually worth, looks one roll ahead.
-   Hard: plans the whole turn exactly (every hold, every reroll) and uses Najava. */
+/* Jamb computer opponent: plans each turn exactly (every hold, every reroll, Najava),
+   judging each box by what it is usually worth. Weaker levels pick worse options more often. */
 (function(root){
 'use strict';
 const ROWS=['1','2','3','4','5','6','max','min','kenta','triling','ful','poker','jamb'];
@@ -135,44 +133,44 @@ function argmaxBox(L,c,roll){
   return{box:best,u:bu};
 }
 
-function easy(g,rnd){
-  const {turn}=g,roll=turn.roll,c=decode(keyOf(turn.dice));
-  const mk=(col,r)=>({c:col,r,ri:ROWS.indexOf(r)});
-  const sets=legalSets(g,mk);
-  const L=roll===1?sets.l1:sets.l2;
-  const val=b=>{const s=scoreC(b.ri,c,roll);return b.ri===7?(30-s)*0.6:s;};
-  const ranked=L.map(b=>({b,v:val(b)})).sort((a,b)=>b.v-a.v);
-  if(roll<3&&sets.cont){
-    const big=ranked.find(x=>x.b.ri>=8&&x.v>0);
-    if(!(big&&rnd()<0.85)){
-      let face=0;for(let i=0;i<6;i++)if(c[i]>=c[face])face=i;
-      return{type:'hold',held:turn.dice.map(v=>v===face+1)};
-    }
-    return{type:'write',c:big.b.c,r:big.b.r};
-  }
-  const pick=rnd()<0.25?ranked[Math.floor(rnd()*Math.min(3,ranked.length))]:ranked[0];
-  return{type:'write',c:pick.b.c,r:pick.b.r};
+/* Every level plays the full game (all columns, Najava, Ručna). Skill comes from how sharply it
+   prefers the best option: temp 0 always takes the best; higher temps pick weaker options more often.
+   bias nudges what a box is worth, which gives characters their habits. */
+const PROFILES={
+  easy:{temp:3,bias:null},
+  medium:{temp:1.2,bias:null},
+  hard:{temp:0,bias:null}
+};
+function biased(par,bias){
+  if(!bias)return par;
+  return par.map((v,i)=>v+(bias[ROWS[i]]||0));
 }
-
-function decide(g,level,rnd){
+function pick(opts,temp,rnd){
+  let best=opts[0];
+  for(const o of opts)if(o.v>best.v)best=o;
+  if(!(temp>0))return best;
+  let sum=0;const w=opts.map(o=>{const x=Math.exp((o.v-best.v)/temp);sum+=x;return x;});
+  let r=rnd()*sum;
+  for(let i=0;i<opts.length;i++){r-=w[i];if(r<=0)return opts[i];}
+  return best;
+}
+function decide(g,level,rnd,profile){
   rnd=rnd||Math.random;
-  if(level==='easy')return easy(g,rnd);
+  const P=profile||PROFILES[level]||PROFILES.medium;
   const {cols,sheet,turn}=g,roll=turn.roll,key=keyOf(turn.dice),c=decode(key);
+  const parS=biased(PAR_S,P.bias),parH=biased(PAR_H,P.bias);
   const models={};
-  for(const col of cols)models[col]=colModel(sheet[col],col==='hand'?PAR_H:PAR_S);
+  for(const col of cols)models[col]=colModel(sheet[col],col==='hand'?parH:parS);
   const mk=(col,r)=>makeBox(models[col],col,r);
   const sets=legalSets(g,mk);
-  const ctx={legal:[null,sets.l1,sets.l2,sets.l3],cont:[null,sets.cont,sets.cont],myopic:level!=='hard'};
+  const ctx={legal:[null,sets.l1,sets.l2,sets.l3],cont:[null,sets.cont,sets.cont],myopic:false};
   gen++;
-  const now=argmaxBox(ctx.legal[roll],c,roll);
-  let bestHold=null,bestE=-1e9,second=null;
+  const opts=[];
+  for(const b of ctx.legal[roll])opts.push({t:'w',b,v:b.u(c,roll)});
   if(roll<3&&ctx.cont[roll]){
-    const hs=holds(key).map(([hk,n])=>({hk,e:holdValue(ctx,hk,n,roll)})).sort((a,b)=>b.e-a.e);
-    bestHold=hs[0];bestE=hs[0].e;second=hs[1]||null;
+    for(const [hk,n] of holds(key))opts.push({t:'h',hk,v:holdValue(ctx,hk,n,roll)});
   }
-  if(level==='hard'&&roll===1&&!turn.announced&&cols.includes('ann')){
-    const top=Math.max(now.u,bestE);
-    let ann=null;
+  if(roll===1&&!turn.announced&&cols.includes('ann')){
     for(const r of ROWS){
       if(sheet.ann[r]!==null)continue;
       const b=mk('ann',r);
@@ -181,19 +179,16 @@ function decide(g,level,rnd){
       const wNow=b.u(c,1);
       let h=null,he=-1e9;
       for(const [hk,n] of holds(key)){const e=holdValue(rc,hk,n,1);if(e>he){he=e;h=hk;}}
-      if(he>wNow&&he>top+0.75&&(!ann||he>ann.e))ann={r,e:he,hk:h};
+      if(he>wNow+0.75)opts.push({t:'a',r,hk:h,v:he});
     }
-    if(ann)return{type:'announce',r:ann.r,held:holdMask(ann.hk,turn.dice)};
   }
-  if(bestHold&&bestE>now.u){
-    let h=bestHold;
-    if(level==='medium'&&second&&rnd()<0.15)h=second;
-    return{type:'hold',held:holdMask(h.hk,turn.dice)};
-  }
-  return{type:'write',c:now.box.c,r:now.box.r};
+  const o=pick(opts,P.temp,rnd);
+  if(o.t==='w')return{type:'write',c:o.b.c,r:o.b.r};
+  if(o.t==='a')return{type:'announce',r:o.r,held:holdMask(o.hk,turn.dice)};
+  return{type:'hold',held:holdMask(o.hk,turn.dice)};
 }
 
-const API={decide,ROWS,_:{OUTS,decode,holds,keyOf,scoreC,V,W,holdValue,bump:()=>++gen,setPar:(s,h)=>{PAR_S=s;PAR_H=h;},getPar:()=>({PAR_S,PAR_H})}};
+const API={decide,ROWS,PROFILES,_:{OUTS,decode,holds,keyOf,scoreC,V,W,holdValue,bump:()=>++gen,setPar:(s,h)=>{PAR_S=s;PAR_H=h;},getPar:()=>({PAR_S,PAR_H})}};
 root.JambAI=API;
 if(typeof module!=='undefined'&&module.exports)module.exports=API;
 })(typeof self!=='undefined'?self:this);
