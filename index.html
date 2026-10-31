@@ -120,6 +120,14 @@ button{cursor:pointer}
 .chip.view{background:var(--slip);color:var(--text);border-color:var(--slip)}
 .chip.view .cw{color:var(--red)}
 .chip.win .cs{text-decoration:underline wavy var(--gold) 2px;text-underline-offset:4px}
+.chips.many{gap:4px}
+.chips.many .chip{flex:1 1 0;min-width:46px;flex-direction:column;justify-content:center;gap:1px;padding:4px 3px 5px}
+.chips.many .chip>span:first-child{max-width:100%}
+.chips.many .chip .cn{font-size:10.5px;letter-spacing:.02em;max-width:100%;text-align:center}
+.chips.many .chip .cw{display:none}
+.chips.many .chip .cs{font-size:21px}
+.chips.many .chip.cur{box-shadow:inset 0 -3px 0 var(--gold)}
+.chips.many .chip.view.cur{box-shadow:inset 0 -3px 0 var(--red)}
 .bubbleRow{display:flex;align-items:flex-end;gap:8px;min-height:0;margin-bottom:8px}
 .bubble{max-width:260px;padding:8px 12px;border-radius:12px 12px 12px 2px;background:var(--slip);color:var(--text);font:400 18px/1.15 var(--f-hand);box-shadow:0 4px 8px -4px var(--shadow);animation:pop .25s ease-out}
 @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
@@ -219,7 +227,7 @@ sup{font:700 10px var(--f-ui);color:var(--pc);margin-left:1px;vertical-align:5px
 .x{flex:none;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line-strong);background:transparent;color:var(--text);font:500 24px/1 var(--f-ui)}
 .field{display:grid;gap:6px;margin-top:12px}
 .field>span{font:700 13px var(--f-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.field input,.field select,.linkbox{box-sizing:border-box;width:100%;min-height:46px;font:500 17px var(--f-ui);padding:8px 12px;border:1.5px solid var(--line-strong);border-radius:9px;background:#FFFDF6;color:var(--text)}
+.field input,.field select,.linkbox,.pl input{box-sizing:border-box;width:100%;min-height:46px;font:500 17px var(--f-ui);padding:8px 12px;border:1.5px solid var(--line-strong);border-radius:9px;background:#FFFDF6;color:var(--text)}
 .seg{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:4px;padding:4px;border-radius:11px;background:rgba(42,29,18,.08)}
 .seg button{min-height:42px;border:0;border-radius:8px;background:transparent;color:var(--muted);font:700 15px var(--f-ui);letter-spacing:.04em;text-transform:uppercase;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .seg button[aria-pressed="true"]{background:#FFFDF6;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.25)}
@@ -248,7 +256,7 @@ sup{font:700 10px var(--f-ui);color:var(--pc);margin-left:1px;vertical-align:5px
 .fine{font-size:14px;color:var(--muted)}
 .err{color:var(--red);font-weight:600}
 .pl{display:flex;gap:8px;align-items:center;margin-top:8px}
-.pl input{flex:1}
+.pl input{flex:1;width:auto;min-width:0}
 .pl .dot{width:14px;height:14px;border-radius:50%;background:var(--pc);flex:none}
 .pl button{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line-strong);background:transparent;color:var(--text);font:600 20px var(--f-ui)}
 .charcard{display:flex;gap:14px;align-items:center;padding:12px;border-radius:12px;background:rgba(42,29,18,.06)}
@@ -317,18 +325,18 @@ sup{font:700 10px var(--f-ui);color:var(--pc);margin-left:1px;vertical-align:5px
     if(!el){el=document.createElement('div');el.id='errbar';el.setAttribute('role','alert');
       el.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:99;padding:10px 12px;border-radius:10px;background:#A3401A;color:#fff;font:600 14px/1.4 system-ui,sans-serif';
       el.addEventListener('click',()=>el.remove());document.body.appendChild(el);}
-    el.textContent='Something went wrong: '+msg+' (v4)';
+    el.textContent='Something went wrong: '+msg+' (v5)';
   };
   window.addEventListener('error',e=>{if(e.message)show(e.message);});
   window.addEventListener('unhandledrejection',e=>show(String(e.reason&&e.reason.message||e.reason)));
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=4"></script>
-<script src="ai.js?v=4"></script>
-<script src="i18n.js?v=4"></script>
-<script src="audio.js?v=4"></script>
-<script src="scan.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="engine.js?v=5"></script>
+<script src="ai.js?v=5"></script>
+<script src="i18n.js?v=5"></script>
+<script src="audio.js?v=5"></script>
+<script src="scan.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

@@ -497,6 +497,48 @@ startOnline:'Spiel auf zwei Handys starten',orJoin:'Oder mit Code beitreten',cod
 'ch.profesor.win':['Wie das Modell vorhergesagt hat.'],'ch.profesor.lose':['Varianz. Aber gut gespielt.']
 };
 
+/* More players: up to five computer opponents, mixed tables, and two to six phones online. */
+const MORE={
+en:{waitStart:'Waiting for the start',modeOnline:'Several phones',modeOnlineD:'2 to 6 players, each on their own phone',mOnline:'Several phones · {code}',endOnline:'End online game',startOnline:'Start an online game',modePPD:'Up to six on one phone, computers welcome',addComputer:'Add computer',pickOpp:'Tap to add or remove opponents. Up to five.',oppCount:'Opponents ({n}): {names}',playersN:'Players: {n}',
+  lobbyHost:'Send everyone the link, then start when all are in. Up to 6 phones.',lobbyGuest:'You’re in. {name} starts the game once everyone has joined.',
+  startNow:'Start game',connectedN:'Phones connected: {n}',waitingPhones:'Waiting for the other phones',tableFull:'This game has already started or is full',
+  onlineIntro:'No accounts needed. 2 to 6 phones. Keep the page open on every phone while you play.',
+  sendLink:'Send this link to the other players. Start the game once everyone has joined.',hWaitJoin:'Share the game link. Start when everyone has joined.'},
+hr:{waitStart:'Čeka se početak',modeOnline:'Više mobitela',modeOnlineD:'2 do 6 igrača, svatko na svom mobitelu',mOnline:'Više mobitela · {code}',endOnline:'Završi igru na više mobitela',startOnline:'Započni igru na više mobitela',modePPD:'Do šest na jednom mobitelu, može i računalo',addComputer:'Dodaj računalo',pickOpp:'Dodirni da dodaš ili makneš protivnika. Najviše pet.',oppCount:'Protivnici ({n}): {names}',playersN:'Igrači: {n}',
+  lobbyHost:'Pošalji poveznicu svima i pokreni igru kad svi uđu. Najviše 6 mobitela.',lobbyGuest:'Unutra si. {name} pokreće igru kad se svi pridruže.',
+  startNow:'Započni igru',connectedN:'Povezanih mobitela: {n}',waitingPhones:'Čekaju se ostali mobiteli',tableFull:'Igra je već počela ili je puna',
+  onlineIntro:'Ne treba nikakav račun. Od 2 do 6 mobitela. Neka stranica bude otvorena na svim mobitelima dok igrate.',
+  sendLink:'Pošalji ovu poveznicu ostalim igračima. Pokreni igru kad se svi pridruže.',hWaitJoin:'Podijeli poveznicu. Pokreni igru kad se svi pridruže.'},
+sr:{modeOnline:'Više telefona',modeOnlineD:'2 do 6 igrača, svako na svom telefonu',mOnline:'Više telefona · {code}',endOnline:'Završi igru na više telefona',startOnline:'Počni igru na više telefona',modePPD:'Do šest na jednom telefonu, može i računar',addComputer:'Dodaj računar',pickOpp:'Dodirni da dodaš ili skloniš protivnika. Najviše pet.',
+  lobbyHost:'Pošalji link svima i pokreni igru kad svi uđu. Najviše 6 telefona.',connectedN:'Povezanih telefona: {n}',waitingPhones:'Čekaju se ostali telefoni',
+  onlineIntro:'Ne treba nikakav nalog. Od 2 do 6 telefona. Neka stranica bude otvorena na svim telefonima dok igrate.',
+  sendLink:'Pošalji ovaj link ostalim igračima. Pokreni igru kad se svi pridruže.',hWaitJoin:'Podeli link. Pokreni igru kad se svi pridruže.'},
+bs:{modeOnline:'Više telefona',modeOnlineD:'2 do 6 igrača, svako na svom telefonu',mOnline:'Više telefona · {code}',endOnline:'Završi igru na više telefona',startOnline:'Počni igru na više telefona',modePPD:'Do šest na jednom telefonu, može i računar',addComputer:'Dodaj računar',pickOpp:'Dodirni da dodaš ili skloniš protivnika. Najviše pet.',
+  lobbyHost:'Pošalji link svima i pokreni igru kad svi uđu. Najviše 6 telefona.',connectedN:'Povezanih telefona: {n}',waitingPhones:'Čekaju se ostali telefoni',
+  onlineIntro:'Ne treba nikakav račun. Od 2 do 6 telefona. Neka stranica bude otvorena na svim telefonima dok igrate.',
+  sendLink:'Pošalji ovaj link ostalim igračima. Pokreni igru kad se svi pridruže.',hWaitJoin:'Podijeli link. Pokreni igru kad se svi pridruže.'},
+sl:{waitStart:'Čakam na začetek',modeOnline:'Več telefonov',modeOnlineD:'2 do 6 igralcev, vsak na svojem telefonu',mOnline:'Več telefonov · {code}',endOnline:'Končaj igro na več telefonih',startOnline:'Začni igro na več telefonih',modePPD:'Do šest na enem telefonu, lahko tudi računalnik',addComputer:'Dodaj računalnik',pickOpp:'Tapni, da dodaš ali odstraniš nasprotnika. Največ pet.',oppCount:'Nasprotniki ({n}): {names}',playersN:'Igralci: {n}',
+  lobbyHost:'Pošlji povezavo vsem in začni igro, ko so vsi notri. Največ 6 telefonov.',lobbyGuest:'Notri si. {name} začne igro, ko se pridružijo vsi.',
+  startNow:'Začni igro',connectedN:'Povezani telefoni: {n}',waitingPhones:'Čakam na ostale telefone',tableFull:'Igra se je že začela ali je polna',
+  onlineIntro:'Računi niso potrebni. Od 2 do 6 telefonov. Med igro naj bo stran odprta na vseh telefonih.',
+  sendLink:'Pošlji to povezavo ostalim igralcem. Igro začni, ko se pridružijo vsi.',hWaitJoin:'Deli povezavo. Igro začni, ko se pridružijo vsi.'},
+mk:{waitStart:'Се чека почетокот',modeOnline:'Повеќе телефони',modeOnlineD:'2 до 6 играчи, секој на својот телефон',mOnline:'Повеќе телефони · {code}',endOnline:'Заврши ја играта на повеќе телефони',startOnline:'Почни игра на повеќе телефони',modePPD:'До шестмина на еден телефон, може и компјутер',addComputer:'Додај компјутер',pickOpp:'Допри за да додадеш или тргнеш противник. Најмногу пет.',oppCount:'Противници ({n}): {names}',playersN:'Играчи: {n}',
+  lobbyHost:'Испрати го линкот на сите и започни кога сите ќе влезат. Најмногу 6 телефони.',lobbyGuest:'Внатре си. {name} ја започнува играта кога сите ќе се приклучат.',
+  startNow:'Започни ја играта',connectedN:'Поврзани телефони: {n}',waitingPhones:'Се чекаат другите телефони',tableFull:'Играта веќе започна или е полна',
+  onlineIntro:'Не треба сметка. Од 2 до 6 телефони. Страницата нека биде отворена на сите телефони додека играте.',
+  sendLink:'Испрати го овој линк на другите играчи. Започни ја играта кога сите ќе се приклучат.',hWaitJoin:'Сподели го линкот. Започни кога сите ќе се приклучат.'},
+de:{waitStart:'Warte auf den Start',modeOnline:'Mehrere Handys',modeOnlineD:'2 bis 6 Spieler, jeder auf seinem Handy',mOnline:'Mehrere Handys · {code}',endOnline:'Online-Spiel beenden',startOnline:'Online-Spiel starten',modePPD:'Bis zu sechs an einem Handy, Computer gern dabei',addComputer:'Computer hinzufügen',pickOpp:'Tippen fügt Gegner hinzu oder entfernt sie. Bis zu fünf.',oppCount:'Gegner ({n}): {names}',playersN:'Spieler: {n}',
+  lobbyHost:'Schick allen den Link und starte, wenn alle da sind. Bis zu 6 Handys.',lobbyGuest:'Du bist drin. {name} startet das Spiel, wenn alle da sind.',
+  startNow:'Spiel starten',connectedN:'Verbundene Handys: {n}',waitingPhones:'Warte auf die anderen Handys',tableFull:'Das Spiel läuft schon oder ist voll',
+  onlineIntro:'Kein Konto nötig. 2 bis 6 Handys. Lasst die Seite auf allen Handys offen, solange ihr spielt.',
+  sendLink:'Schick diesen Link an die anderen. Starte das Spiel, wenn alle da sind.',hWaitJoin:'Teile den Spiellink. Starte, wenn alle da sind.'}
+};
+Object.assign(D.en,MORE.en);
+Object.assign(D.hr,MORE.hr);
+Object.assign(D.sr,MORE.hr,MORE.sr);
+Object.assign(D.bs,MORE.hr,MORE.bs);
+Object.assign(D.sl,MORE.sl);Object.assign(D.mk,MORE.mk);Object.assign(D.de,MORE.de);
+
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
 const LAT2CYR=[['DŽ','Џ'],['Dž','Џ'],['dž','џ'],['LJ','Љ'],['Lj','Љ'],['lj','љ'],['NJ','Њ'],['Nj','Њ'],['nj','њ'],
   ['A','А'],['B','Б'],['V','В'],['G','Г'],['D','Д'],['Đ','Ђ'],['E','Е'],['Ž','Ж'],['Z','З'],['I','И'],['J','Ј'],['K','К'],['L','Л'],['M','М'],['N','Н'],['O','О'],['P','П'],['R','Р'],['S','С'],['T','Т'],['Ć','Ћ'],['U','У'],['F','Ф'],['H','Х'],['C','Ц'],['Č','Ч'],['Š','Ш'],
