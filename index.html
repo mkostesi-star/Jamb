@@ -393,19 +393,19 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
     if(!el){el=document.createElement('div');el.id='errbar';el.setAttribute('role','alert');
       el.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:99;padding:10px 12px;border-radius:10px;background:#A3401A;color:#fff;font:600 14px/1.4 system-ui,sans-serif';
       el.addEventListener('click',()=>el.remove());document.body.appendChild(el);}
-    el.textContent='Something went wrong: '+msg+' (v6)';
+    el.textContent='Something went wrong: '+msg+' (v6.1)';
   };
   window.addEventListener('error',e=>{if(e.message)show(e.message);});
   window.addEventListener('unhandledrejection',e=>show(String(e.reason&&e.reason.message||e.reason)));
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=6"></script>
-<script src="ai.js?v=6"></script>
-<script src="i18n.js?v=6"></script>
-<script src="audio.js?v=6"></script>
-<script src="fx.js?v=6"></script>
-<script src="scan.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="engine.js?v=61"></script>
+<script src="ai.js?v=61"></script>
+<script src="i18n.js?v=61"></script>
+<script src="audio.js?v=61"></script>
+<script src="fx.js?v=61"></script>
+<script src="scan.js?v=61"></script>
+<script src="app.js?v=61"></script>
 </body>
 </html>
