@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v5.1';
+const VERSION='v5.2';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -503,19 +503,22 @@ function renderHome(){
       <button type="button" class="btnRed" data-act="daily">${esc(inprog?t('dailyResume'):t('dailyPlay'))}</button>
       <p>${esc(t('dailyHow'))}${stats.daily.streak?' · '+esc(t('streak',{n:stats.daily.streak})):''}</p></section>`;
   }
-  const modes=[['duel','modeDuel','modeDuelD'],['pp','modePP','modePPD'],['online','modeOnline','modeOnlineD'],['table','modeTable','modeTableD'],['rules','modeRules','modeRulesD']]
-    .map(([k,a,b])=>`<button type="button" class="mode" data-act="open" data-k="${k}"><span><span class="mt">${esc(t(a))}</span><span class="md">${esc(k==='rules'?rulesSummary(prefs.rules):t(b))}</span></span>${ICON.chev}</button>`).join('');
+  const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${esc(CHARS[k].mono)}</span>`).join('');
   $('home').innerHTML=`
-    <div class="wrap"><header class="top">
-      <div class="mark"><span class="word">Jamb</span><span class="tag">${esc(t('tagline'))}</span></div>
-      <div class="icons"><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
-    </header></div>
-    <div class="cloth" aria-hidden="true"></div>
+    <div class="hero">
+      <picture><source type="image/webp" srcset="art/home-800.webp 800w, art/home-1280.webp 1280w" sizes="100vw"><img src="art/home-800.jpg" alt="" width="800" height="446" decoding="async"></picture>
+      <div class="wrap"><header class="top">
+        <div class="mark"><span class="word">Jamb</span><span class="tag">${esc(t('tagline'))}</span></div>
+        <div class="icons"><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
+      </header></div>
+    </div>
     <div class="wrap"><main class="homeIn">
-      ${daily}
       ${resumes?`<div class="modes">${resumes}</div>`:''}
-      <section><div class="lbl">${esc(t('atTable'))}</div><div class="coasters">${CHAR_ORDER.map(c=>coasterHTML(c)).join('')}</div></section>
-      <nav class="modes" aria-label="${esc(t('moreWays'))}">${modes}</nav>
+      ${daily}
+      <button type="button" class="bigmode" data-act="open" data-k="cpu">
+        <span class="bt"><span class="mt">${esc(t('playChar'))}</span><span class="md">${esc(t('cpuD'))}</span><span class="faces" aria-hidden="true">${faces}</span></span>${ICON.chev}</button>
+      <button type="button" class="bigmode" data-act="open" data-k="friends">
+        <span class="bt"><span class="mt">${esc(t('friends'))}</span><span class="md">${esc(t('friendsD'))}</span></span>${ICON.chev}</button>
       <div class="footrow"><button type="button" class="sbtn ghost" data-act="open" data-k="howto">${esc(t('howTo'))}</button>${isStandalone()?'':`<button type="button" class="sbtn ghost" data-act="install">${esc(t('installT'))}</button>`}</div>
     </main></div>`;
 }
@@ -763,6 +766,10 @@ function renderModal(){
       }
       break;}
     case 'online':h=onlineModalHTML(m);break;
+    case 'friends':
+      h=head(t('friends'))+`<nav class="modes" aria-label="${esc(t('friends'))}">${[['pp','modePP','modePPD'],['online','modeOnline','modeOnlineD'],['duel','modeDuel','modeDuelD'],['table','modeTable','modeTableD']]
+        .map(([k,a,b])=>`<button type="button" class="mode" data-act="open" data-k="${k}"><span><span class="mt">${esc(t(a))}</span><span class="md">${esc(t(b))}</span></span>${ICON.chev}</button>`).join('')}</nav>`;
+      break;
     case 'rules':h=rulesModalHTML();break;
     case 'rulesIn':
       h=head(t('rulesFromLink'))+`<p>${esc(rulesSummary(m.rules))}</p><button type="button" class="btnRed" data-act="userules">${esc(t('useRules'))}</button><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`;

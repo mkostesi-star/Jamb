@@ -576,6 +576,18 @@ Object.assign(D.sr,GLOBAL.hr,GLOBAL.sr);
 Object.assign(D.bs,GLOBAL.hr,GLOBAL.bs);
 Object.assign(D.sl,GLOBAL.sl);Object.assign(D.mk,GLOBAL.mk);
 
+/* Home screen groups: play the computer, or play with friends. */
+const HOME={
+en:{friends:'Play with friends',friendsD:'Same phone, own phones, a duel or real dice',cpuD:'Pick 1 to 5 opponents, from beginner to professor'},
+hr:{friends:'Igraj s prijateljima',friendsD:'Jedan mobitel, više mobitela, dvoboj ili prave kocke',cpuD:'Odaberi 1 do 5 protivnika, od početnika do profesora'},
+sr:{friends:'Igraj sa prijateljima',friendsD:'Jedan telefon, više telefona, dvoboj ili prave kocke',cpuD:'Izaberi 1 do 5 protivnika, od početnika do profesora'},
+bs:{friends:'Igraj s prijateljima',friendsD:'Jedan telefon, više telefona, dvoboj ili prave kocke',cpuD:'Odaberi 1 do 5 protivnika, od početnika do profesora'},
+sl:{friends:'Igraj s prijatelji',friendsD:'En telefon, več telefonov, dvoboj ali prave kocke',cpuD:'Izberi 1 do 5 nasprotnikov, od začetnika do profesorja'},
+mk:{friends:'Играј со пријатели',friendsD:'Еден телефон, повеќе телефони, двобој или вистински коцки',cpuD:'Избери 1 до 5 противници, од почетник до професор'},
+de:{friends:'Mit Freunden spielen',friendsD:'Ein Handy, mehrere Handys, ein Duell oder echte Würfel',cpuD:'Wähle 1 bis 5 Gegner, vom Anfänger bis zum Professor'}
+};
+for(const l in HOME)Object.assign(D[l],HOME[l]);
+
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
 const LAT2CYR=[['DŽ','Џ'],['Dž','Џ'],['dž','џ'],['LJ','Љ'],['Lj','Љ'],['lj','љ'],['NJ','Њ'],['Nj','Њ'],['nj','њ'],
   ['A','А'],['B','Б'],['V','В'],['G','Г'],['D','Д'],['Đ','Ђ'],['E','Е'],['Ž','Ж'],['Z','З'],['I','И'],['J','Ј'],['K','К'],['L','Л'],['M','М'],['N','Н'],['O','О'],['P','П'],['R','Р'],['S','С'],['T','Т'],['Ć','Ћ'],['U','У'],['F','Ф'],['H','Х'],['C','Ц'],['Č','Ч'],['Š','Ш'],
