@@ -1,10 +1,9 @@
 /* Keeps Jamb working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v5-3';
+const CACHE = 'jamb-v6';
 const CORE = [
-  './', 'index.html', 'engine.js?v=53', 'ai.js?v=53', 'i18n.js?v=53', 'audio.js?v=53', 'fx.js?v=53', 'scan.js?v=53', 'app.js?v=53', 'manifest.webmanifest',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png',
-  'icons/apple-touch-icon.png', 'icons/favicon-64.png',
-  'art/home-800.webp', 'art/home-1280.webp', 'art/home-800.jpg',
+  './', 'index.html', 'engine.js?v=6', 'ai.js?v=6', 'i18n.js?v=6', 'audio.js?v=6', 'fx.js?v=6', 'scan.js?v=6', 'app.js?v=6', 'manifest.webmanifest',
+  'icons/v6/icon-192.png', 'icons/v6/apple-touch-icon.png', 'icons/v6/favicon-64.png',
+  'art/home-800.webp', 'art/home-1280.webp', 'art/home-800.jpg', 'art/wood-768.webp', 'art/winner-800.webp', 'art/daily-800.webp',
   'art/cast/ema.webp', 'art/cast/nono.webp', 'art/cast/mira.webp', 'art/cast/joza.webp', 'art/cast/profesor.webp'
 ];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
