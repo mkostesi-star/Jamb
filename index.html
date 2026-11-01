@@ -79,7 +79,7 @@ button{cursor:pointer}
 .bigmode .md{font:400 17px/1.2 var(--f-hand);color:var(--muted)}
 .bigmode svg{flex:none;width:16px;height:16px;color:var(--red)}
 .bigmode .faces{display:flex;padding-left:10px;margin-top:6px}
-.bigmode .faces .cmini{width:34px;height:34px;font-size:12px;margin-left:-10px;box-shadow:inset 0 0 0 3px var(--coaster),inset 0 0 0 5px var(--ring),0 2px 5px -1px rgba(0,0,0,.35)}
+.bigmode .faces .cmini{width:42px;height:42px;font-size:12px;margin-left:-9px;box-shadow:inset 0 0 0 2px var(--coaster),inset 0 0 0 4px var(--ring),0 2px 5px -1px rgba(0,0,0,.35)}
 .panel .modes{margin-top:4px}
 .panel .mode{background:#FFFDF6;box-shadow:inset 0 0 0 1.5px var(--line)}
 .slip{background:var(--slip);color:var(--text);border-radius:3px;box-shadow:0 10px 18px -8px var(--shadow),0 1px 0 rgba(0,0,0,.15)}
@@ -281,13 +281,20 @@ sup{font:700 10px var(--f-ui);color:var(--pc);margin-left:1px;vertical-align:5px
 .pl .dot{width:14px;height:14px;border-radius:50%;background:var(--pc);flex:none}
 .pl button{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line-strong);background:transparent;color:var(--text);font:600 20px var(--f-ui)}
 .charcard{display:flex;gap:14px;align-items:center;padding:12px;border-radius:12px;background:rgba(42,29,18,.06)}
-.charcard .cdisc{width:72px;height:72px;font-size:22px;flex:none}
+.charcard .cdisc{width:88px;height:88px;font-size:22px;flex:none}
 .charcard b{display:block;font:700 19px var(--f-ui)}
 .charcard q{display:block;font:400 18px/1.15 var(--f-hand);color:var(--muted)}
 .charcard .dots i{background:rgba(42,29,18,.18)}.charcard .dots i.on{background:#B08F00}
 .charpick{display:flex;gap:8px;overflow-x:auto;padding:4px 0 6px;scrollbar-width:none}
 .charpick button{flex:none;width:58px;height:58px;border-radius:50%;border:0;background:var(--coaster);font:400 17px var(--f-sign);color:var(--ring);box-shadow:inset 0 0 0 3px var(--coaster),inset 0 0 0 5px var(--ring)}
 .charpick button[aria-pressed="true"]{outline:3px solid var(--text);outline-offset:2px}
+/* painted portraits sit inside each character's ring */
+.cmini,.cdisc,.charpick button{position:relative;overflow:hidden}
+.face{position:absolute;top:var(--fi,5px);left:var(--fi,5px);width:calc(100% - 2*var(--fi,5px));height:calc(100% - 2*var(--fi,5px));border-radius:50%;object-fit:cover;display:block}
+.cdisc{--fi:7px}
+.bigmode .faces .cmini{--fi:4px}
+.cmini.big{width:52px;height:52px}
+.charpick button[aria-pressed="false"] .face{filter:saturate(.55) brightness(.92)}
 
 /* results, review, receipt */
 .result{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;padding:6px 0 4px}
@@ -385,19 +392,19 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
     if(!el){el=document.createElement('div');el.id='errbar';el.setAttribute('role','alert');
       el.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:99;padding:10px 12px;border-radius:10px;background:#A3401A;color:#fff;font:600 14px/1.4 system-ui,sans-serif';
       el.addEventListener('click',()=>el.remove());document.body.appendChild(el);}
-    el.textContent='Something went wrong: '+msg+' (v5.2)';
+    el.textContent='Something went wrong: '+msg+' (v5.3)';
   };
   window.addEventListener('error',e=>{if(e.message)show(e.message);});
   window.addEventListener('unhandledrejection',e=>show(String(e.reason&&e.reason.message||e.reason)));
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=52"></script>
-<script src="ai.js?v=52"></script>
-<script src="i18n.js?v=52"></script>
-<script src="audio.js?v=52"></script>
-<script src="fx.js?v=52"></script>
-<script src="scan.js?v=52"></script>
-<script src="app.js?v=52"></script>
+<script src="engine.js?v=53"></script>
+<script src="ai.js?v=53"></script>
+<script src="i18n.js?v=53"></script>
+<script src="audio.js?v=53"></script>
+<script src="fx.js?v=53"></script>
+<script src="scan.js?v=53"></script>
+<script src="app.js?v=53"></script>
 </body>
 </html>

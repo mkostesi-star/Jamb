@@ -4,13 +4,15 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v5.2';
+const VERSION='v5.3';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
 const CHAR_ORDER=['ema','nono','mira','joza','profesor'];
 const CHARS={ema:{ring:'#2E7D4F'},nono:{ring:'#1F3FA6'},mira:{ring:'#C8322B'},joza:{ring:'#B5651D'},profesor:{ring:'#2A1D12'}};
 /* Character names and initials follow the interface language. */
+/* A character's painted portrait inside its coloured ring; the initials show if the picture can't load. */
+const avatar=k=>`<span class="mono">${esc(CHARS[k].mono)}</span><img class="face" src="art/cast/${k}.webp" alt="" decoding="async" onerror="this.remove()">`;
 for(const k in CHARS)Object.defineProperties(CHARS[k],{name:{get(){return t('ch.'+k+'.name');}},mono:{get(){return t('ch.'+k+'.mono');}}});
 const PKEY='jamb4-prefs',SKEY='jamb4-stats',OKEY='jamb4-online',SLOT='jamb4-slot-';
 const LOG_MODES=['cpu','pp','daily','duel'];
@@ -448,7 +450,7 @@ function dots(level){let s='<span class="dots" aria-hidden="true">';for(let i=0;
 function coasterHTML(ch,extra){
   const c=CHARS[ch];
   return `<button type="button" class="coaster" data-act="pickchar" data-ch="${ch}" style="--ring:${c.ring}" ${extra||''}>
-    <span class="cdisc">${c.mono}</span><span class="cname">${esc(c.name)}</span><span class="chabit">${esc(t('ch.'+ch+'.habit'))}</span>${dots(AI.CHARACTERS[ch].level)}</button>`;
+    <span class="cdisc">${avatar(ch)}</span><span class="cname">${esc(c.name)}</span><span class="chabit">${esc(t('ch.'+ch+'.habit'))}</span>${dots(AI.CHARACTERS[ch].level)}</button>`;
 }
 function rulesSummary(r){
   r=E.normRules(r);
@@ -503,7 +505,7 @@ function renderHome(){
       <button type="button" class="btnRed" data-act="daily">${esc(inprog?t('dailyResume'):t('dailyPlay'))}</button>
       <p>${esc(t('dailyHow'))}${stats.daily.streak?' · '+esc(t('streak',{n:stats.daily.streak})):''}</p></section>`;
   }
-  const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${esc(CHARS[k].mono)}</span>`).join('');
+  const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
   $('home').innerHTML=`
     <div class="hero">
       <picture><source type="image/webp" srcset="art/home-800.webp 800w, art/home-1280.webp 1280w" sizes="100vw"><img src="art/home-800.jpg" alt="" width="800" height="446" decoding="async"></picture>
@@ -578,8 +580,8 @@ function bubbleHTML(){
   if(!G)return '';
   const botI=ui.bubble&&isBot(ui.bubble.i)?ui.bubble.i:(isBot(G.current)&&!G.over?G.current:-1);
   if(botI<0)return '';
-  const c=CHARS[G.players[botI].char]||CHARS.profesor,b=ui.bubble&&ui.bubble.i===botI?ui.bubble.text:'';
-  return `<span class="cmini" style="--ring:${c.ring}" aria-hidden="true">${c.mono}</span>${b?`<span class="bubble" role="status">${esc(b)}</span>`:''}`;
+  const ck=CHARS[G.players[botI].char]?G.players[botI].char:'profesor',c=CHARS[ck],b=ui.bubble&&ui.bubble.i===botI?ui.bubble.text:'';
+  return `<span class="cmini big" style="--ring:${c.ring}" aria-hidden="true">${avatar(ck)}</span>${b?`<span class="bubble" role="status">${esc(b)}</span>`:''}`;
 }
 function renderBubble(){
   const el=$('bubbleRow');if(!el||!G)return;
@@ -725,9 +727,9 @@ function renderModal(){
     case 'cpu':{
       m.chars=m.chars||(Array.isArray(prefs.chars)&&prefs.chars.length?prefs.chars.filter(k=>CHARS[k]).slice(0,5):[m.ch||prefs.char]);
       const ch=m.focus||m.chars[m.chars.length-1],c=CHARS[ch];
-      h=head(t('playChar'))+`<p class="fine">${esc(t('pickOpp'))}</p><div class="charpick">${CHAR_ORDER.map(k=>`<button type="button" data-act="setchar" data-ch="${k}" style="--ring:${CHARS[k].ring}" aria-pressed="${m.chars.includes(k)}" aria-label="${esc(CHARS[k].name)}">${CHARS[k].mono}</button>`).join('')}</div>
+      h=head(t('playChar'))+`<p class="fine">${esc(t('pickOpp'))}</p><div class="charpick">${CHAR_ORDER.map(k=>`<button type="button" data-act="setchar" data-ch="${k}" style="--ring:${CHARS[k].ring}" aria-pressed="${m.chars.includes(k)}" aria-label="${esc(CHARS[k].name)}">${avatar(k)}</button>`).join('')}</div>
         <p class="fine" style="margin:2px 0 8px">${esc(t('oppCount',{n:m.chars.length,names:m.chars.map(k=>CHARS[k].name).join(', ')}))}</p>
-        <div class="charcard" style="--ring:${c.ring}"><span class="cdisc">${c.mono}</span><span><b>${esc(c.name)}</b><q>${esc(t('ch.'+ch+'.quote'))}</q><span style="display:block;margin-top:4px">${dots(AI.CHARACTERS[ch].level).replace(/rgba\(246,238,220,.25\)/g,'')}</span></span></div>
+        <div class="charcard" style="--ring:${c.ring}"><span class="cdisc">${avatar(ch)}</span><span><b>${esc(c.name)}</b><q>${esc(t('ch.'+ch+'.quote'))}</q><span style="display:block;margin-top:4px">${dots(AI.CHARACTERS[ch].level).replace(/rgba\(246,238,220,.25\)/g,'')}</span></span></div>
         <label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${esc(prefs.name||'')}"></label>
         ${rulesRow()}
         ${loadSlot('cpu')&&!loadSlot('cpu').over?`<p class="fine" style="margin-top:12px">${esc(t('replaces'))}</p>`:''}
@@ -739,7 +741,7 @@ function renderModal(){
       h=head(m.kind==='pp'?t('modePP'):t('modeTable'))+(m.kind==='table'?`<p>${esc(t('tableIntro'))}</p>`:'')+
         `<h3>${esc(t('players'))} · ${list.length}</h3>`+list.map((p,i)=>{
           const rm=list.length>min&&!(p.kind!=='cpu'&&humans<=1)?`<button type="button" data-act="plrm" data-i="${i}" aria-label="${esc(t('remove'))}">−</button>`:'';
-          if(p.kind==='cpu'){const c=CHARS[p.char];return `<div class="pl" style="--pc:${PCOL[i]}"><span class="dot"></span><span class="cmini" style="--ring:${c.ring};width:36px;height:36px;font-size:12px" aria-hidden="true">${c.mono}</span><span style="flex:1;font:600 17px var(--f-ui)">${esc(c.name)} <span class="fine">· ${esc(t('ch.'+p.char+'.habit'))}</span></span><button type="button" data-act="plchar" data-i="${i}" aria-label="${esc(t('change'))}">↻</button>${rm}</div>`;}
+          if(p.kind==='cpu'){const c=CHARS[p.char];return `<div class="pl" style="--pc:${PCOL[i]}"><span class="dot"></span><span class="cmini" style="--ring:${c.ring};width:40px;height:40px;font-size:12px" aria-hidden="true">${avatar(p.char)}</span><span style="flex:1;font:600 17px var(--f-ui)">${esc(c.name)} <span class="fine">· ${esc(t('ch.'+p.char+'.habit'))}</span></span><button type="button" data-act="plchar" data-i="${i}" aria-label="${esc(t('change'))}">↻</button>${rm}</div>`;}
           return `<div class="pl" style="--pc:${PCOL[i]}"><span class="dot"></span><input id="pl${i}" maxlength="16" autocomplete="off" placeholder="${esc(t('player',{n:i+1}))}" value="${esc(p.name||'')}" aria-label="${esc(t('player',{n:i+1}))}">${rm}</div>`;
         }).join('')+
         (list.length<max?`<div class="btnRow" style="margin-top:10px"><button type="button" class="btnInk" style="margin-top:0" data-act="pladd">+ ${esc(t('addPlayer'))}</button>${m.kind==='pp'?`<button type="button" class="btnInk" style="margin-top:0" data-act="pladdbot">+ ${esc(t('addComputer'))}</button>`:''}</div>`:'')+
