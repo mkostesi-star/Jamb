@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v6.1';
+const VERSION='v6.2';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -115,6 +115,27 @@ function mayUndo(){
   return true;
 }
 
+/* ---------- game stats: kept for every player in every mode, shown when the game ends ---------- */
+function pst(p,g){
+  g=g||G;if(!g.stats)g.stats=[];
+  let x=g.stats[p];
+  if(!x||typeof x!=='object'){x=g.stats[p]={rolls:0,turns:0,faces:[0,0,0,0,0,0],first:0,jambs:0,zeros:0,calls:0,best:null,jambRoll:0,timeouts:0};}
+  return x;
+}
+function countRoll(p,dice,idx){
+  const x=pst(p);x.rolls++;
+  idx.forEach(i=>{const v=dice[i];if(v>=1&&v<=6)x.faces[v-1]++;});
+}
+function countWrite(p,c,r,s,turn){
+  const x=pst(p);x.turns++;
+  if(G.mode==='table'){x.rolls+=Math.max(1,turn.roll||1);turn.dice.forEach(v=>{if(v>=1&&v<=6)x.faces[v-1]++;});}
+  if(turn.roll===1)x.first++;
+  if(turn.announced)x.calls++;
+  if(s===0)x.zeros++;
+  if(r==='jamb'&&s>0){x.jambs++;if(!x.jambRoll||turn.roll<x.jambRoll)x.jambRoll=turn.roll||1;}
+  if(!x.best||s>x.best.s)x.best={s,r,c};
+}
+
 /* ---------- turn actions ---------- */
 function doRoll(){if(canRoll())rollCore();}
 function rollCore(after){
@@ -123,23 +144,37 @@ function rollCore(after){
   if(shouldLog())logEvent({k:'roll',turn:before,out:next.dice.slice()});
   G.undo=null;ui.sel=null;ui.tip=null;ui.tipText='';setView(p);
   const held=before.roll===0?before.held.map(()=>false):before.held.slice();
-  const moved=held.filter(h=>!h).length,idx=held.map((h,i)=>h?-1:i).filter(i=>i>=0);
-  const finish=()=>{
-    ui.rolling=false;
+  const idx=held.map((h,i)=>h?-1:i).filter(i=>i>=0);
+  countRoll(p,next.dice,idx);
+  /* The result is saved (and sent to the other phones) straight away, so everyone watches the same roll at the same time. */
+  G.turn=next;saveGame();
+  rollFx(idx,()=>{
     if(G!==g)return;
-    G.turn=next;A.land(moved,LAND_STEP);saveGame();render();landFx(idx);
     const pend=net.pending;net.pending=null;if(pend&&(pend.rev||0)>(G.rev||0))applyRemote(pend);
     if(after)after();
-  };
-  if(reduce){finish();return;}
-  ui.rolling=true;A.shake(320);render();
+  });
+}
+/* Dice that were thrown shake, tumble with their faces spinning, then land one by one. Phones set to reduce motion get a quick face flip instead. */
+function rollFx(idx,done){
+  clearInterval(ui.rollT);
+  const g=G;
+  if(reduce||!idx.length){
+    ui.rolling=false;ui.rollIdx=null;A.land(idx.length||1,LAND_STEP);render();
+    document.querySelectorAll('#dice .die').forEach((d,i)=>{if(!idx.includes(i))return;d.classList.remove('flip');void d.offsetWidth;d.classList.add('flip');setTimeout(()=>d.classList.remove('flip'),360);});
+    if(done)done();return;
+  }
+  ui.rolling=true;ui.rollIdx=idx;A.shake(520);render();
   let n=0;
-  const id=setInterval(()=>{
-    if(G!==g){clearInterval(id);ui.rolling=false;return;}
-    G.turn.dice=G.turn.dice.map((v,i)=>held[i]?v:1+Math.floor(Math.random()*6));
+  ui.rollT=setInterval(()=>{
+    if(G!==g){clearInterval(ui.rollT);ui.rolling=false;ui.rollIdx=null;return;}
     tickDice();
-    if(++n>=6){clearInterval(id);finish();}
-  },70);
+    if(++n>=9){
+      clearInterval(ui.rollT);ui.rolling=false;ui.rollIdx=null;
+      A.land(idx.length,LAND_STEP);render();landFx(idx);
+      const st=document.querySelector('#tray .status .st');if(st)FX.pulse(st,'bump',460);
+      if(done)done();
+    }
+  },62);
 }
 function toggleHold(i){
   const t=G.turn;
@@ -169,7 +204,7 @@ function landFx(idx){
 /* The written score floats up from the sheet; a Jamb throws confetti and nudges the table. */
 function writeFx(p,r,s){
   const w=document.querySelector('.paper .w.just');
-  if(w)FX.floatText(w,s>0?'+'+fmt(s):'0',s>0?'':'zero',s>0?PCOL[p%6]:'');
+  if(w)FX.floatText(w,s>0?'+'+fmt(s):'0',s>0?'':'zero',s>0?PCOL_LITE[p%6]:'');
   if(r==='jamb'&&s>0){FX.confetti(false);FX.pulse($('game'),'fxshake',450);}
 }
 function writeCore(c,r){
@@ -179,7 +214,8 @@ function writeCore(c,r){
   const logLen=G.log.length;
   if(shouldLog())logEvent({k:'write',turn:before,c,r});
   const hadBonus=E.colTotals(G.rules,sheet[c]).bonus>0;
-  G.undo={players:clone(G.players),current:G.current,turn:clone(G.turn),over:G.over,view:G.view,logLen};
+  const statsBefore=clone(G.stats||[]);countWrite(p,c,r,s,G.turn);
+  G.undo={players:clone(G.players),current:G.current,turn:clone(G.turn),over:G.over,view:G.view,logLen,stats:statsBefore};
   sheet[c][r]=s;
   ui.sel=null;ui.botPick=null;ui.tip=null;ui.tipText='';ui.just={p,c,r};ui.pick=-1;
   if(s===0)A.zero();else if(r==='jamb')A.jamb();else A.write();
@@ -197,7 +233,7 @@ function doUndo(){
   if(!mayUndo())return;
   cancelBot();
   const u=G.undo;
-  G.players=u.players;G.current=u.current;G.turn=u.turn;G.over=u.over;G.view=u.view;
+  G.players=u.players;G.current=u.current;G.turn=u.turn;G.over=u.over;G.view=u.view;if(u.stats)G.stats=u.stats;
   if(Array.isArray(G.log))G.log.length=Math.min(G.log.length,u.logLen||0);
   if(G.mode==='online'){G.status='playing';ui.view=G.current;}
   G.undo=null;ui.sel=null;ui.just=null;saveGame();render();
@@ -270,6 +306,7 @@ function finishGame(){
   const many=G.players.length>1;
   if(me>=0&&st[0].i===me)setTimeout(()=>{A.win();if(many&&screen==='game')FX.confetti(true);},700);
   if(G.mode==='daily')finishDaily();
+  recordGame(G);
   if(G.mode==='duel'){stats.duels[G.duel.id]={score:E.total(G.rules,G.players[0].sheet),at:Date.now(),from:G.duel.from||null};}
   saveStats();
   const g=G;
@@ -338,7 +375,7 @@ function finishDaily(){
   const prev=stats.daily.last;
   const yest=E.localDay(new Date(Date.now()-864e5));
   stats.daily.streak=prev===yest?(stats.daily.streak||0)+1:(prev===d.day?stats.daily.streak||1:1);
-  stats.daily.last=d.day;
+  stats.daily.last=d.day;stats.daily.maxStreak=Math.max(stats.daily.maxStreak||0,stats.daily.streak||0);
   stats.daily.results[d.day]={done:true,score,n:d.n,grid:qualityGrid(G.rules,G.players[0].sheet),prof:null};
   const keys=Object.keys(stats.daily.results).sort();while(keys.length>60)delete stats.daily.results[keys.shift()];
   saveStats();clearSlot('daily');
@@ -442,6 +479,7 @@ const ICON={
   gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>',
   back:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 3L5 8l5 5"></path></svg>',
   chev:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg>',
+  zoom:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21M8 10.5h5M10.5 8v5"></path></svg>',
   bulb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1.3 1.7 1.5 2.5h5c.2-.8.7-1.7 1.5-2.5A6 6 0 0 0 12 3z"></path></svg>',
   cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>',
   book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg>'
@@ -521,7 +559,7 @@ function renderHome(){
         <span class="bt"><span class="mt">${esc(t('playChar'))}</span><span class="md">${esc(t('cpuD'))}</span><span class="faces" aria-hidden="true">${faces}</span></span>${ICON.chev}</button>
       <button type="button" class="bigmode" data-act="open" data-k="friends">
         <span class="bt"><span class="mt">${esc(t('friends'))}</span><span class="md">${esc(t('friendsD'))}</span></span>${ICON.chev}</button>
-      <div class="footrow"><button type="button" class="sbtn ghost" data-act="open" data-k="howto">${esc(t('howTo'))}</button>${isStandalone()?'':`<button type="button" class="sbtn ghost" data-act="install">${esc(t('installT'))}</button>`}</div>
+      <div class="footrow"><button type="button" class="sbtn ghost" data-act="open" data-k="records">${esc(t('records'))}</button><button type="button" class="sbtn ghost" data-act="open" data-k="howto">${esc(t('howTo'))}</button>${isStandalone()?'':`<button type="button" class="sbtn ghost" data-act="install">${esc(t('installT'))}</button>`}</div>
     </main></div>`;
 }
 
@@ -549,7 +587,8 @@ function sheetHTML(p){
   cols.forEach(c=>{calc[c]=E.colTotals(g.rules,pl.sheet[c]);});
   const row=r=>`<tr><th scope="row" class="lab">${UPPER.includes(r)?miniFace(+r)+`<span class="sr">${esc(rowName(r))}</span>`:esc(rowName(r))}</th>${cols.map(c=>`<td>${cellHTML(p,c,r)}</td>`).join('')}</tr>`;
   const sum=(cls,label,fn)=>`<tr class="${cls}"><th scope="row" class="lab">${label}</th>${cols.map(c=>`<td>${fn(calc[c])}</td>`).join('')}</tr>`;
-  let h=`<thead><tr><th class="lab" scope="col"><span class="sr">${esc(name(p))}</span></th>${cols.map(c=>`<th scope="col" title="${esc(colName(c))}"><span class="sym">${E.COLS[c].sym}</span><span class="cnm">${esc(t('cols.'+c))}</span></th>`).join('')}</tr></thead><tbody>`;
+  const zl={fit:t('zFit'),normal:t('zNormal'),large:t('zLarge')}[prefs.zoom||'normal'];
+  let h=`<thead><tr><th class="lab" scope="col"><span class="sr">${esc(name(p))}</span><button type="button" class="zbtn" data-act="zoom" aria-label="${esc(t('zLabel')+': '+zl)}">${ICON.zoom}<span>${esc(zl)}</span></button></th>${cols.map(c=>`<th scope="col" title="${esc(colName(c))}"><span class="sym">${E.COLS[c].sym}</span><span class="cnm">${esc(t('cols.'+c))}</span></th>`).join('')}</tr></thead><tbody>`;
   UPPER.forEach(r=>{h+=row(r);});
   h+=sum('sum',`Σ<span class="sr"> ${esc(t('sumUp'))}</span>`,k=>k.upAny?`${k.up}${k.bonus?`<sup>+${k.bonus}</sup>`:''}`:'');
   h+=row('max')+row('min');
@@ -558,7 +597,7 @@ function sheetHTML(p){
   h+=sum('sum',`Σ<span class="sr"> ${esc(t('sumLow'))}</span>`,k=>k.lowAny?k.low:'');
   h+=sum('tot',esc(t('total')),k=>k.any?k.total:'');
   const labw=cols.length>=6?'17%':cols.length===5?'19%':'22%';
-  return `<table class="c${cols.length}" style="--labw:${labw};--pc:${PCOL[p%6]}">${h}</tbody></table>`;
+  return `<table class="c${cols.length}" style="--labw:${labw};--pc:${PCOL_LITE[p%6]}">${h}</tbody></table>`;
 }
 function renderGame(){
   const g=G,view=getView(),st=standings(g),winner=g.over&&st.length>1&&st[0].score>st[1].score?st[0].i:-1;
@@ -590,7 +629,8 @@ function renderBubble(){
 function dieHTML(v,i,o){
   const r=((i*37+v*11)%9)-4;
   if(o.unset)return `<button type="button" class="die unset${o.picked?' ghost':''}" data-act="tdie" data-i="${i}" aria-label="${esc(t('setDie',{n:i+1}))}">?</button>`;
-  return `<button type="button" class="die${o.held?' held':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${pipsHTML(o.idle?0:v)}</button>`;
+  const nr=((i*53+7)%11)-5;
+  return `<span class="dslot${o.held?' kept':''}" style="--nr:${nr}deg"><button type="button" class="die${o.held?' held':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${pipsHTML(o.idle?0:o.tumble?1+Math.floor(Math.random()*6):v)}</button></span>`;
 }
 function renderTray(){
   const g=G,tn=g.turn,c=g.current,me=mayAct();
@@ -607,7 +647,8 @@ function renderTray(){
   }else{
     const showIdle=tn.roll===0&&!ui.rolling;
     const can=me&&!g.over&&!ui.rolling&&tn.roll>=1&&tn.roll<3&&E.canRollAgain(g.rules,cur().sheet,tn);
-    dice=tn.dice.map((v,i)=>dieHTML(v,i,{held:tn.held[i]&&!showIdle,idle:showIdle,can,tumble:ui.rolling&&!tn.held[i],ghost:tipOn&&ui.tip.held&&ui.tip.held[i]&&!ui.rolling})).join('');
+    const rolling=i=>ui.rolling&&ui.rollIdx&&ui.rollIdx.includes(i);
+    dice=tn.dice.map((v,i)=>dieHTML(v,i,{held:tn.held[i]&&!showIdle&&!rolling(i),idle:showIdle,can,tumble:rolling(i),ghost:tipOn&&ui.tip.held&&ui.tip.held[i]&&!ui.rolling})).join('');
   }
   if(g.mode==='online'&&!onlineReady()){st=`<span class="st">${esc(statusText())}</span>`;hint='&nbsp;';acts=idle(t('roll'));}
   else if(g.over){
@@ -635,7 +676,7 @@ function renderTray(){
     else if(tn.announced)hint=esc(t('hAnn',{row:rowName(tn.announced)}));
     else if(tn.roll>=3)hint=esc(t('hLast'));
     else if(!E.hasLater(g.rules,cur().sheet))hint=esc(t('hMust'));
-    else hint=esc(t('hHold'));
+    else hint=esc(tn.held.some(Boolean)?t('hKept'):t('hHold'));
     const hintBtn=hintsAllowed()&&!sel?`<button type="button" class="hintbtn" data-act="hint" aria-label="${esc(t('hint'))}" title="${esc(t('hint'))}">${ICON.bulb}</button>`:'';
     if(sel&&!ui.rolling){
       const s=E.score(g.rules,sel.r,tn.dice,tn.roll),lab=rowName(sel.r),sym=E.COLS[sel.c].sym;
@@ -656,8 +697,8 @@ function renderTray(){
   $('tray').innerHTML=`<div class="trayIn"><div class="status">${st}</div><div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div></div>`;
 }
 function tickDice(){
-  const el=$('dice');if(!el)return;
-  el.querySelectorAll('.die').forEach((d,i)=>{if(G.turn.held[i])return;d.innerHTML=pipsHTML(G.turn.dice[i]);});
+  const el=$('dice');if(!el||!ui.rollIdx)return;
+  el.querySelectorAll('.die').forEach((d,i)=>{if(!ui.rollIdx.includes(i))return;d.innerHTML=pipsHTML(1+Math.floor(Math.random()*6));d.style.setProperty('--spin',(Math.random()*80-40).toFixed(0)+'deg');});
 }
 function render(){
   if(screen!=='game'||!G)return;
@@ -665,8 +706,21 @@ function render(){
   renderGame();renderTray();
   if(key){const el=[...document.querySelectorAll('[data-act]')].find(e=>[e.dataset.act,e.dataset.i||'',e.dataset.c||'',e.dataset.r||'',e.dataset.p||''].join('|')===key);if(el&&!el.disabled){try{el.focus({preventScroll:true});}catch(e){}}}
   const tr=$('tray');if(tr)document.documentElement.style.setProperty('--tray-h',tr.offsetHeight+'px');
-  chipFx();turnFx();
+  applyZoom();chipFx();turnFx();
 }
+/* Sheet size: Fit shrinks every row so the whole board shows above the tray; Normal and Large scroll. */
+function applyZoom(){
+  const paper=document.querySelector('#game .paper');if(!paper)return;
+  const z=prefs.zoom||'normal';
+  if(z==='large'){paper.style.setProperty('--z','1.3');return;}
+  if(z!=='fit'){paper.style.setProperty('--z','1');return;}
+  paper.style.setProperty('--z','1');
+  const tb=paper.querySelector('table'),tr=$('tray');if(!tb)return;
+  const top=paper.getBoundingClientRect().top+window.scrollY,trayH=tr&&!tr.hidden?tr.offsetHeight:0;
+  const avail=window.innerHeight-top-trayH-22,h=tb.offsetHeight||1;
+  paper.style.setProperty('--z',Math.max(.5,Math.min(1.25,avail/h)).toFixed(3));
+}
+window.addEventListener('resize',()=>{if(screen==='game'&&(prefs.zoom||'normal')==='fit')applyZoom();});
 /* Totals count up and the chip bumps when a player scores. */
 function chipFx(){
   if(!G)return;
@@ -791,6 +845,7 @@ function renderModal(){
       h=head(t('installT'))+(isIOS()?t('instIOS'):/Android/i.test(navigator.userAgent)?t('instAndroid'):t('instDesktop'));
       break;
     case 'result':h=resultHTML();break;
+    case 'records':h=recordsHTML();break;
     case 'daily':h=dailyModalHTML(m.day);break;
     case 'scan':
       h=head(t('scanTitle')+' ('+t('beta')+')')+`<p class="fine">${esc(t('scanHint'))}</p><div class="scanbox"><video id="scanV" playsinline muted></video><canvas id="scanC" hidden></canvas></div>
@@ -862,10 +917,97 @@ function resultHTML(){
     if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost'):t('draw'))}</p></div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
     else h+=`<p style="margin-top:10px">${esc(t('duelSendD'))}</p><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSend'))}</button>`;
   }
+  h+=gameStatsHTML(G);
   G.players.forEach((p,i)=>{if(p.kind==='human'&&G.log.some(ev=>ev.p===i))h+=reviewHTML(i);});
   const canRematch=!['daily','duel'].includes(G.mode);
   h+=`<div class="btnRow" style="margin-top:16px">${canRematch?`<button type="button" class="btnRed" data-act="rematch">${esc(t('rematch'))}</button>`:''}<button type="button" class="btnInk" style="margin-top:0" data-act="exit">${esc(t('menu'))}</button></div>`;
   return h;
+}
+
+/* ---------- end-of-game stats and one fun fact ---------- */
+function statLine(g,i){
+  const x=pst(i,g),pl=g.players[i];
+  const bonus=g.rules.cols.filter(c=>E.colTotals(g.rules,pl.sheet[c]).bonus>0).length;
+  const rpt=x.turns?(x.rolls/x.turns):0;
+  return {i,x,bonus,rpt,total:E.total(g.rules,pl.sheet)};
+}
+function funFact(g,lines){
+  const nm=i=>pname(g,i),c=[];
+  const rows=lines.filter(l=>l.x.turns>0);if(!rows.length)return '';
+  rows.forEach(l=>{
+    if(l.x.jambRoll===1)c.push([90,t('f_firstJamb',{name:nm(l.i)})]);
+    if(l.x.jambs>=2)c.push([70+l.x.jambs,t('f_jambs',{name:nm(l.i),n:l.x.jambs})]);
+    const mx=Math.max(...l.x.faces),face=l.x.faces.indexOf(mx)+1,avg=l.x.faces.reduce((a,b)=>a+b,0)/6;
+    if(mx>=8&&mx>=avg*1.35)c.push([60+mx-avg,t('f_face',{name:nm(l.i),face,n:mx})]);
+    if(l.x.zeros>=3)c.push([50+l.x.zeros,t('f_zeros',{name:nm(l.i),n:l.x.zeros})]);
+    if(l.x.zeros===0&&l.x.turns>=8)c.push([58,t('f_noZero',{name:nm(l.i)})]);
+    if(l.x.first>=Math.max(5,l.x.turns*0.35))c.push([45+l.x.first,t('f_first',{name:nm(l.i),n:l.x.first})]);
+    if(l.x.best&&l.x.best.s>=45)c.push([40+l.x.best.s/10,t('f_best',{s:l.x.best.s,row:rowName(l.x.best.r),name:nm(l.i)})]);
+  });
+  if(rows.length>1){const lo=rows.slice().sort((a,b)=>a.rpt-b.rpt)[0];if(lo.rpt>0)c.push([44,t('f_rolls',{name:nm(lo.i),x:lo.rpt.toFixed(1)})]);}
+  const throws=rows.reduce((a,l)=>a+l.x.faces.reduce((p,q)=>p+q,0),0);
+  if(throws)c.push([30,t('f_throws',{n:fmt(throws)})]);
+  if(!c.length)return '';
+  c.sort((a,b)=>b[0]-a[0]);
+  /* pick among the three most interesting, the same one every time this game's results are opened */
+  let hsh=0;for(const ch of String(g.id||''))hsh=(hsh*31+ch.charCodeAt(0))>>>0;
+  return c[hsh%Math.min(3,c.length)][1];
+}
+function gameStatsHTML(g){
+  const order=standings(g).map(s=>s.i),lines=order.map(i=>statLine(g,i));
+  if(!lines.some(l=>l.x.turns>0))return '';
+  let h=`<h3>${esc(t('stTitle'))}</h3>`;
+  const best=l=>l.x.best?`${l.x.best.s} <small>${esc(rowName(l.x.best.r))}</small>`:'–';
+  if(lines.length===1){
+    const l=lines[0];
+    h+=`<div class="stat3 stat4">${[[l.x.jambs,t('stJambs')],[l.bonus,t('stBonus')],[l.x.zeros,t('stZeros')],[l.rpt.toFixed(1),t('stRolls')]].map(([v,k])=>`<div class="stat"><b>${esc(String(v))}</b><span>${esc(k)}</span></div>`).join('')}</div>`;
+  }else{
+    h+=`<table class="gstats"><thead><tr><th></th><th>${esc(t('stJambs'))}</th><th>${esc(t('stBonus'))}</th><th>${esc(t('stZeros'))}</th><th>${esc(t('stRolls'))}</th><th>${esc(t('stBest'))}</th></tr></thead><tbody>${lines.map(l=>`<tr style="--pc:${PCOL[l.i%6]}"><td class="nm">${esc(pname(g,l.i))}</td><td>${l.x.jambs}</td><td>${l.bonus}</td><td>${l.x.zeros}</td><td>${l.rpt.toFixed(1)}</td><td>${best(l)}</td></tr>`).join('')}</tbody></table>`;
+  }
+  const f=funFact(g,lines);
+  if(f)h+=`<div class="fact"><span class="fk">${esc(t('factTitle'))}</span><p>${esc(f)}</p></div>`;
+  return h;
+}
+
+/* ---------- records: best scores per mode and rule set, kept on this phone ---------- */
+function rulesKey(r){return E.encodeRules(r)||'classic';}
+function rulesLabel(r){
+  for(const k of Object.keys(E.PRESETS))if(E.sameRules(r,E.presetRules(k)))return t('p_'+k);
+  return rulesSummary(r);
+}
+function recordGame(g){
+  stats.recIds=stats.recIds||[];
+  if(!g.id||stats.recIds.includes(g.id))return;
+  stats.recIds.push(g.id);while(stats.recIds.length>60)stats.recIds.shift();
+  const me=mySeat(),humans=g.players.map((p,i)=>i).filter(i=>g.players[i].kind!=='cpu');
+  let seat=me>=0?me:-1;
+  if(g.mode==='pp'||g.mode==='table'){seat=humans.slice().sort((a,b)=>E.total(g.rules,g.players[b].sheet)-E.total(g.rules,g.players[a].sheet))[0];}
+  if(seat==null||seat<0)return;
+  const score=E.total(g.rules,g.players[seat].sheet),st=standings(g);
+  const won=g.players.length>1&&st[0].i===seat&&st[0].score>(st[1]?st[1].score:-1);
+  stats.records=stats.records||{};
+  const key=g.mode+'|'+rulesKey(g.rules);
+  const r=stats.records[key]||(stats.records[key]={mode:g.mode,rules:g.rules,games:0,wins:0,sum:0,best:null});
+  r.games++;r.sum+=score;if(won)r.wins++;
+  if(!r.best||score>r.best.s)r.best={s:score,name:pname(g,seat),day:E.localDay(new Date())};
+  saveStats();
+}
+function recordsHTML(){
+  const recs=Object.values(stats.records||{});
+  let h=head(t('records'));
+  const modes=['cpu','pp','online','duel','table','daily'],mt={cpu:t('playChar'),pp:t('modePP'),online:t('modeOnline'),duel:t('modeDuel'),table:t('modeTable'),daily:t('daily')};
+  if(!recs.length)return h+`<p>${esc(t('recNone'))}</p><p class="fine">${esc(t('recPhone'))}</p>`;
+  modes.forEach(m=>{
+    const list=recs.filter(r=>r.mode===m).sort((a,b)=>(b.best?b.best.s:0)-(a.best?a.best.s:0));if(!list.length)return;
+    h+=`<h3>${esc(mt[m])}</h3>`;
+    list.forEach(r=>{
+      const many=m!=='daily'&&m!=='duel'&&m!=='table';
+      h+=`<div class="rec"><div class="rt"><b>${esc(rulesLabel(r.rules))}</b><span>${r.best?esc(t('recBy',{name:r.best.name||'',date:dateLabel(r.best.day)})):''}</span></div><div class="rs">${r.best?fmt(r.best.s):'–'}</div></div>
+        <p class="fine recm">${esc(t('recGames'))}: ${r.games} · ${esc(t('recAvg'))}: ${fmt(Math.round(r.sum/Math.max(1,r.games)))}${many&&m!=='pp'?` · ${esc(t('recWins'))}: ${r.wins}`:''}</p>`;
+    });
+    if(m==='daily')h+=`<p class="fine recm">${esc(t('recStreak'))}: ${Math.max(stats.daily.maxStreak||0,stats.daily.streak||0)}</p>`;
+  });
+  return h+`<p class="fine" style="margin-top:14px">${esc(t('recPhone'))}</p>`;
 }
 
 /* ---------- table mode ---------- */
@@ -1011,11 +1153,15 @@ function applyRemote(x){
   G=clone(x);
   if(old){
     if((old.turn.roll===0&&G.turn.roll>0)||(old.status==='waiting'&&G.status==='playing'))ui.view=G.current;
-    if(G.current===old.current&&G.turn.roll>old.turn.roll)A.land(5);
+    if(G.turn.roll>0&&(G.current!==old.current||G.turn.roll>old.turn.roll)){
+      const fresh=G.current!==old.current||old.turn.roll===0;
+      const idx=G.turn.dice.map((v,i)=>i).filter(i=>fresh||!old.turn.held[i]);
+      setTimeout(()=>rollFx(idx,()=>{const pend=net.pending;net.pending=null;if(pend&&(pend.rev||0)>(G.rev||0))applyRemote(pend);}),0);
+    }
     for(let p=0;p<G.players.length;p++)for(const c of G.rules.cols)for(const r of ROWS){
       if(old.players[p]&&old.players[p].sheet[c]&&old.players[p].sheet[c][r]===null&&G.players[p].sheet[c][r]!==null){ui.just={p,c,r};A.write();setTimeout(()=>{ui.just=null;},700);}
     }
-    if(G.over&&!old.over)setTimeout(()=>openModal('result'),1200);
+    if(G.over&&!old.over){recordGame(G);setTimeout(()=>openModal('result'),1200);}
   }
   if(ui.view==null)ui.view=G.current;
   if(ui.sel&&!canWriteUI(G.current,ui.sel.c,ui.sel.r))ui.sel=null;
@@ -1151,6 +1297,7 @@ function act(el,d){
   switch(d.act){
     case 'roll':if(ui.skipClick){ui.skipClick=false;break;}doRoll();break;
     case 'hold':toggleHold(+d.i);break;
+    case 'zoom':{const order=['fit','normal','large'],cur=prefs.zoom||'normal';prefs.zoom=order[(order.indexOf(cur)+1)%3];savePrefs();render();if(prefs.zoom==='fit')try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}break;}
     case 'cell':onCell(d.c,d.r);break;
     case 'write':if(ui.sel)writeCore(ui.sel.c,ui.sel.r);break;
     case 'announce':if(ui.sel)doAnnounce(ui.sel.r);break;
