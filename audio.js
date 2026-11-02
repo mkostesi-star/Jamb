@@ -3,7 +3,7 @@
 (function(root){
 'use strict';
 let ctx=null,master=null,NB=null,BB=null;
-const opt={sound:true,ambience:false,haptics:true};
+const opt={sound:true,ambience:false,haptics:true,music:false,musicLevel:0.17};
 function ac(){
   if(!ctx){
     const C=root.AudioContext||root.webkitAudioContext;if(!C)return null;
@@ -113,6 +113,8 @@ function turn(){
   const t=ctx.currentTime;
   [[659.25,0],[987.77,0.11]].forEach(([fq,d])=>{ping(t+d,fq,0.45,0.07);ping(t+d,fq*4,0.08,0.012);});
 }
+/* a soft clock tick for the last seconds of a turn */
+function tick(){if(!ready())return;const t=ctx.currentTime;knock(t,1500,1100,0.03,0.05);}
 function hold(){haptic(8);if(!ready())return;burst(ctx.currentTime,{freq:1900,q:2,dur:0.02,gain:0.22});}
 function tap(){if(!ready())return;burst(ctx.currentTime,{freq:2600,q:1.5,dur:0.015,gain:0.12});}
 /* A ballpoint pen writing a number. */
@@ -153,37 +155,60 @@ function win(){
   for(let i=0;i<40;i++)burst(t+0.5+rnd(0,1.1),{freq:rnd(1500,4000),q:1.2,dur:0.02,gain:rnd(0.02,0.06)});
 }
 
-/* Café ambience: a low murmur and the odd cup on a saucer. */
-let amb=null,clinkT=0;
+/* Café sounds: a real recording (audio/cafe.mp3, looped) when one is installed, plus the odd cup on a saucer.
+   The old synthesized murmur sounded like wind, so it is gone. */
+let amb=null,clinkT=0,ambBuf=null,ambTried=false;
+function loadAmb(cb){
+  if(ambBuf||ambTried){cb();return;}
+  ambTried=true;
+  try{fetch('audio/cafe.mp3').then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(a=>new Promise((res,rej)=>ctx.decodeAudioData(a,res,rej))).then(bf=>{ambBuf=bf;cb();}).catch(()=>cb());}catch(e){cb();}
+}
 function startAmbience(){
   if(amb||!opt.sound||!opt.ambience||!ac())return;
-  const s=ctx.createBufferSource();s.buffer=brown();s.loop=true;
-  const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=520;
-  const g=ctx.createGain();g.gain.value=0.0001;g.gain.linearRampToValueAtTime(0.09,ctx.currentTime+2);
-  const lfo=ctx.createOscillator(),lg=ctx.createGain();lfo.frequency.value=0.13;lg.gain.value=0.025;lfo.connect(lg);lg.connect(g.gain);
-  s.connect(f);f.connect(g);g.connect(master);s.start();lfo.start();
-  amb={s,g,lfo};
-  const clink=()=>{
+  amb={};
+  loadAmb(()=>{
     if(!amb)return;
-    const t=ctx.currentTime,base=rnd(2400,3800);
-    ping(t,base,0.35,0.018);ping(t,base*2.76,0.2,0.008);
-    if(Math.random()<0.4)ping(t+0.12,base*1.03,0.25,0.012);
-    clinkT=setTimeout(clink,rnd(5000,14000));
-  };
-  clinkT=setTimeout(clink,rnd(2000,6000));
+    if(ambBuf){
+      const s=ctx.createBufferSource();s.buffer=ambBuf;s.loop=true;
+      const g=ctx.createGain();g.gain.value=0.0001;g.gain.linearRampToValueAtTime(0.25,ctx.currentTime+2);
+      s.connect(g);g.connect(master);s.start();amb.s=s;amb.g=g;
+    }
+    const clink=()=>{
+      if(!amb)return;
+      const t=ctx.currentTime,base=rnd(2400,3800);
+      ping(t,base,0.35,0.018);ping(t,base*2.76,0.2,0.008);
+      if(Math.random()<0.4)ping(t+0.12,base*1.03,0.25,0.012);
+      clinkT=setTimeout(clink,rnd(6000,15000));
+    };
+    clinkT=setTimeout(clink,rnd(2000,6000));
+  });
 }
 function stopAmbience(){
   if(!amb)return;clearTimeout(clinkT);
   const a=amb;amb=null;
-  try{a.g.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+0.6);setTimeout(()=>{try{a.s.stop();a.lfo.stop();}catch(e){}},700);}catch(e){}
+  if(a.g){try{a.g.gain.cancelScheduledValues(ctx.currentTime);a.g.gain.setValueAtTime(a.g.gain.value,ctx.currentTime);a.g.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+0.6);setTimeout(()=>{try{a.s.stop();}catch(e){}},700);}catch(e){}}
+}
+/* The original waltz in music.js, quieter during play than on the menus. */
+function syncMusic(){
+  const M=root.JambMusic;if(!M)return;
+  if(opt.sound&&opt.music&&ctx&&ctx.state==='running'){M.start(ctx,master);M.setLevel(opt.musicLevel);}
+  else M.stop();
 }
 
 function haptic(p){if(!opt.haptics)return;try{if(navigator.vibrate)navigator.vibrate(p);}catch(e){}}
 function set(o){
   Object.assign(opt,o||{});
   if(opt.sound&&opt.ambience)startAmbience();else stopAmbience();
+  syncMusic();
 }
-function unlock(){if(opt.sound)ac();if(opt.sound&&opt.ambience)startAmbience();}
+function unlock(){
+  if(!opt.sound)return;
+  const c=ac();if(!c)return;
+  if(c.state!=='running'){try{c.resume().then(()=>{if(opt.ambience)startAmbience();syncMusic();});}catch(e){}}
+  else{if(opt.ambience)startAmbience();syncMusic();}
+}
+/* when the app goes to the background: silence, and pick up again on return */
+function sleep(){stopAmbience();const M=root.JambMusic;if(M)M.stop();}
 
 /* Shake to roll: a burst of strong movement starts the rattle, a pause throws the dice. */
 const motion={on:false,shaking:false,last:0,prev:null,onStart:null,onEnd:null,timer:0,handler:null};
@@ -219,6 +244,6 @@ function motionStop(){
   clearTimeout(motion.timer);motion.handler=null;motion.on=false;motion.shaking=false;motion.prev=null;
 }
 
-root.JambAudio={set,unlock,rattleStart,rattleStop,shake,land,hold,tap,press,swish,turn,write,zero,bonus,jamb,win,haptic,
+root.JambAudio={set,unlock,sleep,tick,rattleStart,rattleStop,shake,land,hold,tap,press,swish,turn,write,zero,bonus,jamb,win,haptic,
   motion:{supported:motionSupported,request:motionRequest,start:motionStart,stop:motionStop}};
 })(typeof self!=='undefined'?self:this);

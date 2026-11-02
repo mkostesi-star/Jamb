@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v6.2';
+const VERSION='v6.3';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -34,7 +34,7 @@ function detectLang(){
   }
   return 'en';
 }
-let prefs=Object.assign({lang:detectLang(),sound:true,ambience:false,haptics:true,shake:true,hints:true,name:null,rules:E.normRules({}),sets:[],char:'mira',screen:'home',mode:null},jget(PKEY,{}));
+let prefs=Object.assign({lang:detectLang(),sound:true,music:true,ambience:false,haptics:true,shake:true,hints:true,name:null,rules:E.normRules({}),sets:[],char:'mira',screen:'home',mode:null},jget(PKEY,{}));
 prefs.rules=E.normRules(prefs.rules);
 if(!I.has(prefs.lang))prefs.lang='en';
 if(!prefs.cid){prefs.cid=uid()+uid();store.set(PKEY,JSON.stringify(prefs));}
@@ -50,7 +50,8 @@ const rowName=r=>t('row.'+r);
 const colName=c=>t('col.'+c);
 function savePrefs(){store.set(PKEY,JSON.stringify(prefs));}
 function saveStats(){store.set(SKEY,JSON.stringify(stats));}
-function applyAudio(){A.set({sound:prefs.sound,ambience:prefs.ambience&&screen==='game',haptics:prefs.haptics});}
+function applyAudio(){A.set({sound:prefs.sound,ambience:prefs.ambience&&screen==='game',haptics:prefs.haptics,music:prefs.music!==false,musicLevel:screen==='game'?0.085:0.17});}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')A.sleep();else applyAudio();});
 
 /* ---------- games ---------- */
 function validG(g){return !!(g&&g.v===4&&g.rules&&Array.isArray(g.players)&&g.players.length>0&&g.turn&&Array.isArray(g.turn.dice)&&g.players.every(p=>p&&p.sheet&&g.rules.cols.every(c=>p.sheet[c])));}
@@ -81,7 +82,7 @@ function pname(g,i){const p=g.players[i];if(!p)return '';if(p.kind==='cpu')retur
 const name=i=>pname(G,i);
 function mySeat(){if(!G)return -1;if(G.mode==='online')return G.players.findIndex(p=>p.cid&&p.cid===prefs.cid);if(G.mode==='cpu')return G.players.findIndex(p=>p.kind==='human');if(G.mode==='daily'||G.mode==='duel')return 0;return -1;}
 function mayAct(){
-  if(!G||G.over)return false;
+  if(!G||G.over||G.paused)return false;
   if(G.mode==='online')return onlineReady()&&G.status==='playing'&&G.current===mySeat();
   return !isBot(G.current);
 }
@@ -135,6 +136,79 @@ function countWrite(p,c,r,s,turn){
   if(r==='jamb'&&s>0){x.jambs++;if(!x.jambRoll||turn.roll<x.jambRoll)x.jambRoll=turn.roll||1;}
   if(!x.best||s>x.best.s)x.best={s,r,c};
 }
+
+/* ---------- turn timer and pause, for games with other people ---------- */
+const timerSec=g=>g&&g.timer&&+g.timer.sec||0;
+function startClock(g){
+  if(!g)return;
+  if(!timerSec(g)||g.over){g.deadline=null;g.left=null;return;}
+  if(g.paused){g.left=timerSec(g)*1000;g.deadline=null;return;}
+  g.deadline=Date.now()+timerSec(g)*1000;g.left=null;
+}
+function clockLeft(){
+  if(!G||!timerSec(G)||G.over)return null;
+  if(G.paused)return G.left!=null?G.left:timerSec(G)*1000;
+  return G.deadline?G.deadline-Date.now():null;
+}
+const humanSeats=g=>g.players.map((p,i)=>i).filter(i=>g.players[i].kind!=='cpu');
+const clockGame=()=>!!G&&timerSec(G)>0&&!G.over&&(G.mode==='pp'||(G.mode==='online'&&G.status==='playing'));
+/* state changes for pause and ready: the host decides for online games, the phone itself for pass and play */
+function pauseApply(seat){
+  if(!G||G.paused||G.over)return false;
+  const left=G.deadline?Math.max(0,G.deadline-Date.now()):timerSec(G)*1000;
+  G.paused={by:seat,ready:[]};G.left=left;G.deadline=null;cancelBot();return true;
+}
+function readyApply(seat,force){
+  if(!G||!G.paused)return false;
+  const r=G.paused.ready||(G.paused.ready=[]);
+  if(seat!=null){const i=r.indexOf(seat);if(i>=0)r.splice(i,1);else r.push(seat);}
+  const need=G.mode==='online'?G.players.map((p,i)=>i):humanSeats(G);
+  if(force||need.every(i=>r.includes(i))){G.deadline=Date.now()+(G.left!=null?G.left:timerSec(G)*1000);G.left=null;G.paused=null;}
+  return true;
+}
+function doPause(){
+  if(!clockGame()||G.paused)return;
+  if(G.mode==='online'&&!online.host){sendTo(net.conn,{t:'pause',cid:prefs.cid});return;}
+  const seat=G.mode==='online'?mySeat():G.current;
+  if(pauseApply(seat)){A.tap();saveGame();render();}
+}
+function doReady(seat,force){
+  if(!G||!G.paused)return;
+  if(G.mode==='online'&&!online.host){sendTo(net.conn,{t:'ready',cid:prefs.cid});return;}
+  if(readyApply(seat,force)){A.tap();saveGame();render();if(!G.paused){A.turn();maybeBot();}}
+}
+/* Out of time: the dice go into the first free box from the top, leftmost column first, exactly as they lie.
+   If there was no roll yet, the game rolls once first. Never better than playing the turn yourself. */
+function forceTimeout(){
+  if(ui.forcing||!G||G.over)return;
+  ui.forcing=true;const p=G.current,g=G;
+  const finish=()=>{
+    ui.forcing=false;
+    if(G!==g||G.over||G.current!==p)return;
+    const mv=E.legalList(G.rules,G.players[p].sheet,G.turn)[0];
+    if(!mv)return;
+    pst(p).timeouts++;
+    toast(t('tTimeout',{name:name(p),row:rowName(mv.r)+' '+E.COLS[mv.c].sym}));
+    ui.sel=null;writeCore(mv.c,mv.r);
+  };
+  if(G.turn.roll===0)rollCore(finish);else finish();
+}
+let lastTick=-1;
+setInterval(()=>{
+  if(screen!=='game'||!clockGame())return;
+  const left=clockLeft();if(left==null)return;
+  const el=$('clock');
+  if(el){const sec=Math.max(0,Math.ceil(left/1000));el.textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');el.classList.toggle('low',sec<=10&&!G.paused);}
+  const bar=$('clockbar');if(bar)bar.style.transform='scaleX('+Math.max(0,Math.min(1,left/(timerSec(G)*1000))).toFixed(3)+')';
+  if(G.paused||isBot(G.current))return;
+  const mine=G.mode==='pp'||G.current===mySeat();
+  const sec=Math.ceil(left/1000);
+  if(mine&&sec<=10&&sec>0&&sec!==lastTick){lastTick=sec;A.tick();}
+  if(left>0||ui.rolling)return;
+  /* the player's own phone acts; the host covers for a phone that has dropped out */
+  const cover=G.mode==='online'&&online&&online.host&&G.current!==mySeat()&&left<-5000&&!openConns().some(c=>c._cid===G.players[G.current].cid);
+  if(mine||cover)forceTimeout();
+},250);
 
 /* ---------- turn actions ---------- */
 function doRoll(){if(canRoll())rollCore();}
@@ -224,6 +298,7 @@ function writeCore(c,r){
   setView(p);
   if(allFull())G.over=true;
   else{G.current=(G.current+1)%G.players.length;G.turn=freshTurn(G);}
+  startClock(G);
   if(G.mode==='online')G.status=G.over?'over':'playing';
   saveGame();render();writeFx(p,r,s);
   setTimeout(()=>{ui.just=null;},700);
@@ -236,6 +311,7 @@ function doUndo(){
   G.players=u.players;G.current=u.current;G.turn=u.turn;G.over=u.over;G.view=u.view;if(u.stats)G.stats=u.stats;
   if(Array.isArray(G.log))G.log.length=Math.min(G.log.length,u.logLen||0);
   if(G.mode==='online'){G.status='playing';ui.view=G.current;}
+  startClock(G);
   G.undo=null;ui.sel=null;ui.just=null;saveGame();render();
 }
 function hintsAllowed(){
@@ -279,7 +355,7 @@ function react(p,r,s){
 /* ---------- computer turns ---------- */
 const bot={tk:0,timer:0};
 function cancelBot(){bot.tk++;clearTimeout(bot.timer);ui.botPick=null;}
-function botTurn(){return screen==='game'&&G&&!G.over&&(G.mode==='cpu'||G.mode==='pp')&&isBot(G.current);}
+function botTurn(){return screen==='game'&&G&&!G.over&&!G.paused&&(G.mode==='cpu'||G.mode==='pp')&&isBot(G.current);}
 function botLater(ms,fn){const tk=bot.tk;clearTimeout(bot.timer);bot.timer=setTimeout(()=>{if(tk===bot.tk&&botTurn())fn();},ms);}
 function maybeBot(){if(botTurn()&&!ui.rolling)botLater(G.turn.roll===0?1400:900,botStep);}
 function botStep(){
@@ -430,6 +506,7 @@ function openGame(g){
   cancelBot();
   if(G&&G.mode==='online'&&g.mode!=='online'){destroyPeer();online=null;}
   G=g;ui.sel=null;ui.tip=null;ui.tipText='';ui.botPick=null;ui.just=null;ui.view=null;ui.pick=-1;ui.bubble=null;
+  if(G.mode==='pp'&&timerSec(G)&&!G.paused&&!G.over)startClock(G);
   closeModal();showScreen('game');
   if(G.mode!=='online')saveGame();
   if(progress(G)===0&&G.mode!=='online'){const b=someBot(-1);if(b>=0)setTimeout(()=>say(b,'greet'),500);}
@@ -459,10 +536,10 @@ function rematch(){
   const plist=G.players.map(p=>({name:p.name,kind:p.kind,char:p.char,cid:p.cid}));
   const st=((G.starter||0)+1)%plist.length;
   if(G.mode==='online'){
-    const g=makeGame('online',G.rules,plist,{code:G.code,status:'playing',rev:G.rev||0});g.starter=st;g.current=st;
+    const g=makeGame('online',G.rules,plist,{code:G.code,status:'playing',rev:G.rev||0,timer:G.timer||null});g.starter=st;g.current=st;startClock(g);
     G=g;ui.view=st;saveGame();closeModal();render();return;
   }
-  const g=makeGame(G.mode,G.rules,plist,{});g.starter=st;g.current=st;g.view=st;
+  const g=makeGame(G.mode,G.rules,plist,{timer:G.timer||null});g.starter=st;g.current=st;g.view=st;startClock(g);
   openGame(g);
 }
 
@@ -480,6 +557,7 @@ const ICON={
   back:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 3L5 8l5 5"></path></svg>',
   chev:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg>',
   zoom:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21M8 10.5h5M10.5 8v5"></path></svg>',
+  pause:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>',
   bulb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1.3 1.7 1.5 2.5h5c.2-.8.7-1.7 1.5-2.5A6 6 0 0 0 12 3z"></path></svg>',
   cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>',
   book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg>'
@@ -638,6 +716,8 @@ function renderTray(){
   let st='',hint='',acts='',dice='';
   const undo=mayUndo()?`<button type="button" class="lnk" data-act="undo">${esc(t('undo'))}</button>`:'';
   const annPill=tn.announced?`<span class="pill">N · ${esc(rowName(tn.announced))}</span>`:'';
+  const clockOn=clockGame();
+  const clockHTML=clockOn?`<span class="clockgrp"><span class="clock" id="clock" aria-label="${esc(t('tTimer'))}">–</span>${G.paused?'':`<button type="button" class="pzbtn" data-act="pause" aria-label="${esc(t('tPause'))}">${ICON.pause}</button>`}</span>`:'';
   const who=`<span class="st"><b class="who">${esc(name(c))}</b><span>·</span><span>${esc(g.mode==='table'?t('tableTurn'):tn.roll?t('rollOf',{n:tn.roll}):t('toPlay'))}</span></span>`;
   const idle=label=>`<button type="button" class="glass" disabled><b>${esc(label)}</b></button>`;
   const tipOn=ui.tip&&(ui.tip.type==='hold'||ui.tip.type==='announce');
@@ -694,7 +774,17 @@ function renderTray(){
     }
   }
   if(ui.msg)hint=`<span class="err">${esc(ui.msg)}</span>`;
-  $('tray').innerHTML=`<div class="trayIn"><div class="status">${st}</div><div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div></div>`;
+  if(clockOn&&g.paused){
+    const r=g.paused.ready||[],seats=g.mode==='online'?g.players.map((p,i)=>i):humanSeats(g),me2=mySeat();
+    const by=g.paused.by!=null&&g.players[g.paused.by]?name(g.paused.by):'';
+    const btns=seats.map(i=>{const on=r.includes(i),can=g.mode==='pp'||i===me2;
+      return `<button type="button" class="rdy${on?' on':''}" style="--pc:${PCOL[i%6]}" data-act="ready" data-i="${i}"${can?'':' disabled'}>${on?'✓ ':''}${esc(name(i))}</button>`;}).join('');
+    $('tray').innerHTML=`<div class="trayIn"><div class="clockline"><i id="clockbar"></i></div><div class="status"><span class="st"><b class="who">${esc(t('tPaused',{name:by}))}</b></span>${clockHTML}</div>
+      <p class="hint">${esc(t(g.mode==='pp'?'tTapReady':'tWaitReady'))}</p><div class="rdyrow">${btns}</div>
+      ${g.mode==='online'&&online&&online.host?`<button type="button" class="lnk" style="justify-self:center" data-act="resumenow">${esc(t('tResumeNow'))}</button>`:''}</div>`;
+    return;
+  }
+  $('tray').innerHTML=`<div class="trayIn">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}<div class="status">${st}${clockHTML}</div><div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div></div>`;
 }
 function tickDice(){
   const el=$('dice');if(!el||!ui.rollIdx)return;
@@ -777,6 +867,9 @@ function rulesRow(){return `<h3>${esc(t('rulesLabel'))}</h3><div class="toggle">
 function renderModal(){
   const m=ui.modal;if(!m)return;
   const P=$('panel');let h='';
+  /* keep whatever was typed when the sheet redraws (picking a character, a timer, a preset) */
+  {const f=$('fName');if(f&&P.contains(f))m.fName=f.value;if((m.kind==='pp'||m.kind==='table')&&m.players&&P.querySelector('#pl0'))syncPlayers(m);}
+  const nameVal=esc(m.fName!=null?m.fName:(prefs.name||''));
   switch(m.kind){
     case 'cpu':{
       m.chars=m.chars||(Array.isArray(prefs.chars)&&prefs.chars.length?prefs.chars.filter(k=>CHARS[k]).slice(0,5):[m.ch||prefs.char]);
@@ -784,7 +877,7 @@ function renderModal(){
       h=head(t('playChar'))+`<p class="fine">${esc(t('pickOpp'))}</p><div class="charpick">${CHAR_ORDER.map(k=>`<button type="button" data-act="setchar" data-ch="${k}" style="--ring:${CHARS[k].ring}" aria-pressed="${m.chars.includes(k)}" aria-label="${esc(CHARS[k].name)}">${avatar(k)}</button>`).join('')}</div>
         <p class="fine" style="margin:2px 0 8px">${esc(t('oppCount',{n:m.chars.length,names:m.chars.map(k=>CHARS[k].name).join(', ')}))}</p>
         <div class="charcard" style="--ring:${c.ring}"><span class="cdisc">${avatar(ch)}</span><span><b>${esc(c.name)}</b><q>${esc(t('ch.'+ch+'.quote'))}</q><span style="display:block;margin-top:4px">${dots(AI.CHARACTERS[ch].level).replace(/rgba\(246,238,220,.25\)/g,'')}</span></span></div>
-        <label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${esc(prefs.name||'')}"></label>
+        <label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label>
         ${rulesRow()}
         ${loadSlot('cpu')&&!loadSlot('cpu').over?`<p class="fine" style="margin-top:12px">${esc(t('replaces'))}</p>`:''}
         <button type="button" class="btnRed" data-act="startcpu" data-autofocus>${esc(t('startGame'))}</button>`;
@@ -799,12 +892,13 @@ function renderModal(){
           return `<div class="pl" style="--pc:${PCOL[i]}"><span class="dot"></span><input id="pl${i}" maxlength="16" autocomplete="off" placeholder="${esc(t('player',{n:i+1}))}" value="${esc(p.name||'')}" aria-label="${esc(t('player',{n:i+1}))}">${rm}</div>`;
         }).join('')+
         (list.length<max?`<div class="btnRow" style="margin-top:10px"><button type="button" class="btnInk" style="margin-top:0" data-act="pladd">+ ${esc(t('addPlayer'))}</button>${m.kind==='pp'?`<button type="button" class="btnInk" style="margin-top:0" data-act="pladdbot">+ ${esc(t('addComputer'))}</button>`:''}</div>`:'')+
+        (m.kind==='pp'?`<h3>${esc(t('tTimer'))}</h3>`+seg('tsecpp',[[0,t('tOff')],[30,'30 s'],[60,'60 s'],[90,'90 s']],prefs.ppTimer||0):'')+
         rulesRow()+`<button type="button" class="btnRed" data-act="start${m.kind}">${esc(t('startGame'))}</button>`;
       break;}
     case 'duel':
       h=head(t('modeDuel'))+`<p>${esc(t('duelIntro'))}</p>`+seg('duelfmt',[['quick',t('quick')],['full',t('full')]],m.fmt||'quick')+
         `<p class="fine" style="margin-top:8px">${esc((m.fmt||'quick')==='quick'?t('quickD'):t('fullD',{rules:rulesSummary(prefs.rules)}))}</p>
-        <label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${esc(prefs.name||'')}"></label>
+        <label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label>
         <button type="button" class="btnRed" data-act="startduel">${esc(t('startDuel'))}</button>
         <h3>${esc(t('duelPaste'))}</h3><div class="pl"><input id="duelCode" class="linkbox" placeholder="${esc(t('duelPasteHint'))}" autocomplete="off"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="pasteduel">${esc(t('open'))}</button></div>`;
       break;
@@ -818,7 +912,7 @@ function renderModal(){
         const played=stats.duels[o.i];
         h=head(t('duelFrom',{name:o.n}))+`<p>${esc(t('duelSame'))}</p><p class="fine">${esc(rulesSummary(rules))} · ${esc(t('duelHidden'))}</p>`+
           (played?`<p><b>${esc(t('duelAlready',{s:fmt(played.score)}))}</b></p><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`:
-          `<label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${esc(prefs.name||'')}"></label><button type="button" class="btnRed" data-act="acceptduel" data-autofocus>${esc(t('startDuel'))}</button>`);
+          `<label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label><button type="button" class="btnRed" data-act="acceptduel" data-autofocus>${esc(t('startDuel'))}</button>`);
       }
       break;}
     case 'online':h=onlineModalHTML(m);break;
@@ -832,7 +926,7 @@ function renderModal(){
       break;
     case 'settings':
       h=head(t('settings'))+`<div class="toggle"><span>${esc(t('language'))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="lang">${esc(I.name(prefs.lang))}</button></div>`+
-        sw('sound',t('sSound'))+sw('ambience',t('sAmb'),t('sAmbD'))+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+
+        sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+
         `<div class="toggle"><span>${esc(t('modeRules'))}<small>${esc(rulesSummary(prefs.rules))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
         `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Jamb ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
@@ -1117,10 +1211,17 @@ function adoptHost(conn){
 const sameGame=x=>validG(x)&&x.code===online.code;
 function onHostData(conn,d){
   if(!d||typeof d!=='object'||!online||!onlineReady()||d.t==='ping')return;
+  if(d.t==='pause'||d.t==='ready'){
+    const seat=G.players.findIndex(p=>p.cid&&p.cid===d.cid);if(seat<0)return;
+    const ok=d.t==='pause'?(clockGame()&&pauseApply(seat)):readyApply(seat);
+    if(ok){saveGame();render();if(d.t==='ready'&&!G.paused)A.turn();}
+    return;
+  }
   if(d.t==='hello'){
     if(d.G&&sameGame(d.G)&&(d.G.rev||0)>(G.rev||0))applyRemote(d.G);
     const cid=typeof d.cid==='string'?d.cid.slice(0,40):'',nm=typeof d.name==='string'?d.name.trim().slice(0,16):'';
     if(!cid)return;
+    conn._cid=cid;
     const seat=G.players.findIndex(p=>p.cid===cid);
     const free=G.players.findIndex((p,i)=>i>0&&p.kind==='human'&&!p.cid);
     if(seat<0&&free>=0&&G.status!=='waiting'){G.players[free].cid=cid;saveGame();render();}
@@ -1177,7 +1278,8 @@ function hostGame(){
   if(G&&G.mode==='online')destroyPeer();
   const code=makeCode();
   online={code,host:true};net.state='idle';
-  const g=makeGame('online',prefs.rules,[{name:nm,cid:prefs.cid}],{code,status:'waiting',rev:1});
+  const sec=prefs.onlineTimer==null?60:prefs.onlineTimer;
+  const g=makeGame('online',prefs.rules,[{name:nm,cid:prefs.cid}],{code,status:'waiting',rev:1,timer:sec?{sec}:null});
   openGame(g);saveOnline();startHost();
 }
 function joinGame(raw){
@@ -1199,7 +1301,7 @@ function resumeOnline(s){
 }
 function startOnlineGame(){
   if(!onlineReady()||!online.host||G.status!=='waiting'||G.players.length<2)return;
-  G.status='playing';G.current=0;G.starter=0;G.turn=freshTurn(G);ui.view=0;
+  G.status='playing';G.current=0;G.starter=0;G.turn=freshTurn(G);ui.view=0;startClock(G);
   saveGame();render();
 }
 function statusText(){
@@ -1218,7 +1320,7 @@ function onlineBanner(){
   return `<div class="tagcard" style="margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:${dot};flex:none"></span><span class="tt"><span class="tm">${esc(statusText())} · ${esc(online.code)}</span></span><button type="button" class="sbtn" data-act="open" data-k="online">${esc(online.host&&G.status==='waiting'?t('shareShort'):t('gameBtn'))}</button></div>`;
 }
 function onlineModalHTML(m){
-  let h=head(t('modeOnline'));
+  let h=head(t('modeOnline'));const nameVal=esc(m.fName!=null?m.fName:(prefs.name||''));
   if(G&&G.mode==='online'&&online&&screen==='game'){
     h+=`<p class="fine">${esc(t('sessCode'))}</p><div style="font:700 44px/1.1 var(--f-hand);letter-spacing:.14em;color:var(--ink)">${esc(online.code)}</div><p><b>${esc(statusText())}</b> · ${esc(t('playersN',{n:G.players.length}))}</p>`;
     if(online.host&&G.status==='waiting')h+=`<p>${esc(t('sendLink'))}</p><input class="linkbox" id="linkBox" readonly value="${esc(shareUrl())}" aria-label="${esc(t('shareLink'))}"><button type="button" class="btnRed" data-act="share">${esc(t('shareLink'))}</button>`+(G.players.length>=2?`<button type="button" class="btnRed" style="background:var(--ink);box-shadow:none" data-act="startonline">${esc(t('startNow'))}</button>`:'');
@@ -1226,8 +1328,8 @@ function onlineModalHTML(m){
     return h;
   }
   if(!hasPeer())h+=`<p class="err">${esc(t('onNoLib'))}</p>`;
-  h+=`<p>${esc(t('onlineIntro'))}</p><label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${esc(prefs.name||'')}"></label>`;
-  if(!m.joinOnly)h+=rulesRow()+`<button type="button" class="btnRed" data-act="host">${esc(t('startOnline'))}</button><h3>${esc(t('orJoin'))}</h3>`;
+  h+=`<p>${esc(t('onlineIntro'))}</p><label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label>`;
+  if(!m.joinOnly)h+=`<h3>${esc(t('tTimer'))}</h3>`+seg('tsecon',[[0,t('tOff')],[30,'30 s'],[60,'60 s'],[90,'90 s']],prefs.onlineTimer==null?60:prefs.onlineTimer)+rulesRow()+`<button type="button" class="btnRed" data-act="host">${esc(t('startOnline'))}</button><h3>${esc(t('orJoin'))}</h3>`;
   h+=`<div class="pl"><input id="joinCode" class="linkbox" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="${esc(t('codeLabel'))}" value="${esc(m.code||'')}" style="font:700 22px var(--f-ui);letter-spacing:.2em;text-transform:uppercase"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="join">${esc(t('joinBtn'))}</button></div>`;
   return h;
 }
@@ -1297,6 +1399,11 @@ function act(el,d){
   switch(d.act){
     case 'roll':if(ui.skipClick){ui.skipClick=false;break;}doRoll();break;
     case 'hold':toggleHold(+d.i);break;
+    case 'pause':doPause();break;
+    case 'ready':doReady(G&&G.mode==='online'?mySeat():+d.i);break;
+    case 'resumenow':doReady(null,true);break;
+    case 'tsecpp':prefs.ppTimer=+d.v;savePrefs();renderModal();break;
+    case 'tsecon':prefs.onlineTimer=+d.v;savePrefs();renderModal();break;
     case 'zoom':{const order=['fit','normal','large'],cur=prefs.zoom||'normal';prefs.zoom=order[(order.indexOf(cur)+1)%3];savePrefs();render();if(prefs.zoom==='fit')try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}break;}
     case 'cell':onCell(d.c,d.r);break;
     case 'write':if(ui.sel)writeCore(ui.sel.c,ui.sel.r);break;
@@ -1337,7 +1444,7 @@ function act(el,d){
       const chars=(ui.modal.chars&&ui.modal.chars.length?ui.modal.chars:[prefs.char]).slice(0,5);prefs.char=chars[0];savePrefs();
       openGame(makeGame('cpu',prefs.rules,[{name:nm,kind:'human'}].concat(chars.map(ch=>({kind:'cpu',char:ch}))),{}));break;}
     case 'startpp':case 'starttable':{const list=syncPlayers(ui.modal),first=list.find(p=>p.kind!=='cpu');if(first&&first.name)prefs.name=first.name;savePrefs();
-      openGame(makeGame(d.act==='startpp'?'pp':'table',prefs.rules,list.map(p=>p.kind==='cpu'?{kind:'cpu',char:p.char}:{name:p.name||null}),{}));break;}
+      {const g=makeGame(d.act==='startpp'?'pp':'table',prefs.rules,list.map(p=>p.kind==='cpu'?{kind:'cpu',char:p.char}:{name:p.name||null}),d.act==='startpp'&&prefs.ppTimer?{timer:{sec:prefs.ppTimer}}:{});startClock(g);openGame(g);}break;}
     case 'startonline':closeModal();startOnlineGame();break;
     case 'duelfmt':ui.modal.fmt=d.v;renderModal();break;
     case 'startduel':{const nm=$('fName').value.trim().slice(0,16)||null;prefs.name=nm;savePrefs();startDuel((ui.modal.fmt||'quick')==='quick');break;}
