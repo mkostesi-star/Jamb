@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v6.3';
+const VERSION='v6.4';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -34,7 +34,7 @@ function detectLang(){
   }
   return 'en';
 }
-let prefs=Object.assign({lang:detectLang(),sound:true,music:true,ambience:false,haptics:true,shake:true,hints:true,name:null,rules:E.normRules({}),sets:[],char:'mira',screen:'home',mode:null},jget(PKEY,{}));
+let prefs=Object.assign({lang:detectLang(),sound:true,music:true,emotes:true,ambience:false,haptics:true,shake:true,hints:true,name:null,rules:E.normRules({}),sets:[],char:'mira',screen:'home',mode:null},jget(PKEY,{}));
 prefs.rules=E.normRules(prefs.rules);
 if(!I.has(prefs.lang))prefs.lang='en';
 if(!prefs.cid){prefs.cid=uid()+uid();store.set(PKEY,JSON.stringify(prefs));}
@@ -135,6 +135,59 @@ function countWrite(p,c,r,s,turn){
   if(s===0)x.zeros++;
   if(r==='jamb'&&s>0){x.jambs++;if(!x.jambRoll||turn.roll<x.jambRoll)x.jambRoll=turn.roll||1;}
   if(!x.best||s>x.best.s)x.best={s,r,c};
+}
+
+/* ---------- reactions: a fixed set of quick signals between phones in online games. No free text.
+   Spam guard on every phone: one reaction per 3 seconds, at most 6 per 30 seconds per player;
+   the host drops anything faster before relaying it, and anyone can mute reactions. ---------- */
+const EMOTES=[['hi','👋'],['luck','🍀'],['nice','👏'],['wow','😮'],['ouch','😬'],['haha','😂'],['wait','⏳'],['gg','🤝']];
+const EMO_GAP=3000,EMO_WIN=30000,EMO_MAX=6,emoLog={};
+function emoAllowed(cid,now){
+  const a=(emoLog[cid]=(emoLog[cid]||[]).filter(x=>now-x<EMO_WIN));
+  if((a.length&&now-a[a.length-1]<EMO_GAP-200)||a.length>=EMO_MAX)return false;
+  a.push(now);return true;
+}
+const emoOn=()=>!!G&&G.mode==='online'&&onlineReady()&&G.status!=='over'&&!G.over&&mySeat()>=0;
+function emoHTML(){
+  if(!emoOn())return '';
+  const cool=Date.now()<(ui.emoCool||0);
+  let h=`<button type="button" class="emobtn${cool?' cool':''}${ui.emoOpen?' open':''}" data-act="emo" aria-label="${esc(t('emoBtn'))}" aria-expanded="${!!ui.emoOpen}">${ICON.smile}</button>`;
+  if(ui.emoOpen){
+    const muted=ui.emoMute||prefs.emotes===false;
+    h+=`<div class="emopop" role="menu">${EMOTES.map(([k,e])=>`<button type="button" role="menuitem" data-act="emosend" data-e="${k}"${cool?' disabled':''}><span class="ee">${e}</span><span class="el">${esc(t('emo_'+k))}</span></button>`).join('')}
+      <button type="button" class="emomute" data-act="emomute">${esc(muted?t('emoUnmute'):t('emoMute'))}</button></div>`;
+  }
+  return h;
+}
+function showEmote(seat,id){
+  const em=EMOTES.find(x=>x[0]===id);if(!em||!G||!G.players[seat])return;
+  if(seat!==mySeat()&&(ui.emoMute||prefs.emotes===false))return;
+  const chip=document.querySelector(`.chip[data-p="${seat}"]`),r=chip?chip.getBoundingClientRect():{left:innerWidth/2-40,width:80,bottom:70};
+  const b=document.createElement('div');b.className='emo';b.setAttribute('role','status');
+  b.innerHTML=`<span class="ee">${em[1]}</span><span class="el">${esc(name(seat))}: ${esc(t('emo_'+id))}</span>`;
+  b.style.setProperty('--pc',PCOL_LITE[seat%6]);
+  document.body.appendChild(b);
+  const w=b.offsetWidth,x=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2));
+  b.style.left=x+'px';b.style.top=(r.bottom+8)+'px';
+  setTimeout(()=>{b.classList.add('out');setTimeout(()=>b.remove(),400);},2600);
+  if(seat!==mySeat()){A.tap();A.haptic(10);}
+}
+function sendEmote(id){
+  if(!emoOn()||!EMOTES.some(x=>x[0]===id))return;
+  const now=Date.now();
+  if(!emoAllowed(prefs.cid,now)){toast(t('emoSlow'));return;}
+  ui.emoOpen=false;ui.emoCool=now+EMO_GAP;
+  showEmote(mySeat(),id);
+  const m={t:'emote',cid:prefs.cid,e:id};
+  if(online.host)openConns().forEach(c=>sendTo(c,m));else sendTo(net.conn,m);
+  renderTray();setTimeout(()=>{if(screen==='game')renderTray();},EMO_GAP+50);
+}
+function onEmote(d,fromConn){
+  if(!G||G.mode!=='online'||typeof d.cid!=='string'||!EMOTES.some(x=>x[0]===d.e)||d.cid===prefs.cid)return;
+  const seat=G.players.findIndex(p=>p.cid===d.cid);if(seat<0)return;
+  if(!emoAllowed(d.cid,Date.now()))return;
+  if(online&&online.host)openConns().forEach(c=>{if(c!==fromConn)sendTo(c,{t:'emote',cid:d.cid,e:d.e});});
+  showEmote(seat,d.e);
 }
 
 /* ---------- turn timer and pause, for games with other people ---------- */
@@ -253,7 +306,7 @@ function rollFx(idx,done){
 function toggleHold(i){
   const t=G.turn;
   if(!mayAct()||ui.rolling||G.mode==='table'||t.roll<1||t.roll>=3||!E.canRollAgain(G.rules,cur().sheet,t))return;
-  t.held[i]=!t.held[i];ui.tip=null;ui.tipText='';A.hold();saveGame();render();
+  t.held[i]=!t.held[i];ui.tip=null;ui.tipText='';ui.popDie=t.held[i]?i:-1;A.hold();saveGame();render();ui.popDie=-1;
 }
 function onCell(c,r){
   if(!canWriteUI(G.current,c,r))return;
@@ -557,6 +610,7 @@ const ICON={
   back:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 3L5 8l5 5"></path></svg>',
   chev:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg>',
   zoom:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21M8 10.5h5M10.5 8v5"></path></svg>',
+  smile:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 14.5c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1"></path><circle cx="9" cy="10" r="1.1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="10" r="1.1" fill="currentColor" stroke="none"></circle></svg>',
   pause:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>',
   bulb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1.3 1.7 1.5 2.5h5c.2-.8.7-1.7 1.5-2.5A6 6 0 0 0 12 3z"></path></svg>',
   cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>',
@@ -707,8 +761,7 @@ function renderBubble(){
 function dieHTML(v,i,o){
   const r=((i*37+v*11)%9)-4;
   if(o.unset)return `<button type="button" class="die unset${o.picked?' ghost':''}" data-act="tdie" data-i="${i}" aria-label="${esc(t('setDie',{n:i+1}))}">?</button>`;
-  const nr=((i*53+7)%11)-5;
-  return `<span class="dslot${o.held?' kept':''}" style="--nr:${nr}deg"><button type="button" class="die${o.held?' held':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${pipsHTML(o.idle?0:o.tumble?1+Math.floor(Math.random()*6):v)}</button></span>`;
+  return `<span class="dslot${o.held?' kept':''}"><button type="button" class="die${o.held?' held':''}${o.held&&ui.popDie===i?' popin':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${pipsHTML(o.idle?0:o.tumble?1+Math.floor(Math.random()*6):v)}</button></span>`;
 }
 function renderTray(){
   const g=G,tn=g.turn,c=g.current,me=mayAct();
@@ -779,12 +832,12 @@ function renderTray(){
     const by=g.paused.by!=null&&g.players[g.paused.by]?name(g.paused.by):'';
     const btns=seats.map(i=>{const on=r.includes(i),can=g.mode==='pp'||i===me2;
       return `<button type="button" class="rdy${on?' on':''}" style="--pc:${PCOL[i%6]}" data-act="ready" data-i="${i}"${can?'':' disabled'}>${on?'✓ ':''}${esc(name(i))}</button>`;}).join('');
-    $('tray').innerHTML=`<div class="trayIn"><div class="clockline"><i id="clockbar"></i></div><div class="status"><span class="st"><b class="who">${esc(t('tPaused',{name:by}))}</b></span>${clockHTML}</div>
+    $('tray').innerHTML=`<div class="trayIn"><div class="clockline"><i id="clockbar"></i></div><div class="status"><span class="st"><b class="who">${esc(t('tPaused',{name:by}))}</b></span><span class="sright">${clockHTML}${emoHTML()}</span></div>
       <p class="hint">${esc(t(g.mode==='pp'?'tTapReady':'tWaitReady'))}</p><div class="rdyrow">${btns}</div>
       ${g.mode==='online'&&online&&online.host?`<button type="button" class="lnk" style="justify-self:center" data-act="resumenow">${esc(t('tResumeNow'))}</button>`:''}</div>`;
     return;
   }
-  $('tray').innerHTML=`<div class="trayIn">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}<div class="status">${st}${clockHTML}</div><div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div></div>`;
+  $('tray').innerHTML=`<div class="trayIn">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}<div class="status">${st}<span class="sright">${clockHTML}${emoHTML()}</span></div><div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div></div>`;
 }
 function tickDice(){
   const el=$('dice');if(!el||!ui.rollIdx)return;
@@ -926,7 +979,7 @@ function renderModal(){
       break;
     case 'settings':
       h=head(t('settings'))+`<div class="toggle"><span>${esc(t('language'))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="lang">${esc(I.name(prefs.lang))}</button></div>`+
-        sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+
+        sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
         `<div class="toggle"><span>${esc(t('modeRules'))}<small>${esc(rulesSummary(prefs.rules))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
         `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Jamb ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
@@ -1211,6 +1264,7 @@ function adoptHost(conn){
 const sameGame=x=>validG(x)&&x.code===online.code;
 function onHostData(conn,d){
   if(!d||typeof d!=='object'||!online||!onlineReady()||d.t==='ping')return;
+  if(d.t==='emote'){onEmote(d,conn);return;}
   if(d.t==='pause'||d.t==='ready'){
     const seat=G.players.findIndex(p=>p.cid&&p.cid===d.cid);if(seat<0)return;
     const ok=d.t==='pause'?(clockGame()&&pauseApply(seat)):readyApply(seat);
@@ -1242,6 +1296,7 @@ function onHostData(conn,d){
 function onGuestData(d){
   if(!d||typeof d!=='object'||!online)return;
   if(d.t==='full'){setNet('full');return;}
+  if(d.t==='emote'){onEmote(d,null);return;}
   if(d.t==='state'&&d.G&&sameGame(d.G)){
     const mine=onlineReady()?(G.rev||0):-1,r=d.G.rev||0;
     if(r>mine)applyRemote(d.G);else if(r<mine)sendState();
@@ -1386,7 +1441,9 @@ document.addEventListener('pointercancel',()=>{if(ui.shaking){ui.shaking=false;u
 const SOFT=new Set(['exit','results','daily','resume','endask','endno','endsaved','pickchar','open','close','editrules','pladd','pladdbot','plrm','plchar',
   'startcpu','startpp','starttable','startonline','startduel','acceptduel','rematch','host','join','setlang','saverules','userules','loadset','preset']);
 document.addEventListener('click',e=>{
-  const el=e.target.closest('[data-act]');if(!el)return;
+  const el=e.target.closest('[data-act]');
+  if(ui.emoOpen&&(!el||!['emo','emosend','emomute'].includes(el.dataset.act))){ui.emoOpen=false;if(screen==='game')renderTray();}
+  if(!el)return;
   const d=el.dataset;
   if(SOFT.has(d.act)&&!(d.act==='open'&&(d.k==='scan'||d.k==='install'))&&!FX.reduce){
     if(el._soft)return;el._soft=true;
@@ -1400,6 +1457,9 @@ function act(el,d){
     case 'roll':if(ui.skipClick){ui.skipClick=false;break;}doRoll();break;
     case 'hold':toggleHold(+d.i);break;
     case 'pause':doPause();break;
+    case 'emo':ui.emoOpen=!ui.emoOpen;renderTray();break;
+    case 'emosend':sendEmote(d.e);break;
+    case 'emomute':ui.emoMute=!(ui.emoMute||prefs.emotes===false);if(!ui.emoMute&&prefs.emotes===false){prefs.emotes=true;savePrefs();}renderTray();break;
     case 'ready':doReady(G&&G.mode==='online'?mySeat():+d.i);break;
     case 'resumenow':doReady(null,true);break;
     case 'tsecpp':prefs.ppTimer=+d.v;savePrefs();renderModal();break;
