@@ -155,8 +155,11 @@ function win(){
   for(let i=0;i<40;i++)burst(t+0.5+rnd(0,1.1),{freq:rnd(1500,4000),q:1.2,dur:0.02,gain:rnd(0.02,0.06)});
 }
 
-/* Café sounds: a real recording (audio/cafe.mp3, looped) when one is installed, plus the odd cup on a saucer.
-   The old synthesized murmur sounded like wind, so it is gone. */
+/* Café sounds: a real recording (audio/cafe.mp3, looped) plus the odd cup on a saucer, so the loop never sounds the same twice.
+   The file is a 27.4 s crossfaded loop with 0.1 s of extra audio at each end, so any encoder padding sits outside the loop
+   points. Each session starts at a random point in it. Recording: "Bustling cafe ambience" (freesound_community, Pixabay
+   Content License: free to use in the app, no credit required). */
+const AMB_PAD=0.1,AMB_LOOP=27.436,AMB_GAIN=0.16;
 let amb=null,clinkT=0,ambBuf=null,ambTried=false;
 function loadAmb(cb){
   if(ambBuf||ambTried){cb();return;}
@@ -170,8 +173,10 @@ function startAmbience(){
     if(!amb)return;
     if(ambBuf){
       const s=ctx.createBufferSource();s.buffer=ambBuf;s.loop=true;
-      const g=ctx.createGain();g.gain.value=0.0001;g.gain.linearRampToValueAtTime(0.25,ctx.currentTime+2);
-      s.connect(g);g.connect(master);s.start();amb.s=s;amb.g=g;
+      const len=Math.min(AMB_LOOP,ambBuf.duration-2*AMB_PAD);
+      if(len>5){s.loopStart=AMB_PAD;s.loopEnd=AMB_PAD+len;}
+      const g=ctx.createGain(),now=ctx.currentTime;g.gain.setValueAtTime(0.0001,now);g.gain.linearRampToValueAtTime(AMB_GAIN,now+2.5);
+      s.connect(g);g.connect(master);s.start(now,len>5?AMB_PAD+Math.random()*len:0);amb.s=s;amb.g=g;
     }
     const clink=()=>{
       if(!amb)return;

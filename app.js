@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v6.4';
+const VERSION='v6.5';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -37,6 +37,8 @@ function detectLang(){
 let prefs=Object.assign({lang:detectLang(),sound:true,music:true,emotes:true,ambience:false,haptics:true,shake:true,hints:true,name:null,rules:E.normRules({}),sets:[],char:'mira',screen:'home',mode:null},jget(PKEY,{}));
 prefs.rules=E.normRules(prefs.rules);
 if(!I.has(prefs.lang))prefs.lang='en';
+/* v6.5: the sheet fits the screen by default; the bigger sizes are now Large and Huge */
+if(prefs.zoomV!==2){prefs.zoom='fit';prefs.zoomV=2;store.set(PKEY,JSON.stringify(prefs));}
 if(!prefs.cid){prefs.cid=uid()+uid();store.set(PKEY,JSON.stringify(prefs));}
 let stats=Object.assign({daily:{results:{},streak:0,last:null},duels:{},played:0,wins:0,best:0},jget(SKEY,{}));
 if(!stats.daily||!stats.daily.results)stats.daily={results:{},streak:0,last:null};
@@ -529,7 +531,7 @@ const baseUrl=()=>location.origin+location.pathname;
 function dailyShareText(day){
   const r=stats.daily.results[day];if(!r)return '';
   const sq=r.grid.map(q=>q===2?'🟨':q===1?'🟦':'⬜').join('');
-  return `Jamb · ${t('daily')} #${r.n} · ${r.score}\n${sq}${r.prof!=null?'\n'+t('profScore',{s:r.prof}):''}\n${baseUrl()}`;
+  return `${t('daily')} · ${dateLabel(day)} · ${r.score}\n${sq}${r.prof!=null?'\n'+t('profScore',{s:r.prof}):''}\n${baseUrl()}`;
 }
 function startDuel(quick){
   const id=uid()+uid();
@@ -606,7 +608,7 @@ function pipsHTML(v,cls){
 const mdie=v=>`<span class="mdie" aria-hidden="true">${pipsHTML(v)}</span>`;
 function miniFace(v){const on=FACE[v];let s='';for(let k=0;k<9;k++)s+=`<i${on.includes(k)?' class="on"':''}></i>`;return `<span class="mini" aria-hidden="true">${s}</span>`;}
 const ICON={
-  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.6 L10.2 1.7 L13.8 1.7 L14.1 4.6 L15.8 5.3 L18.0 3.5 L20.5 6.0 L18.7 8.2 L19.4 9.9 L22.3 10.2 L22.3 13.8 L19.4 14.1 L18.7 15.8 L20.5 18.0 L18.0 20.5 L15.8 18.7 L14.1 19.4 L13.8 22.3 L10.2 22.3 L9.9 19.4 L8.2 18.7 L6.0 20.5 L3.5 18.0 L5.3 15.8 L4.6 14.1 L1.7 13.8 L1.7 10.2 L4.6 9.9 L5.3 8.2 L3.5 6.0 L6.0 3.5 L8.2 5.3Z"></path><circle cx="12" cy="12" r="3.2"></circle></svg>',
   back:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 3L5 8l5 5"></path></svg>',
   chev:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 3l5 5-5 5"></path></svg>',
   zoom:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21M8 10.5h5M10.5 8v5"></path></svg>',
@@ -660,20 +662,24 @@ function renderHome(){
     return `<div class="tagcard"><span class="tt"><span class="tl">${esc(modeLabel(g,it.code))}</span><span class="tm">${esc(ui.endAsk===it.m?t('endQ'):meta)}</span></span>${score&&ui.endAsk!==it.m?`<span class="ts">${esc(score)}</span>`:''}<span class="tb">${btns}</span></div>`;
   }).join('');
   let daily;
+  const streakTxt=n=>n>=2?esc(t('streak',{n})):'';
+  const dkick=`<div class="row"><span class="kick red">${esc(t('daily'))}</span><span class="date">${esc(dateLabel(d.day))}</span></div>`;
   if(res&&res.done){
-    daily=`<section class="slip daily" aria-label="${esc(t('daily'))}">
-      <div class="row"><span class="kick red">${esc(t('daily'))} #${d.n}</span><span class="date">${esc(dateLabel(d.day))}</span></div>
+    const bits=[res.prof!=null?esc(t('profScore',{s:fmt(res.prof)})):'',streakTxt(stats.daily.streak||1),esc(t('dailyNext'))].filter(Boolean);
+    daily=`<section class="slip daily" aria-label="${esc(t('daily'))}">${dkick}
       <h2>${esc(t('dailyDone',{s:fmt(res.score)}))}</h2>
-      <p>${res.prof!=null?esc(t('profScore',{s:fmt(res.prof)}))+' · ':''}${esc(t('streak',{n:stats.daily.streak||1}))} · ${esc(t('dailyNext'))}</p>
+      <p>${bits.join(' · ')}</p>
       <div class="btnRow"><button type="button" class="btnRed" data-act="daily">${esc(t('seeReceipt'))}</button></div></section>`;
   }else{
     const inprog=items.find(x=>x.m==='daily');
-    daily=`<section class="slip daily" aria-label="${esc(t('daily'))}">
-      <div class="row"><span class="kick red">${esc(t('daily'))} #${d.n}</span><span class="date">${esc(dateLabel(d.day))}</span></div>
+    /* the dice shown are today's real opening roll: the same for everyone */
+    const first=E.rollDice(E.freshTurn(dailyRules().dice),'daily:'+d.day,0).dice;
+    const st=streakTxt(stats.daily.streak||0);
+    daily=`<section class="slip daily" aria-label="${esc(t('daily'))}">${dkick}
       <h2>${esc(t('dailyTitle'))}</h2>
-      <div class="minidice">${[3,3,5,6,1].map(mdie).join('')}</div>
+      <div class="minidice" role="img" aria-label="${esc(first.join(' '))}">${first.map(mdie).join('')}</div>
       <button type="button" class="btnRed" data-act="daily">${esc(inprog?t('dailyResume'):t('dailyPlay'))}</button>
-      <p>${esc(t('dailyHow'))}${stats.daily.streak?' · '+esc(t('streak',{n:stats.daily.streak})):''}</p></section>`;
+      <p>${esc(t('dailyHow'))}${st?' · '+st:''}</p></section>`;
   }
   const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
   $('home').innerHTML=`
@@ -691,7 +697,7 @@ function renderHome(){
         <span class="bt"><span class="mt">${esc(t('playChar'))}</span><span class="md">${esc(t('cpuD'))}</span><span class="faces" aria-hidden="true">${faces}</span></span>${ICON.chev}</button>
       <button type="button" class="bigmode" data-act="open" data-k="friends">
         <span class="bt"><span class="mt">${esc(t('friends'))}</span><span class="md">${esc(t('friendsD'))}</span></span>${ICON.chev}</button>
-      <div class="footrow"><button type="button" class="sbtn ghost" data-act="open" data-k="records">${esc(t('records'))}</button><button type="button" class="sbtn ghost" data-act="open" data-k="howto">${esc(t('howTo'))}</button>${isStandalone()?'':`<button type="button" class="sbtn ghost" data-act="install">${esc(t('installT'))}</button>`}</div>
+      <div class="footrow"><button type="button" class="sbtn ghost" data-act="open" data-k="records">${esc(t('records'))}</button><button type="button" class="sbtn ghost" data-act="open" data-k="howto">${esc(t('howTo'))}</button>${isStandalone()?'':`<button type="button" class="sbtn ghost" data-act="install">${esc(t('installShort'))}</button>`}</div>
     </main></div>`;
 }
 
@@ -719,7 +725,7 @@ function sheetHTML(p){
   cols.forEach(c=>{calc[c]=E.colTotals(g.rules,pl.sheet[c]);});
   const row=r=>`<tr><th scope="row" class="lab">${UPPER.includes(r)?miniFace(+r)+`<span class="sr">${esc(rowName(r))}</span>`:esc(rowName(r))}</th>${cols.map(c=>`<td>${cellHTML(p,c,r)}</td>`).join('')}</tr>`;
   const sum=(cls,label,fn)=>`<tr class="${cls}"><th scope="row" class="lab">${label}</th>${cols.map(c=>`<td>${fn(calc[c])}</td>`).join('')}</tr>`;
-  const zl={fit:t('zFit'),normal:t('zNormal'),large:t('zLarge')}[prefs.zoom||'normal'];
+  const zl={fit:t('zFit'),large:t('zLarge'),huge:t('zHuge')}[zoomMode()];
   let h=`<thead><tr><th class="lab" scope="col"><span class="sr">${esc(name(p))}</span><button type="button" class="zbtn" data-act="zoom" aria-label="${esc(t('zLabel')+': '+zl)}">${ICON.zoom}<span>${esc(zl)}</span></button></th>${cols.map(c=>`<th scope="col" title="${esc(colName(c))}"><span class="sym">${E.COLS[c].sym}</span><span class="cnm">${esc(t('cols.'+c))}</span></th>`).join('')}</tr></thead><tbody>`;
   UPPER.forEach(r=>{h+=row(r);});
   h+=sum('sum',`Σ<span class="sr"> ${esc(t('sumUp'))}</span>`,k=>k.upAny?`${k.up}${k.bonus?`<sup>+${k.bonus}</sup>`:''}`:'');
@@ -851,19 +857,21 @@ function render(){
   const tr=$('tray');if(tr)document.documentElement.style.setProperty('--tray-h',tr.offsetHeight+'px');
   applyZoom();chipFx();turnFx();
 }
-/* Sheet size: Fit shrinks every row so the whole board shows above the tray; Normal and Large scroll. */
+/* Sheet size: Fit (the default) shrinks every row so the whole board shows above the tray.
+   Large and Huge are steps up from Fit and scroll. */
+const ZOOMS=['fit','large','huge'];
+function zoomMode(){return ZOOMS.includes(prefs.zoom)?prefs.zoom:'fit';}
 function applyZoom(){
   const paper=document.querySelector('#game .paper');if(!paper)return;
-  const z=prefs.zoom||'normal';
-  if(z==='large'){paper.style.setProperty('--z','1.3');return;}
-  if(z!=='fit'){paper.style.setProperty('--z','1');return;}
   paper.style.setProperty('--z','1');
   const tb=paper.querySelector('table'),tr=$('tray');if(!tb)return;
   const top=paper.getBoundingClientRect().top+window.scrollY,trayH=tr&&!tr.hidden?tr.offsetHeight:0;
   const avail=window.innerHeight-top-trayH-22,h=tb.offsetHeight||1;
-  paper.style.setProperty('--z',Math.max(.5,Math.min(1.25,avail/h)).toFixed(3));
+  const fit=Math.max(.6,Math.min(1.25,avail/h)),z=zoomMode();/* below 0.6 the text gets too small to read; the sheet scrolls instead */
+  const v=z==='huge'?Math.min(2,Math.max(1.3,fit*1.6)):z==='large'?Math.min(1.6,Math.max(1,fit*1.25)):fit;
+  paper.style.setProperty('--z',v.toFixed(3));
 }
-window.addEventListener('resize',()=>{if(screen==='game'&&(prefs.zoom||'normal')==='fit')applyZoom();});
+window.addEventListener('resize',()=>{if(screen==='game')applyZoom();});
 /* Totals count up and the chip bumps when a player scores. */
 function chipFx(){
   if(!G)return;
@@ -1043,7 +1051,7 @@ function reviewHTML(p){
 function receiptHTML(day){
   const r=stats.daily.results[day];if(!r)return '';
   const rules=dailyRules(),q=['#C9C2B5','#1F3FA6','#E0A800'];
-  return `<div class="receipt"><div class="c b">JAMB · ${esc(t('daily').toUpperCase())} #${r.n}</div><div class="c" style="font-size:12px;color:#6B655C">${esc(dateLabel(day))} · ${esc(t('dailySame'))}</div><div class="hr"></div>
+  return `<div class="receipt"><div class="c b">${esc(t('daily').toUpperCase())}</div><div class="c" style="font-size:12px;color:#6B655C">${esc(dateLabel(day))} · ${esc(t('dailySame'))}</div><div class="hr"></div>
     <div class="grid">${r.grid.map(x=>`<i style="--q:${q[x]}"></i>`).join('')}</div><div class="hr"></div>
     <div class="ln tot"><span>${esc(t('total').toUpperCase())}</span><span>${r.score}</span></div>
     <div class="ln"><span>${esc(CHARS.profesor.name)}</span><span>${r.prof!=null?r.prof:'…'}</span></div>
@@ -1464,7 +1472,7 @@ function act(el,d){
     case 'resumenow':doReady(null,true);break;
     case 'tsecpp':prefs.ppTimer=+d.v;savePrefs();renderModal();break;
     case 'tsecon':prefs.onlineTimer=+d.v;savePrefs();renderModal();break;
-    case 'zoom':{const order=['fit','normal','large'],cur=prefs.zoom||'normal';prefs.zoom=order[(order.indexOf(cur)+1)%3];savePrefs();render();if(prefs.zoom==='fit')try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}break;}
+    case 'zoom':{prefs.zoom=ZOOMS[(ZOOMS.indexOf(zoomMode())+1)%ZOOMS.length];savePrefs();render();if(prefs.zoom==='fit')try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}break;}
     case 'cell':onCell(d.c,d.r);break;
     case 'write':if(ui.sel)writeCore(ui.sel.c,ui.sel.r);break;
     case 'announce':if(ui.sel)doAnnounce(ui.sel.r);break;

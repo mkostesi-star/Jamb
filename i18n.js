@@ -609,6 +609,25 @@ Object.assign(D['de'],{"stTitle": "Spielstatistik", "stJambs": "Jambs", "stZeros
 Object.assign(D['sr'],{"stTitle": "Statistika igre", "stJambs": "Jambovi", "stZeros": "Prekriženo", "stRolls": "Bacanja / potez", "stBest": "Najbolje polje", "stBonus": "Bonusi", "factTitle": "Zanimljivost", "f_firstJamb": "{name}: Jamb već iz prvog bacanja!", "f_jambs": "{name} – broj Jambova u igri: {n}.", "f_face": "{name}: broj {face} pao je čak {n} puta.", "f_zeros": "{name} – prekriženih polja: {n}.", "f_noZero": "{name}: nijedno prekriženo polje.", "f_first": "{name} – polja upisanih iz prvog bacanja: {n}.", "f_rolls": "Najmanje bacanja: {name}, samo {x} po potezu.", "f_best": "Najbolje polje igre: {s} za {row} ({name}).", "f_throws": "Kocke su u ovoj igri pale na stol {n} puta.", "records": "Rekordi", "recBy": "{name} · {date}", "recGames": "Igre", "recAvg": "Prosek", "recWins": "Pobede", "recStreak": "Najduži niz Dnevnog Jamba", "recNone": "Još nema završenih igara. Rekordi se pojavljuju posle prve igre.", "recPhone": "Rekordi se čuvaju na ovom telefonu."});
 Object.assign(D['bs'],{"stTitle": "Statistika igre", "stJambs": "Jambovi", "stZeros": "Prekriženo", "stRolls": "Bacanja / potez", "stBest": "Najbolje polje", "stBonus": "Bonusi", "factTitle": "Zanimljivost", "f_firstJamb": "{name}: Jamb već iz prvog bacanja!", "f_jambs": "{name} – broj Jambova u igri: {n}.", "f_face": "{name}: broj {face} pao je čak {n} puta.", "f_zeros": "{name} – prekriženih polja: {n}.", "f_noZero": "{name}: nijedno prekriženo polje.", "f_first": "{name} – polja upisanih iz prvog bacanja: {n}.", "f_rolls": "Najmanje bacanja: {name}, samo {x} po potezu.", "f_best": "Najbolje polje igre: {s} za {row} ({name}).", "f_throws": "Kocke su u ovoj igri pale na stol {n} puta.", "records": "Rekordi", "recBy": "{name} · {date}", "recGames": "Igre", "recAvg": "Prosjek", "recWins": "Pobjede", "recStreak": "Najduži niz Dnevnog Jamba", "recNone": "Još nema završenih igara. Rekordi se pojavljuju nakon prve igre.", "recPhone": "Rekordi se čuvaju na ovom telefonu."});
 
+/* v6.5: Daily card by date ("Dice of the day"), sheet sizes Fit / Large / Huge, shorter labels that fit, Grandpa's new names. */
+const V65={
+en:{dailyTitle:'Dice of the day',dailyPlay:'Play',dailyResume:'Continue',dailyDone:'Today: {s} points',seeReceipt:'See result',
+  zFit:'Fit',zLarge:'Large',zHuge:'Huge',installShort:'Install',tOff:'Off',addPlayer:'Player',addComputer:'Computer','ch.nono.name':'Grandpa Gus','ch.nono.mono':'GG'},
+hr:{dailyTitle:'Kocke dana',dailyPlay:'Igraj',dailyResume:'Nastavi',seeReceipt:'Pogledaj rezultat',
+  zFit:'Cijeli',zLarge:'Veći',zHuge:'Najveći',installShort:'Instaliraj',tOff:'Bez',addPlayer:'Igrač',addComputer:'Računalo',startOnline:'Pokreni igru','ch.nono.name':'Djed Ivo','ch.nono.mono':'DI'},
+sr:{dailyTitle:'Kockice dana',dailyPlay:'Igraj',dailyResume:'Nastavi',seeReceipt:'Pogledaj rezultat',
+  zFit:'Ceo',zLarge:'Veći',zHuge:'Najveći',installShort:'Instaliraj',tOff:'Bez',addPlayer:'Igrač',addComputer:'Računar',startOnline:'Pokreni igru'},
+bs:{dailyTitle:'Kockice dana',dailyPlay:'Igraj',dailyResume:'Nastavi',seeReceipt:'Pogledaj rezultat',
+  zFit:'Cijeli',zLarge:'Veći',zHuge:'Najveći',installShort:'Instaliraj',tOff:'Bez',addPlayer:'Igrač',addComputer:'Računar',startOnline:'Pokreni igru'},
+sl:{dailyTitle:'Kocke dneva',dailyPlay:'Igraj',dailyResume:'Nadaljuj',seeReceipt:'Poglej rezultat',
+  zFit:'Cel',zLarge:'Večji',zHuge:'Največji',installShort:'Namesti',tOff:'Brez',addPlayer:'Igralec',addComputer:'Računalnik',startOnline:'Začni igro'},
+mk:{dailyTitle:'Коцки на денот',dailyPlay:'Играј',dailyResume:'Продолжи',seeReceipt:'Види резултат',
+  zFit:'Цел',zLarge:'Голем',zHuge:'Најголем',installShort:'Инсталирај',tOff:'Без',addPlayer:'Играч',addComputer:'Компјутер',startOnline:'Почни игра','ch.nono.name':'Дедо Васе','ch.nono.mono':'ДВ'},
+de:{dailyTitle:'Würfel des Tages',dailyPlay:'Spielen',dailyResume:'Fortsetzen',seeReceipt:'Ergebnis ansehen',
+  zFit:'Ganz',zLarge:'Groß',zHuge:'Riesig',installShort:'Installieren',tOff:'Aus',addPlayer:'Spieler',addComputer:'Computer','row.triling':'3er-Pasch','row.poker':'4er-Pasch',howNote:'Fünf gleiche zählen auch als Full House, 4er-Pasch oder 3er-Pasch. Alles davon lässt sich in den Hausregeln ändern.'}
+};
+for(const l in V65)Object.assign(D[l],V65[l]);
+
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
 const LAT2CYR=[['DŽ','Џ'],['Dž','Џ'],['dž','џ'],['LJ','Љ'],['Lj','Љ'],['lj','љ'],['NJ','Њ'],['Nj','Њ'],['nj','њ'],
   ['A','А'],['B','Б'],['V','В'],['G','Г'],['D','Д'],['Đ','Ђ'],['E','Е'],['Ž','Ж'],['Z','З'],['I','И'],['J','Ј'],['K','К'],['L','Л'],['M','М'],['N','Н'],['O','О'],['P','П'],['R','Р'],['S','С'],['T','Т'],['Ć','Ћ'],['U','У'],['F','Ф'],['H','Х'],['C','Ц'],['Č','Ч'],['Š','Ш'],

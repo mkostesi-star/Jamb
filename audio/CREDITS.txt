@@ -1,0 +1,9 @@
+cafe.mp3
+  Source: "Bustling cafe ambience" by freesound_community, from Pixabay (pixabay.com).
+  Licence: Pixabay Content License. Free to use and modify in the app; no credit required;
+  the file may not be sold or handed out on its own.
+  Edited for Jamb: trimmed, crossfaded into a 27.4-second seamless loop with 0.1 s of extra
+  audio at each end, encoded as 96 kbps MP3.
+
+All other sounds and the music ("Table by the window") are synthesized in the browser by
+audio.js and music.js, written for Jamb.
