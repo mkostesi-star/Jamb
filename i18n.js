@@ -628,13 +628,153 @@ de:{dailyTitle:'Würfel des Tages',dailyPlay:'Spielen',dailyResume:'Fortsetzen',
 };
 for(const l in V65)Object.assign(D[l],V65[l]);
 
+/* v6.6: the wording pass agreed with Ivan (plan doc, "Wording: v7 draft").
+   Voice: warm, short, plain; say it once; calm; the characters bring the jokes.
+   Slavic languages avoid past-tense gender guesses and form-style colons, and use {n|one|few|many} plural forms. */
+const SAME_LINK={en:'Send the link to the others and start when everyone’s in.',hr:'Pošalji poveznicu ostalima i kreni kad svi uđu.',
+  sr:'Pošalji link ostalima i kreni kad svi uđu.',bs:'Pošalji link ostalima i kreni kad svi uđu.',sl:'Pošlji povezavo ostalim in začni, ko so vsi notri.',
+  mk:'Испрати ја врската на другите и почни кога сите ќе влезат.',de:'Schick den Link an die anderen und starte, wenn alle da sind.'};
+const READY={en:'We carry on when everyone’s ready. Tap your name.',hr:'Nastavljamo kad su svi spremni. Dodirni svoje ime.',
+  sr:'Nastavljamo kad su svi spremni. Dodirni svoje ime.',bs:'Nastavljamo kad su svi spremni. Dodirni svoje ime.',sl:'Nadaljujemo, ko so vsi pripravljeni. Tapni svoje ime.',
+  mk:'Продолжуваме кога сите ќе бидат подготвени. Допри го своето име.',de:'Weiter geht’s, wenn alle bereit sind. Tippe deinen Namen an.'};
+const FACE_HR=['jedinica','dvojka','trojka','četvorka','petica','šestica'];
+const V66={
+en:{cpuD:'Up to five opponents, from beginner to Professor',friendsD:'One phone, several phones, a duel or real dice',streak:'{n} days in a row',
+  dailySame:'same dice for everyone',pickOpp:'Pick who sits with you. Up to five.',oppCount:'At the table: {names}',replaces:'This replaces your unfinished game.',
+  modeTableD:'Roll your own dice, the phone keeps score',tableIntro:'Roll your own dice. The phone keeps the sheet, minds the rules and does the sums.',
+  duelIntro:'You both get the same dice, so skill decides, not luck. Play your game, then send the link.',duelHidden:'You’ll see their score when you finish.',
+  duelAlready:'You’ve played this one already: {s}',onlineIntro:'No accounts, just a link. Two to six phones; keep the game open on each one while you play.',
+  lobbyGuest:'You’re in. {name} starts when everyone’s here.',waitStart:'Waiting for the game to start',hostAway:'Waiting for {name} to come back',
+  onNoLib:'Couldn’t connect. Check your internet and reload the page.',emoSlow:'Easy there. Back in a few seconds.',tTimeout:'Out of time. {name}’s dice went into {row}.',
+  hStart:'Your turn.',hHold:'Tap dice to keep them, or a yellow box to write.',hKept:'Tap a kept die to roll it again.',
+  hMust:'Nothing else can wait for another roll. Call a box or write now.',hWaitTurn:'{name} is playing. You’ll see the rolls live.',duelLost:'{name} takes this one.',
+  analyzing:'The Professor is looking over your game…',g_inacc:'Slip',f_firstJamb:'{name} rolled a Jamb on the very first throw.',
+  f_noZero:'{name} didn’t cross out a single box. A clean game.',f_rolls:'{name} needed just {x} rolls a turn, the fewest at the table.',
+  f_best:'Box of the game: {name}’s {s} in {row}.',recNone:'Nothing here yet. Your best games will land here.',
+  sHintsD:'A hint button in games against the computer',sEmotesD:'Reactions from friends playing on their own phones'},
+hr:{cpuD:'Do pet protivnika, od početnika do Profesora',dailyDone:'Danas: {s} {s|bod|boda|bodova}',pickOpp:'Odaberi tko sjeda s tobom. Najviše pet.',
+  oppCount:'Za stolom: {names}',replaces:'Ovo zamjenjuje tvoju nedovršenu igru.',modeTableD:'Bacaj svoje kocke, mobitel vodi evidenciju',
+  tableIntro:'Bacaj svoje kocke. Mobitel vodi evidenciju, pazi na pravila i sve zbraja.',
+  duelIntro:'Oboje dobivate iste kocke, pa odlučuje znanje, a ne sreća. Odigraj svoju igru, pa pošalji poveznicu.',duelHidden:'Rezultat protivnika vidiš kad završiš.',
+  duelAlready:'Ovaj dvoboj je već odigran: {s}',duelBack:'{name} odgovara na tvoj izazov',
+  onlineIntro:'Bez računa, samo poveznica. Od dva do šest mobitela; neka igra bude otvorena na svakom dok igrate.',
+  lobbyGuest:'Unutra si. {name} kreće kad svi stignu.',waitStart:'Čekamo početak',waitingPhone:'Čekamo drugi mobitel',waitingPhones:'Čekamo ostale mobitele',
+  hostAway:'Čekamo da se {name} vrati',onNoLib:'Povezivanje nije uspjelo. Provjeri internet i ponovno učitaj stranicu.',emoSlow:'Polako, za koju sekundu opet.',
+  tTimeout:'{name} – vrijeme je isteklo, kocke idu u polje {row}.',hStart:'Tvoj potez.',hHold:'Dodirni kocke koje želiš zadržati ili žuto polje za upis.',
+  hKept:'Dodirni zadržanu kocku da je opet baciš.',holdHint:'drži za tresenje, pusti za bacanje',
+  hMust:'Nijedno drugo polje ne može čekati iduće bacanje. Najavi ili upiši odmah.',hAnn:'Najava: {row}. Upiši najkasnije u trećem bacanju.',
+  hWaitTurn:'{name} je na potezu. Bacanja pratiš uživo.',waitTurn:'{name} igra',tEnter:'Dodirni svaku kocku i postavi što je palo.',
+  finalScore:'Imaš {s} {s|bod|boda|bodova}',youWin:'Pobjeda je tvoja',wins:'{name} pobjeđuje',duelWon:'Dvoboj je tvoj.',duelLost:'Ovaj put pobjeđuje {name}.',
+  analyzing:'Profesor pregledava tvoju igru…',g_inacc:'Propust',f_firstJamb:'Jamb iz prvog bacanja – svaka čast, {name}!',
+  f_jambs:'{name}: čak {n} {n|Jamb|Jamba|Jambova} u jednoj igri.',f_face:'{name}: {faceW} je pala čak {n} puta.',faceN:FACE_HR,
+  f_zeros:'{name}: {n} {n|prekriženo polje|prekrižena polja|prekriženih polja}.',f_noZero:'{name}: ni jedno polje prekriženo. Čista igra.',
+  f_first:'{name}: {n} {n|polje upisano|polja upisana|polja upisano} već iz prvog bacanja.',f_rolls:'{name}: samo {x} bacanja po potezu, najmanje za stolom.',
+  f_best:'Najbolje polje igre: {row}, {s} {s|bod|boda|bodova} – {name}.',recNone:'Još ništa. Ovdje će stajati tvoje najbolje igre.',
+  sHintsD:'Gumb za savjet u igrama protiv računala',sEmotesD:'Reakcije prijatelja koji igraju na svojim mobitelima'},
+sr:{cpuD:'Do pet protivnika, od početnika do Profesora',dailyDone:'Danas: {s} {s|poen|poena|poena}',pickOpp:'Izaberi ko sedi s tobom. Najviše pet.',
+  oppCount:'Za stolom: {names}',replaces:'Ovo menja tvoju nedovršenu igru.',modeTableD:'Bacaj svoje kockice, telefon vodi evidenciju',
+  tableIntro:'Bacaj svoje kockice. Telefon vodi evidenciju, pazi na pravila i sve sabira.',
+  duelIntro:'Oboje dobijate iste kockice, pa odlučuje znanje, a ne sreća. Odigraj svoju igru, pa pošalji link.',duelHidden:'Rezultat protivnika vidiš kad završiš.',
+  duelAlready:'Ovaj duel je već odigran: {s}',duelBack:'{name} odgovara na tvoj izazov',
+  onlineIntro:'Bez naloga, samo link. Od dva do šest telefona; neka igra bude otvorena na svakom dok igrate.',
+  lobbyGuest:'Unutra si. {name} kreće kad svi stignu.',waitStart:'Čekamo početak',waitingPhone:'Čekamo drugi telefon',waitingPhones:'Čekamo ostale telefone',
+  hostAway:'Čekamo da se {name} vrati',onNoLib:'Povezivanje nije uspelo. Proveri internet i ponovo učitaj stranicu.',emoSlow:'Polako, za koju sekundu opet.',
+  tTimeout:'{name} – vreme je isteklo, kockice idu u polje {row}.',hStart:'Tvoj potez.',hHold:'Dodirni kockice koje želiš da zadržiš ili žuto polje za upis.',
+  hKept:'Dodirni zadržanu kockicu da je ponovo baciš.',holdHint:'drži za tresenje, pusti za bacanje',
+  hMust:'Nijedno drugo polje ne može da čeka sledeće bacanje. Najavi ili upiši odmah.',hAnn:'Najava: {row}. Upiši najkasnije u trećem bacanju.',
+  hWaitTurn:'{name} je na potezu. Bacanja pratiš uživo.',waitTurn:'{name} igra',tEnter:'Dodirni svaku kockicu i postavi šta je palo.',
+  finalScore:'Imaš {s} {s|poen|poena|poena}',youWin:'Pobeda je tvoja',wins:'{name} pobeđuje',duelWon:'Duel je tvoj.',duelLost:'Ovaj put pobeđuje {name}.',
+  analyzing:'Profesor pregleda tvoju igru…',g_inacc:'Propust',f_firstJamb:'Jamb iz prvog bacanja – svaka čast, {name}!',
+  f_jambs:'{name}: čak {n} {n|Jamb|Jamba|Jambova} u jednoj igri.',f_face:'{name}: {faceW} je pala čak {n} puta.',faceN:FACE_HR,
+  f_zeros:'{name}: {n} {n|prekriženo polje|prekrižena polja|prekriženih polja}.',f_noZero:'{name}: nijedno polje prekriženo. Čista igra.',
+  f_first:'{name}: {n} {n|polje upisano|polja upisana|polja upisano} već iz prvog bacanja.',f_rolls:'{name}: samo {x} bacanja po potezu, najmanje za stolom.',
+  f_best:'Najbolje polje igre: {row}, {s} {s|poen|poena|poena} – {name}.',recNone:'Još ništa. Ovde će stajati tvoje najbolje igre.',
+  sHintsD:'Dugme za savet u igrama protiv računara',sEmotesD:'Reakcije prijatelja koji igraju na svojim telefonima'},
+bs:{cpuD:'Do pet protivnika, od početnika do Profesora',dailyDone:'Danas: {s} {s|bod|boda|bodova}',pickOpp:'Odaberi ko sjeda s tobom. Najviše pet.',
+  oppCount:'Za stolom: {names}',replaces:'Ovo zamjenjuje tvoju nedovršenu igru.',modeTableD:'Bacaj svoje kockice, telefon vodi evidenciju',
+  tableIntro:'Bacaj svoje kockice. Telefon vodi evidenciju, pazi na pravila i sve sabira.',
+  duelIntro:'Oboje dobijate iste kockice, pa odlučuje znanje, a ne sreća. Odigraj svoju igru, pa pošalji link.',duelHidden:'Rezultat protivnika vidiš kad završiš.',
+  duelAlready:'Ovaj duel je već odigran: {s}',duelBack:'{name} odgovara na tvoj izazov',
+  onlineIntro:'Bez računa, samo link. Od dva do šest telefona; neka igra bude otvorena na svakom dok igrate.',
+  lobbyGuest:'Unutra si. {name} kreće kad svi stignu.',waitStart:'Čekamo početak',waitingPhone:'Čekamo drugi telefon',waitingPhones:'Čekamo ostale telefone',
+  hostAway:'Čekamo da se {name} vrati',onNoLib:'Povezivanje nije uspjelo. Provjeri internet i ponovo učitaj stranicu.',emoSlow:'Polako, za koju sekundu opet.',
+  tTimeout:'{name} – vrijeme je isteklo, kockice idu u polje {row}.',hStart:'Tvoj potez.',hHold:'Dodirni kockice koje želiš zadržati ili žuto polje za upis.',
+  hKept:'Dodirni zadržanu kockicu da je ponovo baciš.',holdHint:'drži za tresenje, pusti za bacanje',
+  hMust:'Nijedno drugo polje ne može čekati sljedeće bacanje. Najavi ili upiši odmah.',hAnn:'Najava: {row}. Upiši najkasnije u trećem bacanju.',
+  hWaitTurn:'{name} je na potezu. Bacanja pratiš uživo.',waitTurn:'{name} igra',tEnter:'Dodirni svaku kockicu i postavi šta je palo.',
+  finalScore:'Imaš {s} {s|bod|boda|bodova}',youWin:'Pobjeda je tvoja',wins:'{name} pobjeđuje',duelWon:'Duel je tvoj.',duelLost:'Ovaj put pobjeđuje {name}.',
+  analyzing:'Profesor pregleda tvoju igru…',g_inacc:'Propust',f_firstJamb:'Jamb iz prvog bacanja – svaka čast, {name}!',
+  f_jambs:'{name}: čak {n} {n|Jamb|Jamba|Jambova} u jednoj igri.',f_face:'{name}: {faceW} je pala čak {n} puta.',faceN:FACE_HR,
+  f_zeros:'{name}: {n} {n|prekriženo polje|prekrižena polja|prekriženih polja}.',f_noZero:'{name}: nijedno polje prekriženo. Čista igra.',
+  f_first:'{name}: {n} {n|polje upisano|polja upisana|polja upisano} već iz prvog bacanja.',f_rolls:'{name}: samo {x} bacanja po potezu, najmanje za stolom.',
+  f_best:'Najbolje polje igre: {row}, {s} {s|bod|boda|bodova} – {name}.',recNone:'Još ništa. Ovdje će stajati tvoje najbolje igre.',
+  sHintsD:'Gumb za savjet u igrama protiv računara',sEmotesD:'Reakcije prijatelja koji igraju na svojim telefonima'},
+sl:{cpuD:'Do pet nasprotnikov, od začetnika do Profesorja',dailyDone:'Danes: {s} {s|točka|točki|točke|točk}',pickOpp:'Izberi, kdo prisede. Največ pet.',
+  oppCount:'Za mizo: {names}',replaces:'To nadomesti tvojo nedokončano igro.',modeTableD:'Meči svoje kocke, telefon vodi evidenco',
+  tableIntro:'Meči svoje kocke. Telefon vodi evidenco, pazi na pravila in vse sešteje.',
+  duelIntro:'Oba dobita iste kocke, zato odloča znanje, ne sreča. Odigraj svojo igro, nato pošlji povezavo.',duelHidden:'Rezultat nasprotnika vidiš, ko končaš.',
+  duelAlready:'Ta dvoboj je že odigran: {s}',duelBack:'{name} odgovarja na tvoj izziv',
+  onlineIntro:'Brez računov, samo povezava. Od dveh do šestih telefonov; med igro naj bo igra odprta na vsakem.',
+  lobbyGuest:'Notri si. {name} začne, ko so vsi tu.',waitStart:'Čakamo na začetek',waitingPhone:'Čakamo na drugi telefon',waitingPhones:'Čakamo na ostale telefone',
+  hostAway:'Čakamo, da se {name} vrne',onNoLib:'Povezava ni uspela. Preveri internet in znova naloži stran.',emoSlow:'Počasi, čez nekaj sekund spet.',
+  tTimeout:'{name} – čas je potekel, kocke gredo v polje {row}.',hStart:'Tvoja poteza.',hHold:'Tapni kocke, ki jih želiš zadržati, ali rumeno polje za vpis.',
+  hKept:'Tapni zadržano kocko, da jo znova vržeš.',hMust:'Nobeno drugo polje ne more čakati na naslednji met. Napovej ali vpiši zdaj.',
+  hAnn:'Napoved: {row}. Vpiši najkasneje v tretjem metu.',hWaitTurn:'{name} je na potezi. Mete spremljaš v živo.',waitTurn:'{name} igra',
+  tEnter:'Tapni vsako kocko in nastavi, kar je padlo.',finalScore:'Imaš {s} {s|točko|točki|točke|točk}',youWin:'Zmaga je tvoja',wins:'{name} zmaga',
+  duelWon:'Dvoboj je tvoj.',duelLost:'Tokrat zmaga {name}.',analyzing:'Profesor pregleduje tvojo igro…',g_inacc:'Spodrsljaj',
+  f_firstJamb:'Jamb že v prvem metu – čestitke, {name}!',f_jambs:'{name}: kar {n} {n|Jamb|Jamba|Jambi|Jambov} v eni igri.',
+  f_face:'{name}: {faceW} je padla kar {n}-krat.',faceN:['enica','dvojka','trojka','štirica','petica','šestica'],
+  f_zeros:'{name}: {n} {n|prečrtano polje|prečrtani polji|prečrtana polja|prečrtanih polj}.',f_noZero:'{name}: niti eno polje prečrtano. Čista igra.',
+  f_first:'{name}: že iz prvega meta {n} {n|vpisano polje|vpisani polji|vpisana polja|vpisanih polj}.',f_rolls:'{name}: le {x} meta na potezo, najmanj za mizo.',
+  f_best:'Najboljše polje igre: {row}, {s} {s|točka|točki|točke|točk} – {name}.',recNone:'Še nič. Tu bodo tvoje najboljše igre.',
+  sHintsD:'Gumb za namig v igrah proti računalniku',sEmotesD:'Odzivi prijateljev, ki igrajo na svojih telefonih'},
+mk:{cpuD:'До пет противници, од почетник до Професор',dailyDone:'Денес: {s} {s|поен|поени}',pickOpp:'Избери кој седнува со тебе. Најмногу пет.',
+  oppCount:'На масата: {names}',replaces:'Ова ја заменува твојата недовршена игра.',modeTableD:'Фрлај свои коцки, телефонот води евиденција',
+  tableIntro:'Фрлај свои коцки. Телефонот води евиденција, внимава на правилата и сè собира.',
+  duelIntro:'Двајцата добивате исти коцки, па одлучува знаењето, а не среќата. Одиграј ја својата игра, па испрати ја врската.',
+  duelHidden:'Резултатот на противникот го гледаш кога ќе завршиш.',duelAlready:'Овој дуел е веќе одигран: {s}',duelBack:'{name} одговара на твојот предизвик',
+  onlineIntro:'Без сметки, само врска. Од два до шест телефони; играта нека биде отворена на секој додека играте.',
+  lobbyGuest:'Внатре си. {name} почнува кога сите ќе стигнат.',waitStart:'Чекаме почеток',waitingPhone:'Го чекаме другиот телефон',waitingPhones:'Ги чекаме другите телефони',
+  hostAway:'Чекаме {name} да се врати',onNoLib:'Поврзувањето не успеа. Провери го интернетот и повторно вчитај ја страницата.',emoSlow:'Полека, за неколку секунди повторно.',
+  tTimeout:'{name} – времето истече, коцките одат во полето {row}.',hStart:'Твој потег.',hHold:'Допри ги коцките што сакаш да ги задржиш или жолто поле за запис.',
+  hKept:'Допри задржана коцка за повторно да ја фрлиш.',hMust:'Ниедно друго поле не може да чека следно фрлање. Најави или запиши сега.',
+  hAnn:'Најава: {row}. Запиши најдоцна во третото фрлање.',hWaitTurn:'{name} е на потег. Фрлањата ги следиш во живо.',waitTurn:'{name} игра',
+  tEnter:'Допри ја секоја коцка и постави што падна.',finalScore:'Имаш {s} {s|поен|поени}',youWin:'Победата е твоја',wins:'{name} победува',
+  duelWon:'Дуелот е твој.',duelLost:'Овој пат победува {name}.',analyzing:'Професорот ја прегледува твојата игра…',g_inacc:'Пропуст',
+  f_firstJamb:'Јамб од првото фрлање – браво, {name}!',f_jambs:'{name}: дури {n} {n|Јамб|Јамбови} во една игра.',
+  f_face:'{name}: {faceW} падна дури {n} пати.',faceN:['единица','двојка','тројка','четворка','петица','шестица'],
+  f_zeros:'{name}: {n} {n|прецртано поле|прецртани полиња}.',f_noZero:'{name}: ниту едно поле прецртано. Чиста игра.',
+  f_first:'{name}: {n} {n|поле запишано|полиња запишани} уште од првото фрлање.',f_rolls:'{name}: само {x} фрлања по потег, најмалку на масата.',
+  f_best:'Најдобро поле во играта: {row}, {s} {s|поен|поени} – {name}.',recNone:'Сè уште ништо. Тука ќе стојат твоите најдобри игри.',
+  sHintsD:'Копче за совет во игрите против компјутерот',sEmotesD:'Реакции од пријатели што играат на свои телефони'},
+de:{cpuD:'Bis zu fünf Gegner, vom Anfänger bis zum Professor',pickOpp:'Wähle, wer mit am Tisch sitzt. Bis zu fünf.',oppCount:'Am Tisch: {names}',
+  replaces:'Damit ersetzt du dein offenes Spiel.',modeTableD:'Mit eigenen Würfeln, das Handy zählt mit',
+  tableIntro:'Würfelt mit euren eigenen Würfeln. Das Handy führt das Blatt, achtet auf die Regeln und rechnet alles zusammen.',
+  duelIntro:'Ihr bekommt beide dieselben Würfel, also entscheidet Können, nicht Glück. Spiel deine Runde, dann schick den Link.',
+  duelHidden:'Das Ergebnis der anderen Seite siehst du, wenn du fertig bist.',
+  onlineIntro:'Kein Konto, nur ein Link. Zwei bis sechs Handys; lasst das Spiel auf jedem offen, solange ihr spielt.',
+  lobbyGuest:'Du bist drin. {name} startet, wenn alle da sind.',waitStart:'Warte auf den Spielstart',hostAway:'Warte, bis {name} zurück ist',
+  onNoLib:'Keine Verbindung. Prüfe dein Internet und lade die Seite neu.',emoSlow:'Langsam. Gleich wieder.',
+  tTimeout:'Zeit abgelaufen. Die Würfel von {name} stehen jetzt bei {row}.',hStart:'Du bist dran.',
+  hHold:'Tippe Würfel an, um sie zu halten, oder ein gelbes Feld zum Eintragen.',hKept:'Tippe einen gehaltenen Würfel an, um ihn neu zu werfen.',
+  hMust:'Kein Feld kann auf einen weiteren Wurf warten. Ansagen oder jetzt eintragen.',hWaitTurn:'{name} ist dran. Die Würfe siehst du live.',
+  duelLost:'Diesmal gewinnt {name}.',analyzing:'Der Professor schaut sich dein Spiel an…',g_inacc:'Ausrutscher',
+  f_noZero:'{name} hat kein einziges Feld gestrichen. Ein sauberes Spiel.',f_rolls:'{name} brauchte nur {x} Würfe pro Zug, die wenigsten am Tisch.',
+  f_best:'Feld des Spiels: {s} bei {row}, von {name}.',recNone:'Noch nichts hier. Deine besten Spiele landen hier.',
+  sHintsD:'Ein Tipp-Knopf in Spielen gegen den Computer',sEmotesD:'Reaktionen von Freunden, die auf ihren eigenen Handys spielen'}
+};
+for(const l in V66){Object.assign(D[l],V66[l]);D[l].sendLink=D[l].lobbyHost=D[l].hWaitJoin=SAME_LINK[l];D[l].tWaitReady=D[l].tTapReady=READY[l];}
+
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
 const LAT2CYR=[['DŽ','Џ'],['Dž','Џ'],['dž','џ'],['LJ','Љ'],['Lj','Љ'],['lj','љ'],['NJ','Њ'],['Nj','Њ'],['nj','њ'],
   ['A','А'],['B','Б'],['V','В'],['G','Г'],['D','Д'],['Đ','Ђ'],['E','Е'],['Ž','Ж'],['Z','З'],['I','И'],['J','Ј'],['K','К'],['L','Л'],['M','М'],['N','Н'],['O','О'],['P','П'],['R','Р'],['S','С'],['T','Т'],['Ć','Ћ'],['U','У'],['F','Ф'],['H','Х'],['C','Ц'],['Č','Ч'],['Š','Ш'],
   ['a','а'],['b','б'],['v','в'],['g','г'],['d','д'],['đ','ђ'],['e','е'],['ž','ж'],['z','з'],['i','и'],['j','ј'],['k','к'],['l','л'],['m','м'],['n','н'],['o','о'],['p','п'],['r','р'],['s','с'],['t','т'],['ć','ћ'],['u','у'],['f','ф'],['h','х'],['c','ц'],['č','ч'],['š','ш']];
 function cyr(s){
   return s.split(/(<[^>]*>|\{[^}]*\}|https?:\/\/\S+|Safari|Chrome|Edge)/).map((part,i)=>{
-    if(i%2)return part;
+    if(i%2){/* plural forms inside {n|…} are words, so they get transliterated too */
+      if(part[0]==='{'&&part.includes('|')){const j=part.indexOf('|');return part.slice(0,j+1)+cyr(part.slice(j+1,-1))+'}';}
+      return part;
+    }
     let out='';
     for(let k=0;k<part.length;){
       let hit=null;
@@ -659,11 +799,22 @@ const LANGS=[
   {code:'de',name:'Deutsch',short:'DE',locale:'de'}
 ];
 function get(lang,k){const d=D[lang]||D.en;return d[k]!=null?d[k]:D.en[k];}
+/* plural forms: {n|one|few|many} picks the word for the number in n (Slovenian also has a dual: one|two|few|other) */
+const slavPl=n=>{const a=n%10,b=n%100;return a===1&&b!==11?0:a>=2&&a<=4&&(b<12||b>14)?1:2;};
+const PL={en:n=>n===1?0:1,de:n=>n===1?0:1,hr:slavPl,sr:slavPl,'sr-Cyrl':slavPl,bs:slavPl,
+  mk:n=>n%10===1&&n%100!==11?0:1,sl:n=>{const m=n%100;return m===1?0:m===2?1:m===3||m===4?2:3;}};
+function plural(lang,s,vars){
+  return s.replace(/\{(\w+)\|([^{}]*)\}/g,(m,v,f)=>{
+    const forms=f.split('|'),n=parseInt(String(vars&&vars[v]!=null?vars[v]:'').replace(/\D/g,''),10);
+    if(isNaN(n))return forms[forms.length-1];
+    return forms[Math.min((PL[lang]||PL.en)(n),forms.length-1)];
+  });
+}
 function t(lang,k,vars){
   let s=get(lang,k);
   if(s==null)return k;
   if(Array.isArray(s))s=s[0];
-  if(vars)for(const v in vars)s=s.split('{'+v+'}').join(vars[v]);
+  if(vars){s=plural(lang,s,vars);for(const v in vars)s=s.split('{'+v+'}').join(vars[v]);}
   return s;
 }
 function arr(lang,k){const v=get(lang,k);return Array.isArray(v)?v:(v?[v]:[]);}

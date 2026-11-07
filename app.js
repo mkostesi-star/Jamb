@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v6.5';
+const VERSION='v6.6';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -46,6 +46,9 @@ let G=null,screen='home';
 const ui={sel:null,rolling:false,just:null,botPick:null,tip:null,tipText:'',bubble:null,bubbleT:0,modal:null,back:null,draft:null,setup:{},pick:-1,shaking:false,skipClick:false,msgT:0,endAsk:null,review:{},motionAsked:false,lastFocus:null};
 
 const t=(k,v)=>I.t(prefs.lang,k,v);
+/* first two finished games: show the how-to lines; afterwards the tray stays quiet. Touch screens get the shake/hold line. */
+const newPlayer=()=>(stats&&stats.played||0)<2;
+const COARSE=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 const tl=(k)=>I.arr(prefs.lang,k);
 const fmt=n=>{try{return Number(n).toLocaleString(I.locale(prefs.lang));}catch(e){return String(n);}};
 const rowName=r=>t('row.'+r);
@@ -815,7 +818,7 @@ function renderTray(){
     else if(tn.announced)hint=esc(t('hAnn',{row:rowName(tn.announced)}));
     else if(tn.roll>=3)hint=esc(t('hLast'));
     else if(!E.hasLater(g.rules,cur().sheet))hint=esc(t('hMust'));
-    else hint=esc(tn.held.some(Boolean)?t('hKept'):t('hHold'));
+    else hint=newPlayer()?esc(tn.held.some(Boolean)?t('hKept'):t('hHold')):'&nbsp;';/* instructions only in the first two games */
     const hintBtn=hintsAllowed()&&!sel?`<button type="button" class="hintbtn" data-act="hint" aria-label="${esc(t('hint'))}" title="${esc(t('hint'))}">${ICON.bulb}</button>`:'';
     if(sel&&!ui.rolling){
       const s=E.score(g.rules,sel.r,tn.dice,tn.roll),lab=rowName(sel.r),sym=E.COLS[sel.c].sym;
@@ -829,7 +832,7 @@ function renderTray(){
     }else{
       const pips=[0,1,2].map(k=>`<i style="display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 2px;${k<tn.roll?'border:1.5px solid var(--cream);box-sizing:border-box':'background:var(--cream)'}"></i>`).join('');
       const dis=!canRoll()&&!ui.rolling;
-      acts=`<button type="button" class="glass" data-act="roll"${dis?' disabled':''}><b>${esc(tn.roll?t('rollAgain'):t('roll'))} <span aria-hidden="true">${pips}</span></b><small>${esc(prefs.shake&&A.motion.supported()?t('shakeHint'):t('holdHint'))}</small></button>${hintBtn}`;
+      acts=`<button type="button" class="glass" data-act="roll"${dis?' disabled':''}><b>${esc(tn.roll?t('rollAgain'):t('roll'))} <span aria-hidden="true">${pips}</span></b>${newPlayer()&&COARSE?`<small>${esc(prefs.shake&&A.motion.supported()?t('shakeHint'):t('holdHint'))}</small>`:''}</button>${hintBtn}`;
     }
   }
   if(ui.msg)hint=`<span class="err">${esc(ui.msg)}</span>`;
@@ -1069,7 +1072,7 @@ function resultHTML(){
   if(G.mode==='daily'){h+=receiptHTML(G.daily.day)+`<button type="button" class="btnRed" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`;}
   if(G.mode==='duel'){
     const mine=st[0].score;
-    if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost'):t('draw'))}</p></div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
+    if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost',{name:G.duel.from.n}):t('draw'))}</p></div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
     else h+=`<p style="margin-top:10px">${esc(t('duelSendD'))}</p><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSend'))}</button>`;
   }
   h+=gameStatsHTML(G);
@@ -1093,7 +1096,7 @@ function funFact(g,lines){
     if(l.x.jambRoll===1)c.push([90,t('f_firstJamb',{name:nm(l.i)})]);
     if(l.x.jambs>=2)c.push([70+l.x.jambs,t('f_jambs',{name:nm(l.i),n:l.x.jambs})]);
     const mx=Math.max(...l.x.faces),face=l.x.faces.indexOf(mx)+1,avg=l.x.faces.reduce((a,b)=>a+b,0)/6;
-    if(mx>=8&&mx>=avg*1.35)c.push([60+mx-avg,t('f_face',{name:nm(l.i),face,n:mx})]);
+    if(mx>=8&&mx>=avg*1.35)c.push([60+mx-avg,t('f_face',{name:nm(l.i),face,faceW:I.arr(prefs.lang,'faceN')[face-1]||face,n:mx})]);
     if(l.x.zeros>=3)c.push([50+l.x.zeros,t('f_zeros',{name:nm(l.i),n:l.x.zeros})]);
     if(l.x.zeros===0&&l.x.turns>=8)c.push([58,t('f_noZero',{name:nm(l.i)})]);
     if(l.x.first>=Math.max(5,l.x.turns*0.35))c.push([45+l.x.first,t('f_first',{name:nm(l.i),n:l.x.first})]);
