@@ -765,6 +765,79 @@ de:{cpuD:'Bis zu fünf Gegner, vom Anfänger bis zum Professor',pickOpp:'Wähle,
 };
 for(const l in V66){Object.assign(D[l],V66[l]);D[l].sendLink=D[l].lobbyHost=D[l].hWaitJoin=SAME_LINK[l];D[l].tWaitReady=D[l].tTapReady=READY[l];}
 
+/* v7: calmer screens. "You" for an unnamed solo player (with fun-fact variants that read right in second person),
+   rules shown by name, grouped Settings, a one-time home-screen nudge. */
+const YOU_HR={f_firstJambYou:'Jamb iz prvog bacanja – svaka čast!',f_jambsYou:'Čak {n} {n|Jamb|Jamba|Jambova} u jednoj igri.',f_faceYou:'{faceWc} ti je pala čak {n} puta.',
+  f_zerosYou:'Imaš {n} {n|prekriženo polje|prekrižena polja|prekriženih polja}.',f_noZeroYou:'Ni jedno polje prekriženo. Čista igra.',
+  f_firstYou:'Već iz prvog bacanja {n} {n|upisano polje|upisana polja|upisanih polja}.',f_rollsYou:'Samo {x} bacanja po potezu, najmanje za stolom.'};
+const V7={
+en:{youName:'You',rulesCustom:'Your rules',nCols:'{n} {n|column|columns}',sSoundG:'Sound',sPlayG:'Play',
+  nudgeT:'Keep Jamb on your home screen',nudgeD:'It opens full screen and plays offline.',notNow:'Not now',f_bestYou:'Box of the game: your {s} in {row}.'},
+hr:Object.assign({youName:'Ti',rulesCustom:'Tvoja pravila',nCols:'{n} {n|stupac|stupca|stupaca}',sSoundG:'Zvuk',sPlayG:'Igra',
+  nudgeT:'Drži Jamb na početnom zaslonu',nudgeD:'Otvara se preko cijelog zaslona i radi bez interneta.',notNow:'Ne sad',
+  f_bestYou:'Najbolje polje igre: {row}, {s} {s|bod|boda|bodova} – tvoje.'},YOU_HR),
+sr:Object.assign({youName:'Ti',rulesCustom:'Tvoja pravila',nCols:'{n} {n|kolona|kolone|kolona}',sSoundG:'Zvuk',sPlayG:'Igra',
+  nudgeT:'Drži Jamb na početnom ekranu',nudgeD:'Otvara se preko celog ekrana i radi bez interneta.',notNow:'Ne sad',
+  f_bestYou:'Najbolje polje igre: {row}, {s} {s|poen|poena|poena} – tvoje.'},YOU_HR,{f_firstYou:'Već iz prvog bacanja {n} {n|upisano polje|upisana polja|upisanih polja}.'}),
+bs:Object.assign({youName:'Ti',rulesCustom:'Tvoja pravila',nCols:'{n} {n|kolona|kolone|kolona}',sSoundG:'Zvuk',sPlayG:'Igra',
+  nudgeT:'Drži Jamb na početnom ekranu',nudgeD:'Otvara se preko cijelog ekrana i radi bez interneta.',notNow:'Ne sad',
+  f_bestYou:'Najbolje polje igre: {row}, {s} {s|bod|boda|bodova} – tvoje.'},YOU_HR),
+sl:{youName:'Ti',rulesCustom:'Tvoja pravila',nCols:'{n} {n|stolpec|stolpca|stolpci|stolpcev}',sSoundG:'Zvok',sPlayG:'Igra',
+  nudgeT:'Imej Jamb na začetnem zaslonu',nudgeD:'Odpre se čez cel zaslon in deluje brez interneta.',notNow:'Ne zdaj',
+  f_firstJambYou:'Jamb že v prvem metu – čestitke!',f_jambsYou:'Kar {n} {n|Jamb|Jamba|Jambi|Jambov} v eni igri.',f_faceYou:'{faceWc} ti je padla kar {n}-krat.',
+  f_zerosYou:'Imaš {n} {n|prečrtano polje|prečrtani polji|prečrtana polja|prečrtanih polj}.',f_noZeroYou:'Niti eno polje prečrtano. Čista igra.',
+  f_firstYou:'Že iz prvega meta {n} {n|vpisano polje|vpisani polji|vpisana polja|vpisanih polj}.',f_rollsYou:'Le {x} meta na potezo, najmanj za mizo.',
+  f_bestYou:'Najboljše polje igre: {row}, {s} {s|točka|točki|točke|točk} – tvoje.'},
+mk:{youName:'Ти',rulesCustom:'Твои правила',nCols:'{n} {n|колона|колони}',sSoundG:'Звук',sPlayG:'Игра',
+  nudgeT:'Чувај го Јамб на почетниот екран',nudgeD:'Се отвора на цел екран и работи без интернет.',notNow:'Не сега',
+  f_firstJambYou:'Јамб од првото фрлање – браво!',f_jambsYou:'Дури {n} {n|Јамб|Јамбови} во една игра.',f_faceYou:'{faceWc} ти падна дури {n} пати.',
+  f_zerosYou:'Имаш {n} {n|прецртано поле|прецртани полиња}.',f_noZeroYou:'Ниту едно поле прецртано. Чиста игра.',
+  f_firstYou:'Уште од првото фрлање {n} {n|запишано поле|запишани полиња}.',f_rollsYou:'Само {x} фрлања по потег, најмалку на масата.',
+  f_bestYou:'Најдобро поле во играта: {row}, {s} {s|поен|поени} – твое.'},
+de:{youName:'Du',rulesCustom:'Eigene Regeln',nCols:'{n} {n|Spalte|Spalten}',sSoundG:'Ton',sPlayG:'Spiel',
+  nudgeT:'Jamb auf den Startbildschirm',nudgeD:'Es öffnet im Vollbild und läuft auch offline.',notNow:'Nicht jetzt',
+  f_firstJambYou:'Jamb schon im ersten Wurf!',f_jambsYou:'Du hast {n} Jambs in diesem Spiel gewürfelt.',f_faceYou:'Die {face} fiel bei dir ganze {n} Mal.',
+  f_zerosYou:'Du hast {n} Felder gestrichen.',f_noZeroYou:'Du hast kein einziges Feld gestrichen. Ein sauberes Spiel.',
+  f_firstYou:'Du hast {n} Felder direkt aus dem ersten Wurf eingetragen.',f_rollsYou:'Du brauchtest nur {x} Würfe pro Zug, die wenigsten am Tisch.',
+  f_bestYou:'Feld des Spiels: deine {s} bei {row}.'}
+};
+const KEYS={en:['Space','roll','keep','write'],hr:['Razmak','baci','zadrži','upiši'],sr:['Razmak','baci','zadrži','upiši'],bs:['Razmak','baci','zadrži','upiši'],
+  sl:['Preslednica','vrzi','zadrži','vpiši'],mk:['Space','фрли','задржи','запиши'],de:['Leertaste','würfeln','halten','eintragen']};
+for(const l in KEYS){const [a,b,c,d]=KEYS[l];Object.assign(V7[l],{kSpace:a,kRoll:b,kKeep:c,kWrite:d});}
+/* first-game guide (approved wording; column and row names filled in from the rules) */
+const GUIDE={
+en:{g1keep:'Tap the dice you like to keep them, then roll the rest. You get three rolls.',g2yellow:'Yellow boxes show what this roll would score. Tap one to write it.',
+  g3cols:'Each column has its own order: {down} from the top, {up} from the bottom, {free} in any order. Tap a column name for more.',
+  g4call:'{ann}: right after your first roll, pick a box in this column. You must write it this turn.',g5maxmin:'{max} and {min}: aim high on {max} and low on {min}. The difference counts.',
+  g6end:'That’s all you need. When you’re stuck, tap the lightbulb.',gotIt:'Got it',guideAgain:'Show the tips again',guideOn:'The tips come back in your next game against the computer.',savedPic:'Picture saved, result copied'},
+hr:{g1keep:'Dodirni kocke koje želiš zadržati, pa baci ostale. Imaš tri bacanja.',g2yellow:'Žuta polja pokazuju koliko vrijedi ovo bacanje. Dodirni jedno za upis.',
+  g3cols:'Svaki stupac ima svoj red: {down} odozgo, {up} odozdo, {free} bilo kojim redom. Dodirni naziv stupca za više.',
+  g4call:'{ann}: odmah nakon prvog bacanja odaberi polje u ovom stupcu. Moraš ga upisati u istom potezu.',g5maxmin:'{max} i {min}: {max} što veći, {min} što manji. Razlika se boduje.',
+  g6end:'To je sve. Kad zapne, dodirni žarulju.',gotIt:'Jasno',guideAgain:'Ponovno prikaži savjete',guideOn:'Savjeti se vraćaju u idućoj igri protiv računala.',savedPic:'Slika spremljena, rezultat kopiran'},
+sr:{g1keep:'Dodirni kockice koje želiš da zadržiš, pa baci ostale. Imaš tri bacanja.',g2yellow:'Žuta polja pokazuju koliko vredi ovo bacanje. Dodirni jedno za upis.',
+  g3cols:'Svaka kolona ima svoj red: {down} odozgo, {up} odozdo, {free} bilo kojim redom. Dodirni naziv kolone za više.',
+  g4call:'{ann}: odmah posle prvog bacanja izaberi polje u ovoj koloni. Moraš da ga upišeš u istom potezu.',g5maxmin:'{max} i {min}: {max} što veći, {min} što manji. Razlika se boduje.',
+  g6end:'To je sve. Kad zapne, dodirni sijalicu.',gotIt:'Jasno',guideAgain:'Ponovo prikaži savete',guideOn:'Saveti se vraćaju u sledećoj igri protiv računara.',savedPic:'Slika sačuvana, rezultat kopiran'},
+bs:{g1keep:'Dodirni kockice koje želiš zadržati, pa baci ostale. Imaš tri bacanja.',g2yellow:'Žuta polja pokazuju koliko vrijedi ovo bacanje. Dodirni jedno za upis.',
+  g3cols:'Svaka kolona ima svoj red: {down} odozgo, {up} odozdo, {free} bilo kojim redom. Dodirni naziv kolone za više.',
+  g4call:'{ann}: odmah nakon prvog bacanja odaberi polje u ovoj koloni. Moraš ga upisati u istom potezu.',g5maxmin:'{max} i {min}: {max} što veći, {min} što manji. Razlika se boduje.',
+  g6end:'To je sve. Kad zapne, dodirni sijalicu.',gotIt:'Jasno',guideAgain:'Ponovo prikaži savjete',guideOn:'Savjeti se vraćaju u sljedećoj igri protiv računara.',savedPic:'Slika sačuvana, rezultat kopiran'},
+sl:{g1keep:'Tapni kocke, ki jih želiš zadržati, nato vrzi ostale. Imaš tri mete.',g2yellow:'Rumena polja kažejo, koliko je vreden ta met. Tapni eno za vpis.',
+  g3cols:'Vsak stolpec ima svoj vrstni red: {down} od zgoraj, {up} od spodaj, {free} v poljubnem vrstnem redu. Tapni ime stolpca za več.',
+  g4call:'{ann}: takoj po prvem metu izberi polje v tem stolpcu. Vpisati ga moraš v isti potezi.',g5maxmin:'{max} in {min}: {max} čim višji, {min} čim nižji. Šteje razlika.',
+  g6end:'To je vse. Ko se zatakne, tapni žarnico.',gotIt:'Razumem',guideAgain:'Znova pokaži nasvete',guideOn:'Nasveti se vrnejo v naslednji igri proti računalniku.',savedPic:'Slika shranjena, rezultat kopiran'},
+mk:{g1keep:'Допри ги коцките што сакаш да ги задржиш, па фрли ги другите. Имаш три фрлања.',g2yellow:'Жолтите полиња покажуваат колку вреди ова фрлање. Допри едно за запис.',
+  g3cols:'Секоја колона има свој редослед: {down} одозгора, {up} оздола, {free} по кој било редослед. Допри го името на колоната за повеќе.',
+  g4call:'{ann}: веднаш по првото фрлање избери поле во оваа колона. Мораш да го запишеш во истиот потег.',g5maxmin:'{max} и {min}: {max} што поголем, {min} што помал. Разликата се бодува.',
+  g6end:'Тоа е сè. Кога ќе запне, допри ја сијаличката.',gotIt:'Јасно',guideAgain:'Повторно прикажи ги советите',guideOn:'Советите се враќаат во следната игра против компјутерот.',savedPic:'Сликата е зачувана, резултатот е копиран'},
+de:{g1keep:'Tippe die Würfel an, die du behalten willst, und wirf den Rest. Du hast drei Würfe.',g2yellow:'Gelbe Felder zeigen, was dieser Wurf bringt. Tippe eins an, um es einzutragen.',
+  g3cols:'Jede Spalte hat ihre Reihenfolge: {down} von oben, {up} von unten, {free} beliebig. Tippe auf einen Spaltennamen für mehr.',
+  g4call:'{ann}: Direkt nach dem ersten Wurf wählst du ein Feld in dieser Spalte. Eintragen musst du es im selben Zug.',g5maxmin:'{max} und {min}: {max} möglichst hoch, {min} möglichst niedrig. Die Differenz zählt.',
+  g6end:'Mehr brauchst du nicht. Wenn du festhängst, tippe auf die Glühbirne.',gotIt:'Verstanden',guideAgain:'Tipps wieder zeigen',guideOn:'Die Tipps kommen im nächsten Spiel gegen den Computer wieder.',savedPic:'Bild gespeichert, Ergebnis kopiert'}
+};
+for(const l in GUIDE)Object.assign(V7[l],GUIDE[l]);
+for(const l in V7)Object.assign(D[l],V7[l]);
+
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
 const LAT2CYR=[['DŽ','Џ'],['Dž','Џ'],['dž','џ'],['LJ','Љ'],['Lj','Љ'],['lj','љ'],['NJ','Њ'],['Nj','Њ'],['nj','њ'],
   ['A','А'],['B','Б'],['V','В'],['G','Г'],['D','Д'],['Đ','Ђ'],['E','Е'],['Ž','Ж'],['Z','З'],['I','И'],['J','Ј'],['K','К'],['L','Л'],['M','М'],['N','Н'],['O','О'],['P','П'],['R','Р'],['S','С'],['T','Т'],['Ć','Ћ'],['U','У'],['F','Ф'],['H','Х'],['C','Ц'],['Č','Ч'],['Š','Ш'],

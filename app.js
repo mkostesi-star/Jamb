@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v6.6';
+const VERSION='v7';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -83,7 +83,9 @@ function saveGame(){
 }
 const cur=()=>G.players[G.current];
 const isBot=i=>G.players[i]&&G.players[i].kind==='cpu';
-function pname(g,i){const p=g.players[i];if(!p)return '';if(p.kind==='cpu')return (CHARS[p.char]||CHARS.profesor).name;return p.name||t('player',{n:i+1});}
+function pname(g,i){const p=g.players[i];if(!p)return '';if(p.kind==='cpu')return (CHARS[p.char]||CHARS.profesor).name;if(p.name)return p.name;return isYou(g,i)?t('youName'):t('player',{n:i+1});}
+/* the only person on this phone, with no name typed in, is simply "You" */
+function isYou(g,i){const p=g.players[i];return !!p&&p.kind!=='cpu'&&!p.name&&g.mode!=='online'&&g.players.filter(q=>q.kind!=='cpu').length===1;}
 const name=i=>pname(G,i);
 function mySeat(){if(!G)return -1;if(G.mode==='online')return G.players.findIndex(p=>p.cid&&p.cid===prefs.cid);if(G.mode==='cpu')return G.players.findIndex(p=>p.kind==='human');if(G.mode==='daily'||G.mode==='duel')return 0;return -1;}
 function mayAct(){
@@ -435,6 +437,7 @@ function finishGame(){
   cancelBot();
   const st=standings(G),me=mySeat();
   stats.played=(stats.played||0)+1;
+  if(G.mode==='cpu'&&!prefs.guideDone){prefs.guideDone=true;savePrefs();ui.guideEnd=true;}
   if(me>=0){const ms=E.total(G.rules,G.players[me].sheet);if(ms>(stats.best||0))stats.best=ms;if(st[0].i===me&&G.players.length>1&&st[0].score>st[1].score)stats.wins=(stats.wins||0)+1;}
   if(botSeats().length){const w=st[0].i,b=isBot(w)?w:someBot(-1);if(b>=0)setTimeout(()=>say(b,b===w?'win':'lose'),900);}
   const many=G.players.length>1;
@@ -536,6 +539,52 @@ function dailyShareText(day){
   const sq=r.grid.map(q=>q===2?'🟨':q===1?'🟦':'⬜').join('');
   return `${t('daily')} · ${dateLabel(day)} · ${r.score}\n${sq}${r.prof!=null?'\n'+t('profScore',{s:r.prof}):''}\n${baseUrl()}`;
 }
+/* the Daily result as a picture: the morning scene, the slip with the score, and the squares */
+function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
+async function dailyImage(day){
+  const r=stats.daily.results[day];if(!r)return null;
+  const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  const css=getComputedStyle(document.documentElement),fam=v=>(css.getPropertyValue(v)||'').trim();
+  const fUI=fam('--f-ui')||'sans-serif',fR=fam('--f-receipt')||'monospace',fS=fam('--f-sign')||'serif';
+  try{await Promise.all([`700 40px ${fUI}`,`400 40px ${fR}`,`400 60px ${fS}`].map(f=>document.fonts.load(f)));}catch(e){}
+  x.fillStyle='#2A1A0D';x.fillRect(0,0,W,H);
+  try{const img=await loadImg('art/daily-800.webp'),hh=640,sc=Math.max(W/img.width,hh/img.height);
+    x.save();x.beginPath();x.rect(0,0,W,hh);x.clip();x.drawImage(img,(W-img.width*sc)/2,(hh-img.height*sc)/2,img.width*sc,img.height*sc);x.restore();
+    const gr=x.createLinearGradient(0,380,0,hh);gr.addColorStop(0,'rgba(42,26,13,0)');gr.addColorStop(1,'rgba(42,26,13,1)');x.fillStyle=gr;x.fillRect(0,380,W,hh-380);}catch(e){}
+  const cx=140,cy=450,cw=800,chh=770;
+  x.save();x.shadowColor='rgba(0,0,0,.45)';x.shadowBlur=40;x.shadowOffsetY=16;x.fillStyle='#FBF6EA';x.fillRect(cx,cy,cw,chh);x.restore();
+  const mid=cx+cw/2,line=y=>{x.strokeStyle='#C9C2B5';x.setLineDash([10,8]);x.lineWidth=3;x.beginPath();x.moveTo(cx+50,y);x.lineTo(cx+cw-50,y);x.stroke();x.setLineDash([]);};
+  x.textAlign='center';x.fillStyle='#C8322B';x.font=`700 34px ${fUI}`;x.fillText(t('daily').toUpperCase().split('').join(String.fromCharCode(8202)),mid,cy+80);
+  x.fillStyle='#1F3FA6';x.font=`400 64px ${fS}`;x.fillText(t('dailyTitle'),mid,cy+160);
+  x.fillStyle='#6B655C';x.font=`400 30px ${fR}`;x.fillText(dateLabel(day),mid,cy+210);
+  line(cy+250);
+  const q=['#C9C2B5','#1F3FA6','#E0A800'],n=r.grid.length,sz=Math.min(46,Math.floor((cw-100-(n-1)*8)/n)),gw=n*sz+(n-1)*8;
+  r.grid.forEach((v,i)=>{x.fillStyle=q[v]||q[0];x.fillRect(mid-gw/2+i*(sz+8),cy+290,sz,sz);});
+  line(cy+380);
+  const row=(label,val,y,big)=>{x.textAlign='left';x.fillStyle='#2A2520';x.font=`${big?700:400} ${big?44:34}px ${fR}`;x.fillText(label,cx+60,y);x.textAlign='right';x.font=`700 ${big?72:38}px ${fR}`;x.fillText(String(val),cx+cw-60,y+(big?10:0));};
+  row(t('total').toUpperCase(),r.score,cy+470,true);
+  if(r.prof!=null)row(CHARS.profesor.name,r.prof,cy+550);
+  row(t('streakShort'),stats.daily.streak||1,cy+610);
+  line(cy+660);
+  x.textAlign='center';x.fillStyle='#6B655C';x.font=`400 28px ${fR}`;x.fillText(t('dailySame'),mid,cy+715);
+  x.fillStyle='#F6EEDC';x.font=`700 34px ${fUI}`;x.fillText('Jamb',mid,cy+chh+78);
+  return new Promise(res=>cv.toBlob(b=>res(b),'image/png'));
+}
+async function shareDaily(day){
+  const text=dailyShareText(day);
+  try{
+    const blob=await dailyImage(day);
+    if(blob){
+      const file=new File([blob],'jamb-daily-'+day+'.png',{type:'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text});return;}
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},3000);
+      try{await navigator.clipboard.writeText(text);}catch(e){}
+      toast(t('savedPic'));return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  shareText(text,'');
+}
 function startDuel(quick){
   const id=uid()+uid();
   const rules=quick?E.normRules({cols:['free']}):prefs.rules;
@@ -634,6 +683,12 @@ function rulesSummary(r){
   if(r.bonus)parts.push(t('bonusShort',{a:r.bonusAt,b:r.bonus}));
   return parts.join(' · ');
 }
+/* rules by name: the preset's name, or "Your rules", with the column and dice count. The full detail lives in House rules. */
+function rulesBrief(r){
+  r=E.normRules(r);let name=t('rulesCustom');
+  for(const k of Object.keys(E.PRESETS))if(E.sameRules(r,E.presetRules(k))){name=t('p_'+k);break;}
+  return [name,t('nCols',{n:r.cols.length}),t('nDice',{n:r.dice})].join(' · ');
+}
 function modeLabel(g,code){
   if(!g)return t('mOnline',{code:code||''});
   if(g.mode==='cpu'){return t('mCpu',{name:g.players.filter(p=>p.kind==='cpu').map(p=>(CHARS[p.char]||CHARS.profesor).name).join(', ')});}
@@ -645,6 +700,11 @@ function dateLabel(day){
 }
 
 /* ---------- home ---------- */
+/* after the second finished game, one gentle suggestion to keep Jamb on the home screen (Install also lives in Settings) */
+function nudgeHTML(){
+  if(isStandalone()||prefs.nudged||(stats.played||0)<2)return '';
+  return `<div class="nudge" role="note"><b>${esc(t('nudgeT'))}</b><span>${esc(t('nudgeD'))}</span><div class="row2"><button type="button" class="sbtn" data-act="nudgeyes">${esc(t('installShort'))}</button><button type="button" class="sbtn ghost" data-act="nudgeno">${esc(t('notNow'))}</button></div></div>`;
+}
 function renderHome(){
   const d=dailyToday(),res=stats.daily.results[d.day];
   const items=[];
@@ -700,7 +760,7 @@ function renderHome(){
         <span class="bt"><span class="mt">${esc(t('playChar'))}</span><span class="md">${esc(t('cpuD'))}</span><span class="faces" aria-hidden="true">${faces}</span></span>${ICON.chev}</button>
       <button type="button" class="bigmode" data-act="open" data-k="friends">
         <span class="bt"><span class="mt">${esc(t('friends'))}</span><span class="md">${esc(t('friendsD'))}</span></span>${ICON.chev}</button>
-      <div class="footrow"><button type="button" class="sbtn ghost" data-act="open" data-k="records">${esc(t('records'))}</button><button type="button" class="sbtn ghost" data-act="open" data-k="howto">${esc(t('howTo'))}</button>${isStandalone()?'':`<button type="button" class="sbtn ghost" data-act="install">${esc(t('installShort'))}</button>`}</div>
+      <div class="footrow"><button type="button" class="sbtn ghost" data-act="open" data-k="records">${esc(t('records'))}</button><button type="button" class="sbtn ghost" data-act="open" data-k="howto">${esc(t('howTo'))}</button></div>${nudgeHTML()}
     </main></div>`;
 }
 
@@ -729,7 +789,7 @@ function sheetHTML(p){
   const row=r=>`<tr><th scope="row" class="lab">${UPPER.includes(r)?miniFace(+r)+`<span class="sr">${esc(rowName(r))}</span>`:esc(rowName(r))}</th>${cols.map(c=>`<td>${cellHTML(p,c,r)}</td>`).join('')}</tr>`;
   const sum=(cls,label,fn)=>`<tr class="${cls}"><th scope="row" class="lab">${label}</th>${cols.map(c=>`<td>${fn(calc[c])}</td>`).join('')}</tr>`;
   const zl={fit:t('zFit'),large:t('zLarge'),huge:t('zHuge')}[zoomMode()];
-  let h=`<thead><tr><th class="lab" scope="col"><span class="sr">${esc(name(p))}</span><button type="button" class="zbtn" data-act="zoom" aria-label="${esc(t('zLabel')+': '+zl)}">${ICON.zoom}<span>${esc(zl)}</span></button></th>${cols.map(c=>`<th scope="col" title="${esc(colName(c))}"><span class="sym">${E.COLS[c].sym}</span><span class="cnm">${esc(t('cols.'+c))}</span></th>`).join('')}</tr></thead><tbody>`;
+  let h=`<thead><tr><th class="lab" scope="col"><span class="sr">${esc(name(p))}</span><button type="button" class="zbtn" data-act="zoom" aria-label="${esc(t('zLabel')+': '+zl)}">${ICON.zoom}<span>${esc(zl)}</span></button></th>${cols.map(c=>`<th scope="col"><button type="button" class="colh" data-act="colinfo" data-v="${c}" title="${esc(colName(c))}" aria-label="${esc(colName(c)+': '+t('colD.'+c))}"><span class="sym">${E.COLS[c].sym}</span><span class="cnm">${esc(t('cols.'+c))}</span></button></th>`).join('')}</tr></thead><tbody>`;
   UPPER.forEach(r=>{h+=row(r);});
   h+=sum('sum',`Σ<span class="sr"> ${esc(t('sumUp'))}</span>`,k=>k.upAny?`${k.up}${k.bonus?`<sup>+${k.bonus}</sup>`:''}`:'');
   h+=row('max')+row('min');
@@ -771,6 +831,26 @@ function dieHTML(v,i,o){
   const r=((i*37+v*11)%9)-4;
   if(o.unset)return `<button type="button" class="die unset${o.picked?' ghost':''}" data-act="tdie" data-i="${i}" aria-label="${esc(t('setDie',{n:i+1}))}">?</button>`;
   return `<span class="dslot${o.held?' kept':''}"><button type="button" class="die${o.held?' held':''}${o.held&&ui.popDie===i?' popin':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${pipsHTML(o.idle?0:o.tumble?1+Math.floor(Math.random()*6):v)}</button></span>`;
+}
+/* first-game guide: short tips in the first game against the computer, each shown once */
+function guideTip(){
+  const g=G;if(!g||g.mode!=='cpu'||g.over||prefs.guideDone||ui.rolling||ui.modal||ui.sel||!mayAct())return null;
+  const me=mySeat();if(me<0||g.current!==me)return null;
+  const seen=prefs.guideSeen||{},tn=g.turn,sh=g.players[me].sheet;
+  let filled=0;for(const c in sh)for(const r in sh[c])if(sh[c][r]!=null)filled++;
+  if(tn.roll>=1&&!seen.g1keep)return 'g1keep';
+  if(tn.roll>=1&&!seen.g2yellow)return 'g2yellow';
+  if(filled>=1&&!seen.g3cols)return 'g3cols';
+  if(filled>=1&&g.rules.cols.includes('ann')&&tn.roll===1&&!tn.announced&&!seen.g4call)return 'g4call';
+  if(filled>=2&&tn.roll>=1&&!seen.g5maxmin)return 'g5maxmin';
+  return null;
+}
+function guideText(k){
+  return t(k,{down:colName('down'),up:colName('up'),free:colName('free'),ann:colName('ann'),max:rowName('max'),min:rowName('min')});
+}
+function tipHTML(){
+  const k=guideTip();if(!k)return '';
+  return `<div class="tipcard" role="note"><p>${esc(guideText(k))}</p><button type="button" class="sbtn" data-act="tipok" data-k="${k}">${esc(t('gotIt'))}</button></div>`;
 }
 function renderTray(){
   const g=G,tn=g.turn,c=g.current,me=mayAct();
@@ -835,6 +915,7 @@ function renderTray(){
       acts=`<button type="button" class="glass" data-act="roll"${dis?' disabled':''}><b>${esc(tn.roll?t('rollAgain'):t('roll'))} <span aria-hidden="true">${pips}</span></b>${newPlayer()&&COARSE?`<small>${esc(prefs.shake&&A.motion.supported()?t('shakeHint'):t('holdHint'))}</small>`:''}</button>${hintBtn}`;
     }
   }
+  if(guideTip())hint='&nbsp;';/* the tip card says it; the tray line stays quiet */
   if(ui.msg)hint=`<span class="err">${esc(ui.msg)}</span>`;
   if(clockOn&&g.paused){
     const r=g.paused.ready||[],seats=g.mode==='online'?g.players.map((p,i)=>i):humanSeats(g),me2=mySeat();
@@ -846,7 +927,12 @@ function renderTray(){
       ${g.mode==='online'&&online&&online.host?`<button type="button" class="lnk" style="justify-self:center" data-act="resumenow">${esc(t('tResumeNow'))}</button>`:''}</div>`;
     return;
   }
-  $('tray').innerHTML=`<div class="trayIn">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}<div class="status">${st}<span class="sright">${clockHTML}${emoHTML()}</span></div><div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div></div>`;
+  $('tray').innerHTML=`<div class="trayIn">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}<div class="status">${st}<span class="sright">${clockHTML}${emoHTML()}</span></div><div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div>${keysHTML(g)}</div>${tipHTML()}`;
+}
+/* keyboard keys, shown in the desktop layout during the first games */
+function keysHTML(g){
+  if(!newPlayer()||g.mode==='table'||!mayAct())return '';
+  return `<p class="keys" aria-hidden="true"><kbd>${esc(t('kSpace'))}</kbd> ${esc(t('kRoll'))} · <kbd>1</kbd>–<kbd>${g.rules.dice}</kbd> ${esc(t('kKeep'))} · <kbd>Enter</kbd> ${esc(t('kWrite'))}</p>`;
 }
 function tickDice(){
   const el=$('dice');if(!el||!ui.rollIdx)return;
@@ -863,12 +949,13 @@ function render(){
 /* Sheet size: Fit (the default) shrinks every row so the whole board shows above the tray.
    Large and Huge are steps up from Fit and scroll. */
 const ZOOMS=['fit','large','huge'];
+const sideLayout=()=>!!(window.matchMedia&&matchMedia('(min-width:1000px) and (min-aspect-ratio:4/3)').matches);
 function zoomMode(){return ZOOMS.includes(prefs.zoom)?prefs.zoom:'fit';}
 function applyZoom(){
   const paper=document.querySelector('#game .paper');if(!paper)return;
   paper.style.setProperty('--z','1');
   const tb=paper.querySelector('table'),tr=$('tray');if(!tb)return;
-  const top=paper.getBoundingClientRect().top+window.scrollY,trayH=tr&&!tr.hidden?tr.offsetHeight:0;
+  const top=paper.getBoundingClientRect().top+window.scrollY,trayH=tr&&!tr.hidden&&!sideLayout()?tr.offsetHeight:0;
   const avail=window.innerHeight-top-trayH-22,h=tb.offsetHeight||1;
   const fit=Math.max(.6,Math.min(1.25,avail/h)),z=zoomMode();/* below 0.6 the text gets too small to read; the sheet scrolls instead */
   const v=z==='huge'?Math.min(2,Math.max(1.3,fit*1.6)):z==='large'?Math.min(1.6,Math.max(1,fit*1.25)):fit;
@@ -927,7 +1014,7 @@ function back(){const b=ui.back;ui.back=null;if(b){if(ui.modal&&ui.modal.kind===
 const head=title=>`<div class="phead"><h2>${esc(title)}</h2><button type="button" class="x" data-act="close" aria-label="${esc(t('close'))}">×</button></div>`;
 const seg=(act,items,cur,n)=>`<div class="seg" style="--n:${n||items.length}">${items.map(([v,l])=>`<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${String(v)===String(cur)}">${esc(l)}</button>`).join('')}</div>`;
 const sw=(k,label,sub)=>`<div class="toggle"><span>${esc(label)}${sub?`<small>${esc(sub)}</small>`:''}</span><button type="button" class="sw" role="switch" data-act="pref" data-k="${k}" aria-checked="${!!prefs[k]}" aria-label="${esc(label)}"></button></div>`;
-function rulesRow(){return `<h3>${esc(t('rulesLabel'))}</h3><div class="toggle"><span>${esc(rulesSummary(prefs.rules))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`;}
+function rulesRow(){return `<h3>${esc(t('rulesLabel'))}</h3><div class="toggle"><span>${esc(rulesBrief(prefs.rules))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`;}
 function renderModal(){
   const m=ui.modal;if(!m)return;
   const P=$('panel');let h='';
@@ -961,7 +1048,7 @@ function renderModal(){
       break;}
     case 'duel':
       h=head(t('modeDuel'))+`<p>${esc(t('duelIntro'))}</p>`+seg('duelfmt',[['quick',t('quick')],['full',t('full')]],m.fmt||'quick')+
-        `<p class="fine" style="margin-top:8px">${esc((m.fmt||'quick')==='quick'?t('quickD'):t('fullD',{rules:rulesSummary(prefs.rules)}))}</p>
+        `<p class="fine" style="margin-top:8px">${esc((m.fmt||'quick')==='quick'?t('quickD'):t('fullD',{rules:rulesBrief(prefs.rules)}))}</p>
         <label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label>
         <button type="button" class="btnRed" data-act="startduel">${esc(t('startDuel'))}</button>
         <h3>${esc(t('duelPaste'))}</h3><div class="pl"><input id="duelCode" class="linkbox" placeholder="${esc(t('duelPasteHint'))}" autocomplete="off"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="pasteduel">${esc(t('open'))}</button></div>`;
@@ -970,11 +1057,11 @@ function renderModal(){
       const o=m.o,rules=E.decodeRules(o.r)||prefs.rules;
       if(o.vs){
         const mine=stats.duels[o.i];
-        h=head(t('modeDuel'))+`<div class="result"><span class="big">${esc(t('duelBack',{name:o.n}))}</span><p>${esc(o.n)}: <b>${fmt(o.s)}</b> · ${esc(o.vs.n)}: <b>${fmt(o.vs.s)}</b></p><p class="fine">${esc(rulesSummary(rules))}</p></div>
+        h=head(t('modeDuel'))+`<div class="result"><span class="big">${esc(t('duelBack',{name:o.n}))}</span><p>${esc(o.n)}: <b>${fmt(o.s)}</b> · ${esc(o.vs.n)}: <b>${fmt(o.vs.s)}</b></p><p class="fine">${esc(rulesBrief(rules))}</p></div>
           <button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`;
       }else{
         const played=stats.duels[o.i];
-        h=head(t('duelFrom',{name:o.n}))+`<p>${esc(t('duelSame'))}</p><p class="fine">${esc(rulesSummary(rules))} · ${esc(t('duelHidden'))}</p>`+
+        h=head(t('duelFrom',{name:o.n}))+`<p>${esc(t('duelSame'))}</p><p class="fine">${esc(rulesBrief(rules))} · ${esc(t('duelHidden'))}</p>`+
           (played?`<p><b>${esc(t('duelAlready',{s:fmt(played.score)}))}</b></p><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`:
           `<label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label><button type="button" class="btnRed" data-act="acceptduel" data-autofocus>${esc(t('startDuel'))}</button>`);
       }
@@ -986,19 +1073,20 @@ function renderModal(){
       break;
     case 'rules':h=rulesModalHTML();break;
     case 'rulesIn':
-      h=head(t('rulesFromLink'))+`<p>${esc(rulesSummary(m.rules))}</p><button type="button" class="btnRed" data-act="userules">${esc(t('useRules'))}</button><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`;
+      h=head(t('rulesFromLink'))+`<p>${esc(rulesBrief(m.rules))}</p><p class="fine">${esc(rulesSummary(m.rules))}</p><button type="button" class="btnRed" data-act="userules">${esc(t('useRules'))}</button><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`;
       break;
     case 'settings':
       h=head(t('settings'))+`<div class="toggle"><span>${esc(t('language'))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="lang">${esc(I.name(prefs.lang))}</button></div>`+
-        sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
-        `<div class="toggle"><span>${esc(t('modeRules'))}<small>${esc(rulesSummary(prefs.rules))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`+
+        `<h3>${esc(t('sSoundG'))}</h3>`+sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+
+        `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
+        `<div class="toggle"><span>${esc(t('modeRules'))}<small>${esc(rulesBrief(prefs.rules))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
         `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Jamb ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
       break;
     case 'lang':
       h=head(t('language'))+`<div class="langlist">${I.list().map(l=>`<button type="button" data-act="setlang" data-v="${l.code}" aria-pressed="${l.code===prefs.lang}"><span>${esc(l.name)}</span><span>${esc(l.short)}</span></button>`).join('')}</div>`;
       break;
-    case 'howto':h=head(t('howTo'))+howtoHTML(G&&screen==='game'?G.rules:prefs.rules);break;
+    case 'howto':h=head(t('howTo'))+howtoHTML(G&&screen==='game'?G.rules:prefs.rules)+`<button type="button" class="btnInk" data-act="guideagain">${esc(t('guideAgain'))}</button>`;break;
     case 'install':
       h=head(t('installT'))+(isIOS()?t('instIOS'):/Android/i.test(navigator.userAgent)?t('instAndroid'):t('instDesktop'));
       break;
@@ -1020,7 +1108,7 @@ function rulesModalHTML(){
   const presets=['classic','quick','family','six','full'].map(p=>`<button type="button" data-act="preset" data-v="${p}" aria-pressed="${E.sameRules(d,E.presetRules(p))}">${esc(t('p_'+p))}</button>`).join('');
   const cols=E.COL_ORDER.map(c=>`<button type="button" class="colbtn" data-act="togcol" data-v="${c}" aria-pressed="${d.cols.includes(c)}"><b>${E.COLS[c].sym}</b><span>${esc(colName(c))}</span></button>`).join('');
   const step=(k,label,dl)=>`<div class="stepper"><span>${esc(label)}</span><span class="sv"><button type="button" data-act="step" data-k="${k}" data-d="${-dl}" aria-label="−">−</button><output>${d[k]}</output><button type="button" data-act="step" data-k="${k}" data-d="${dl}" aria-label="+">+</button></span></div>`;
-  const sets=(prefs.sets||[]).map((s,i)=>`<div class="toggle"><span>${esc(s.name)}<small>${esc(rulesSummary(s.rules))}</small></span><span style="display:flex;gap:6px"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="loadset" data-i="${i}">${esc(t('load'))}</button><button type="button" class="sbtn ghost" style="color:var(--text);box-shadow:inset 0 0 0 1.5px var(--line-strong)" data-act="delset" data-i="${i}" aria-label="${esc(t('remove'))}">×</button></span></div>`).join('');
+  const sets=(prefs.sets||[]).map((s,i)=>`<div class="toggle"><span>${esc(s.name)}<small>${esc(rulesBrief(s.rules))}</small></span><span style="display:flex;gap:6px"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="loadset" data-i="${i}">${esc(t('load'))}</button><button type="button" class="sbtn ghost" style="color:var(--text);box-shadow:inset 0 0 0 1.5px var(--line-strong)" data-act="delset" data-i="${i}" aria-label="${esc(t('remove'))}">×</button></span></div>`).join('');
   return head(t('modeRules'))+`<p class="fine">${esc(rulesSummary(d))}</p>
     <h3>${esc(t('presets'))}</h3><div class="chiprow">${presets}</div>
     <h3>${esc(t('columns'))}</h3><div class="colgrid">${cols}</div>
@@ -1067,7 +1155,8 @@ function resultHTML(){
   if(!G)return head(t('results'));
   const st=standings(G),me=mySeat(),win=st.length>1&&st[0].score>st[1].score?st[0].i:-1;
   const title=G.players.length===1?t('finalScore',{s:fmt(st[0].score)}):win<0?t('draw'):win===me?t('youWin'):t('wins',{name:name(win)});
-  let h=head(t('results'))+`<img class="resimg" src="art/${G.mode==='daily'?'daily':'winner'}-800.webp" alt="" decoding="async" onerror="this.remove()">`+`<div class="result"><span class="big">${esc(title)}</span></div>`;
+  const endTip=ui.guideEnd?`<div class="tipcard inline" role="note"><p>${esc(t('g6end'))}</p></div>`:'';ui.guideEnd=false;
+  let h=head(t('results'))+endTip+`<img class="resimg" src="art/${G.mode==='daily'?'daily':'winner'}-800.webp" alt="" decoding="async" onerror="this.remove()">`+`<div class="result"><span class="big">${esc(title)}</span></div>`;
   if(G.players.length>1)h+=`<table class="scores">${st.map(s=>`<tr style="--pc:${PCOL[s.i%6]}"><td>${esc(name(s.i))}</td><td class="n">${fmt(s.score)}</td></tr>`).join('')}</table>`;
   if(G.mode==='daily'){h+=receiptHTML(G.daily.day)+`<button type="button" class="btnRed" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`;}
   if(G.mode==='duel'){
@@ -1090,19 +1179,20 @@ function statLine(g,i){
   return {i,x,bonus,rpt,total:E.total(g.rules,pl.sheet)};
 }
 function funFact(g,lines){
-  const nm=i=>pname(g,i),c=[];
+  const nm=i=>pname(g,i),c=[],LD=I._D[prefs.lang]||{};
+  const ft=(k,i,v)=>{v=Object.assign({name:nm(i)},v||{});return isYou(g,i)&&LD[k+'You']!=null?t(k+'You',v):t(k,v);};
   const rows=lines.filter(l=>l.x.turns>0);if(!rows.length)return '';
   rows.forEach(l=>{
-    if(l.x.jambRoll===1)c.push([90,t('f_firstJamb',{name:nm(l.i)})]);
-    if(l.x.jambs>=2)c.push([70+l.x.jambs,t('f_jambs',{name:nm(l.i),n:l.x.jambs})]);
+    if(l.x.jambRoll===1)c.push([90,ft('f_firstJamb',l.i)]);
+    if(l.x.jambs>=2)c.push([70+l.x.jambs,ft('f_jambs',l.i,{n:l.x.jambs})]);
     const mx=Math.max(...l.x.faces),face=l.x.faces.indexOf(mx)+1,avg=l.x.faces.reduce((a,b)=>a+b,0)/6;
-    if(mx>=8&&mx>=avg*1.35)c.push([60+mx-avg,t('f_face',{name:nm(l.i),face,faceW:I.arr(prefs.lang,'faceN')[face-1]||face,n:mx})]);
-    if(l.x.zeros>=3)c.push([50+l.x.zeros,t('f_zeros',{name:nm(l.i),n:l.x.zeros})]);
-    if(l.x.zeros===0&&l.x.turns>=8)c.push([58,t('f_noZero',{name:nm(l.i)})]);
-    if(l.x.first>=Math.max(5,l.x.turns*0.35))c.push([45+l.x.first,t('f_first',{name:nm(l.i),n:l.x.first})]);
-    if(l.x.best&&l.x.best.s>=45)c.push([40+l.x.best.s/10,t('f_best',{s:l.x.best.s,row:rowName(l.x.best.r),name:nm(l.i)})]);
+    if(mx>=8&&mx>=avg*1.35){const fw=String(I.arr(prefs.lang,'faceN')[face-1]||face);c.push([60+mx-avg,ft('f_face',l.i,{face,faceW:fw,faceWc:fw.charAt(0).toUpperCase()+fw.slice(1),n:mx})]);}
+    if(l.x.zeros>=3)c.push([50+l.x.zeros,ft('f_zeros',l.i,{n:l.x.zeros})]);
+    if(l.x.zeros===0&&l.x.turns>=8)c.push([58,ft('f_noZero',l.i)]);
+    if(l.x.first>=Math.max(5,l.x.turns*0.35))c.push([45+l.x.first,ft('f_first',l.i,{n:l.x.first})]);
+    if(l.x.best&&l.x.best.s>=45)c.push([40+l.x.best.s/10,ft('f_best',l.i,{s:l.x.best.s,row:rowName(l.x.best.r)})]);
   });
-  if(rows.length>1){const lo=rows.slice().sort((a,b)=>a.rpt-b.rpt)[0];if(lo.rpt>0)c.push([44,t('f_rolls',{name:nm(lo.i),x:lo.rpt.toFixed(1)})]);}
+  if(rows.length>1){const lo=rows.slice().sort((a,b)=>a.rpt-b.rpt)[0];if(lo.rpt>0)c.push([44,ft('f_rolls',lo.i,{x:lo.rpt.toLocaleString(I.locale(prefs.lang),{minimumFractionDigits:1,maximumFractionDigits:1})})]);}
   const throws=rows.reduce((a,l)=>a+l.x.faces.reduce((p,q)=>p+q,0),0);
   if(throws)c.push([30,t('f_throws',{n:fmt(throws)})]);
   if(!c.length)return '';
@@ -1131,7 +1221,7 @@ function gameStatsHTML(g){
 function rulesKey(r){return E.encodeRules(r)||'classic';}
 function rulesLabel(r){
   for(const k of Object.keys(E.PRESETS))if(E.sameRules(r,E.presetRules(k)))return t('p_'+k);
-  return rulesSummary(r);
+  return rulesBrief(r);
 }
 function recordGame(g){
   stats.recIds=stats.recIds||[];
@@ -1403,7 +1493,7 @@ function onlineModalHTML(m){
 /* ---------- misc ---------- */
 function toast(msg,bad){
   const el=$('toast');el.textContent=msg;el.className='toast'+(bad?' bad':'');el.hidden=false;
-  clearTimeout(ui.msgT);ui.msgT=setTimeout(()=>{el.hidden=true;},3200);
+  clearTimeout(ui.msgT);ui.msgT=setTimeout(()=>{el.hidden=true;},Math.max(3200,1600+String(msg).length*45));
 }
 async function shareText(text,url){
   try{if(navigator.share){await navigator.share({title:'Jamb',text,url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
@@ -1522,12 +1612,17 @@ function act(el,d){
     case 'pasteduel':{const v=$('duelCode').value;const mm=v.match(/duel=([A-Za-z0-9_-]+)/)||[null,v.trim()];const o=E.decodeObj(mm[1]);if(o&&o.i&&o.r!=null)openModal('duelIn',{o});else toast(t('badLink'),true);break;}
     case 'acceptduel':{const nm=$('fName').value.trim().slice(0,16)||null;prefs.name=nm;savePrefs();acceptDuel(ui.modal.o);break;}
     case 'shareduel':shareText(G.duel.from?t('duelShareBack',{a:E.total(G.rules,G.players[0].sheet),b:G.duel.from.s}):t('duelShareText',{s:E.total(G.rules,G.players[0].sheet)}),duelLink());break;
-    case 'sharedaily':shareText(dailyShareText(d.day),'');break;
+    case 'sharedaily':shareDaily(d.day);break;
     case 'rematch':rematch();break;
     case 'host':hostGame();break;
     case 'join':joinGame($('joinCode').value);break;
     case 'share':shareText(t('shareText'),shareUrl());break;
     case 'install':doInstall();break;
+    case 'colinfo':toast(colName(d.v)+': '+t('colD.'+d.v));break;
+    case 'tipok':prefs.guideSeen=Object.assign({},prefs.guideSeen,{[d.k]:true});savePrefs();renderTray();break;
+    case 'guideagain':prefs.guideSeen={};prefs.guideDone=false;savePrefs();closeModal();toast(t('guideOn'));break;
+    case 'nudgeyes':prefs.nudged=true;savePrefs();renderHome();doInstall();break;
+    case 'nudgeno':prefs.nudged=true;savePrefs();renderHome();break;
     case 'pref':{const k=d.k;prefs[k]=!prefs[k];savePrefs();applyAudio();if(k==='shake'){ui.motionAsked=false;if(prefs.shake)askMotion();else A.motion.stop();}if(k==='sound'&&prefs.sound)A.tap();renderModal();break;}
     case 'setlang':prefs.lang=d.v;savePrefs();document.documentElement.lang=I.locale(prefs.lang);closeModal();if(screen==='home')renderHome();else render();break;
     case 'preset':ui.draft=E.presetRules(d.v);renderModal();break;
@@ -1537,7 +1632,7 @@ function act(el,d){
     case 'rmid':ui.draft.mid=d.v;renderModal();break;
     case 'step':{const k=d.k;ui.draft[k]=Math.max(0,(ui.draft[k]||0)+(+d.d));renderModal();break;}
     case 'saverules':prefs.rules=E.normRules(ui.draft);savePrefs();toast(t('rulesSaved'));if(ui.back)back();else{closeModal();if(screen==='home')renderHome();}break;
-    case 'sharerules':shareText(t('rulesShareText',{r:rulesSummary(ui.draft)}),baseUrl()+'?rules='+E.encodeRules(ui.draft));break;
+    case 'sharerules':shareText(t('rulesShareText',{r:rulesBrief(ui.draft)}),baseUrl()+'?rules='+E.encodeRules(ui.draft));break;
     case 'saveset':{const nm=($('setName').value||'').trim().slice(0,24);if(!nm){toast(t('setName'),true);break;}prefs.sets=(prefs.sets||[]).filter(s=>s.name!==nm);prefs.sets.unshift({name:nm,rules:E.normRules(ui.draft)});prefs.sets=prefs.sets.slice(0,10);savePrefs();renderModal();break;}
     case 'loadset':{const s=prefs.sets[+d.i];if(s){ui.draft=E.normRules(s.rules);renderModal();}break;}
     case 'delset':prefs.sets.splice(+d.i,1);savePrefs();renderModal();break;
@@ -1555,7 +1650,15 @@ function act(el,d){
       closeModal();render();break;}
   }
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.modal){if(ui.back)back();else closeModal();}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&ui.modal){if(ui.back)back();else closeModal();return;}
+  if(screen!=='game'||ui.modal||e.ctrlKey||e.metaKey||e.altKey||/INPUT|TEXTAREA|SELECT/.test((e.target&&e.target.tagName)||''))return;
+  const press=sel=>{const b=document.querySelector(sel);if(b&&!b.disabled){e.preventDefault();b.click();return true;}return false;};
+  if(e.key===' '||e.key==='r'||e.key==='R')press('#tray [data-act=roll]');
+  else if(/^[1-6]$/.test(e.key))press(`#tray [data-act=hold][data-i="${+e.key-1}"]`);
+  else if(e.key==='Enter')press('#tray [data-act=write]')||press('#tray [data-act=announce]');
+  else if(e.key==='Escape')press('#tray [data-act=cancel]');
+});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;});
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible'||!G||G.mode!=='online'||!online||!hasPeer())return;
