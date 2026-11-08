@@ -839,6 +839,9 @@ for(const l in GUIDE)Object.assign(V7[l],GUIDE[l]);
 /* Reaction stickers (v7.1): the old "Ouch" becomes "Oh no"; Good luck, Ouch and Haha are retired. */
 const STICK={en:'Oh no!',hr:'Joj!',sr:'Joj!',bs:'Joj!',sl:'Ojoj!',mk:'Јао!',de:'Oh nein!'};
 for(const l in STICK)V7[l].emo_ohno=STICK[l];
+/* Music (v7.2): recorded café and Balkan tracks replace the synthesized waltz. */
+const MUSD={en:'Café tunes and Balkan melodies',hr:'Melodije iz kafića i s Balkana',sr:'Melodije iz kafića i sa Balkana',bs:'Melodije iz kafića i sa Balkana',sl:'Melodije iz kavarne in z Balkana',mk:'Мелодии од кафе и од Балканот',de:'Café-Melodien und Balkan-Klänge'};
+for(const l in MUSD)V7[l].sMusicD=MUSD[l];
 for(const l in V7)Object.assign(D[l],V7[l]);
 
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */

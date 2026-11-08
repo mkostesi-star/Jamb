@@ -5,5 +5,15 @@ cafe.mp3
   Edited for Jamb: trimmed, crossfaded into a 27.4-second seamless loop with 0.1 s of extra
   audio at each end, encoded as 96 kbps MP3.
 
-All other sounds and the music ("Table by the window") are synthesized in the browser by
-audio.js and music.js, written for Jamb.
+music/*.mp3, from Pixabay Music (pixabay.com), under the Pixabay Content License
+(free to use in the app, no credit required, not to be sold or handed out on their own):
+  morning-cafe.mp3  "French Morning Cafe Music" by AndriiH (Pixabay 590613), the Daily Jamb theme
+  cafe-cafe.mp3     "Cafe Cafe Music" by AndriiH (Pixabay 575986)
+  cafe-aurec.mp3    "Cafe Music" by Aurec (Pixabay 604790)
+  cafe-lofi.mp3     "Cafe Lofi" by ZephiraMusic (Pixabay 591791)
+  balkan-joy.mp3    "Balkan Joy" by Sonican (Pixabay 266520)
+  battonya.mp3      "Battonya (Balkan Music)" by Artmanzh (Pixabay 330439)
+  Edited for Jamb: trailing silence trimmed, levelled to -16 LUFS, short fade-out, 112 kbps MP3.
+
+All other sounds, and the fallback waltz "Table by the window" that plays when the tracks can't load,
+are synthesized in the browser by audio.js and music.js, written for Jamb.

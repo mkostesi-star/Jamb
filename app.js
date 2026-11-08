@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v7.1';
+const VERSION='v7.2';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -55,7 +55,7 @@ const rowName=r=>t('row.'+r);
 const colName=c=>t('col.'+c);
 function savePrefs(){store.set(PKEY,JSON.stringify(prefs));}
 function saveStats(){store.set(SKEY,JSON.stringify(stats));}
-function applyAudio(){A.set({sound:prefs.sound,ambience:prefs.ambience&&screen==='game',haptics:prefs.haptics,music:prefs.music!==false,musicLevel:screen==='game'?0.085:0.17});}
+function applyAudio(){A.set({sound:prefs.sound,ambience:prefs.ambience&&screen==='game',haptics:prefs.haptics,music:prefs.music!==false,musicLevel:screen==='game'?0.085:0.17,musicMood:screen==='game'&&G&&G.mode==='daily'?'daily':'main'});}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')A.sleep();else applyAudio();});
 
 /* ---------- games ---------- */

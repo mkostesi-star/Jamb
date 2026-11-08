@@ -1,9 +1,9 @@
 /* Jamb sounds, café ambience, vibration and shake-to-roll.
-   Every sound is synthesized, so there are no audio files to license or download. */
+   The game sounds are synthesized; the café ambience and the music are recordings (see audio/CREDITS.txt). */
 (function(root){
 'use strict';
-let ctx=null,master=null,NB=null,BB=null;
-const opt={sound:true,ambience:false,haptics:true,music:false,musicLevel:0.17};
+let ctx=null,master=null,dry=null,NB=null,BB=null;
+const opt={sound:true,ambience:false,haptics:true,music:false,musicLevel:0.17,musicMood:'main'};
 function ac(){
   if(!ctx){
     const C=root.AudioContext||root.webkitAudioContext;if(!C)return null;
@@ -12,6 +12,8 @@ function ac(){
     const comp=ctx.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;comp.attack.value=0.003;comp.release.value=0.2;
     comp.connect(ctx.destination);
     master=ctx.createGain();master.gain.value=0.9;master.connect(comp);
+    /* recorded music skips the room reverb: it already has its own room */
+    dry=ctx.createGain();dry.gain.value=0.9;dry.connect(comp);
     try{const rev=ctx.createConvolver();rev.buffer=room(1.2,3.4);const wet=ctx.createGain();wet.gain.value=0.14;master.connect(wet);wet.connect(rev);rev.connect(comp);}catch(e){}
   }
   if(ctx.state==='suspended'){try{ctx.resume();}catch(e){}}
@@ -193,10 +195,11 @@ function stopAmbience(){
   const a=amb;amb=null;
   if(a.g){try{a.g.gain.cancelScheduledValues(ctx.currentTime);a.g.gain.setValueAtTime(a.g.gain.value,ctx.currentTime);a.g.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+0.6);setTimeout(()=>{try{a.s.stop();}catch(e){}},700);}catch(e){}}
 }
-/* The original waltz in music.js, quieter during play than on the menus. */
+/* The music in music.js, quieter during play than on the menus. */
 function syncMusic(){
   const M=root.JambMusic;if(!M)return;
-  if(opt.sound&&opt.music&&ctx&&ctx.state==='running'){M.start(ctx,master);M.setLevel(opt.musicLevel);}
+  if(M.setMood)M.setMood(opt.musicMood);
+  if(opt.sound&&opt.music&&ctx&&ctx.state==='running'){M.start(ctx,master,dry);M.setLevel(opt.musicLevel);}
   else M.stop();
 }
 

@@ -1,9 +1,11 @@
-/* "Table by the window", an original café waltz for Jamb (3/4, D major, 32 bars, about 50 seconds, loops).
-   Written for this game and synthesized in the browser: plucked strings use the Karplus-Strong method,
-   so there are no recordings or samples and nothing to license. */
+/* Jamb music.
+   Recorded café and Balkan tracks from Pixabay Music (credits in audio/CREDITS.txt), played one at a time in a
+   shuffled order, with a short pause between songs. The Daily Jamb opens with its own theme ("French Morning Café").
+   "Table by the window", the original café waltz synthesized below, is the fallback when the tracks can't load
+   (for example offline before they were ever downloaded). */
 (function(root){
 'use strict';
-let ctx=null,out=null,dest=null,on=false,level=0.17,timer=0,nextBar=0,barIdx=0,cache={};
+let ctx=null,out=null,on=false,wOn=false,level=0.17,timer=0,nextBar=0,barIdx=0,cache={};
 const BPM=112,BEAT=60/BPM,BAR=BEAT*3;
 const N={};// note name -> midi
 ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].forEach((n,i)=>{for(let o=1;o<7;o++)N[n+o]=12*(o+1)+i;});
@@ -68,25 +70,97 @@ function scheduleBar(i,t0){
   });
 }
 function tick(){
-  if(!on||!ctx)return;
+  if(!wOn||!ctx)return;
   while(nextBar<ctx.currentTime+0.6){scheduleBar(barIdx,nextBar);nextBar+=BAR;barIdx=(barIdx+1)%PROG.length;}
 }
-function start(audioCtx,destination){
-  ctx=audioCtx;dest=destination;
-  if(!out){out=ctx.createGain();out.gain.value=0.0001;out.connect(dest);}
+function ramp(g,v,sec){try{g.gain.cancelScheduledValues(ctx.currentTime);g.gain.setValueAtTime(g.gain.value,ctx.currentTime);g.gain.linearRampToValueAtTime(v,ctx.currentTime+sec);}catch(e){}}
+function wStart(){
+  if(wOn)return;wOn=true;ramp(out,level,1.5);
+  nextBar=ctx.currentTime+0.15;barIdx=0;clearInterval(timer);timer=setInterval(tick,90);tick();
+}
+function wStop(){if(!wOn)return;wOn=false;clearInterval(timer);ramp(out,0.0001,0.6);}
+
+/* ---------- recorded tracks ---------- */
+/* All tracks are mastered to the same loudness (-16 LUFS); TRIM puts them at the waltz's level, so the
+   balance with the café sounds stays as it was. Only the playing track is decoded; the next one is
+   downloaded (not decoded) while it plays, which keeps memory low on phones. */
+const MAIN=['cafe-cafe','cafe-aurec','balkan-joy','cafe-lofi','battonya'],DAILY='morning-cafe',TRIM=0.86,GAP=1.6;
+let tOut=null,raw={},cur=null,order=[],pos=0,last=null,mood='main',dailyDone=false,fails=0,gen=0,resumeAt=null,gapT=0,upcoming=null,useWaltz=false;
+const url=t=>'audio/music/'+t+'.mp3';
+function fetchRaw(t){
+  if(!raw[t])raw[t]=fetch(url(t)).then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();}).catch(e=>{delete raw[t];throw e;});
+  return raw[t];
+}
+function decode(t){return fetchRaw(t).then(a=>{delete raw[t];return new Promise((res,rej)=>ctx.decodeAudioData(a,res,rej));});}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function pick(){
+  if(mood==='daily'&&!dailyDone){dailyDone=true;return DAILY;}
+  if(pos>=order.length){order=shuffle(MAIN.slice());if(order[0]===last&&order.length>1)order.push(order.shift());pos=0;}
+  return order[pos++];
+}
+function nextName(){if(!upcoming)upcoming=pick();return upcoming;}
+function playTrack(t,offset){
+  const my=++gen;if(upcoming===t)upcoming=null;
+  decode(t).then(b=>{
+    if(my!==gen||!on)return;
+    fails=0;
+    const n=ctx.createBufferSource();n.buffer=b;const g=ctx.createGain();n.connect(g);g.connect(tOut);
+    const at=Math.min(offset||0,Math.max(0,b.duration-8)),t0=ctx.currentTime+0.05;
+    g.gain.setValueAtTime(0.0001,t0);g.gain.linearRampToValueAtTime(1,t0+(at?1.5:0.3));
+    n.start(t0,at);cur={t,n,g,t0:t0-at};
+    n.onended=()=>{
+      if(!cur||cur.n!==n)return;
+      cur=null;last=t;
+      if(on&&my===gen){clearTimeout(gapT);gapT=setTimeout(()=>{if(on&&my===gen)playTrack(nextName(),0);},GAP*1000);}
+    };
+    setTimeout(()=>{if(on&&my===gen)fetchRaw(nextName()).catch(()=>{});},8000);
+  }).catch(()=>{
+    if(my!==gen||!on)return;
+    if(++fails>=2){useWaltz=true;wStart();return;}
+    playTrack(nextName(),0);
+  });
+}
+function fadeCur(sec){
+  if(!cur)return null;const c=cur;cur=null;
+  const at=Math.max(0,ctx.currentTime-c.t0);
+  try{c.g.gain.cancelScheduledValues(ctx.currentTime);c.g.gain.setValueAtTime(c.g.gain.value,ctx.currentTime);c.g.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+sec);c.n.stop(ctx.currentTime+sec+0.05);}catch(e){}
+  return {t:c.t,at};
+}
+
+/* wet: the shared bus with the table's room sound (the waltz uses it); dry: straight to the output (recordings) */
+function start(audioCtx,wet,dry){
+  ctx=audioCtx;
+  if(!out){out=ctx.createGain();out.gain.value=0.0001;out.connect(wet);}
+  if(!tOut){tOut=ctx.createGain();tOut.gain.value=level*TRIM;tOut.connect(dry||wet);}
   if(on)return;on=true;
-  out.gain.cancelScheduledValues(ctx.currentTime);out.gain.setValueAtTime(0.0001,ctx.currentTime);out.gain.linearRampToValueAtTime(level,ctx.currentTime+1.5);
-  nextBar=ctx.currentTime+0.15;barIdx=0;
-  clearInterval(timer);timer=setInterval(tick,90);tick();
+  useWaltz=false;fails=0;
+  if(typeof fetch!=='function'||!ctx.decodeAudioData){useWaltz=true;wStart();return;}
+  const r=resumeAt;resumeAt=null;let t,at=0;
+  if(mood==='daily'&&!dailyDone){t=pick();if(r&&r.t===DAILY)at=r.at;}
+  else if(r&&(r.t!==DAILY||mood==='daily')){t=r.t;at=r.at;}
+  else t=nextName();
+  playTrack(t,at);
 }
 function stop(){
-  if(!on)return;on=false;clearInterval(timer);
-  if(out&&ctx){out.gain.cancelScheduledValues(ctx.currentTime);out.gain.setValueAtTime(out.gain.value,ctx.currentTime);out.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+0.6);}
+  if(!on)return;on=false;gen++;clearTimeout(gapT);
+  const r=fadeCur(0.6);if(r)resumeAt=r;
+  wStop();
 }
 /* quieter while a game is being played than on the menus */
-function setLevel(v){level=v;if(on&&out&&ctx){out.gain.cancelScheduledValues(ctx.currentTime);out.gain.setValueAtTime(out.gain.value,ctx.currentTime);out.gain.linearRampToValueAtTime(v,ctx.currentTime+0.8);}}
+function setLevel(v){level=v;if(!ctx)return;if(out&&wOn)ramp(out,v,0.8);if(tOut)ramp(tOut,v*TRIM,0.8);}
+/* 'daily' while a Daily Jamb is on screen: its theme comes in (unless already playing), then the usual mix follows */
+function setMood(m){
+  m=m==='daily'?'daily':'main';if(m===mood)return;mood=m;
+  if(m==='daily'){
+    dailyDone=false;upcoming=null;
+    if(!on){if(resumeAt&&resumeAt.t!==DAILY)resumeAt=null;return;}
+    if(useWaltz||(cur&&cur.t===DAILY)){dailyDone=true;return;}
+    const my=++gen;clearTimeout(gapT);fadeCur(1.2);
+    setTimeout(()=>{if(on&&gen===my)playTrack(nextName(),0);},1300);
+  }else if(upcoming===DAILY)upcoming=null;
+}
 /* render the whole loop into an offline context (used to preview and check the mix) */
 function renderTo(off){const prev=[ctx,out];ctx=off;cache={};out=off.createGain();out.gain.value=level;out.connect(off.destination);for(let i=0;i<PROG.length;i++)scheduleBar(i,0.05+i*BAR);[ctx,out]=prev;cache={};return PROG.length*BAR+0.05;}
 function _note(off,inst,name){const prev=[ctx,out];ctx=off;cache={};out=off.destination;play(inst,name,0.01,0.8,0.9);[ctx,out]=prev;cache={};}
-root.JambMusic={start,stop,setLevel,renderTo,_note,loopSeconds:PROG.length*BAR,get playing(){return on;}};
+root.JambMusic={start,stop,setLevel,setMood,renderTo,_note,loopSeconds:PROG.length*BAR,get playing(){return on;},get track(){return cur?cur.t:(wOn?'waltz':null);},tracks:[DAILY,...MAIN]};
 })(typeof self!=='undefined'?self:this);

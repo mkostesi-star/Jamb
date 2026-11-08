@@ -1,7 +1,7 @@
 /* Keeps Jamb working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v7.1';
+const CACHE = 'jamb-v7.2';
 const CORE = [
-  './', 'index.html', 'engine.js?v=71', 'ai.js?v=71', 'i18n.js?v=71', 'audio.js?v=71', 'music.js?v=71', 'fx.js?v=71', 'scan.js?v=71', 'app.js?v=71', 'manifest.webmanifest',
+  './', 'index.html', 'engine.js?v=72', 'ai.js?v=72', 'i18n.js?v=72', 'audio.js?v=72', 'music.js?v=72', 'fx.js?v=72', 'scan.js?v=72', 'app.js?v=72', 'manifest.webmanifest',
   'icons/v6/icon-192.png', 'icons/v6/apple-touch-icon.png', 'icons/v6/favicon-64.png',
   'art/home-800.webp', 'art/home-1280.webp', 'art/home-800.jpg', 'art/wood-768.webp', 'art/winner-800.webp', 'art/daily-800.webp',
   'art/cast/ema.webp', 'art/cast/nono.webp', 'art/cast/mira.webp', 'art/cast/joza.webp', 'art/cast/profesor.webp'
