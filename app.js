@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v7.6';
+const VERSION='v8.0';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -628,7 +628,7 @@ async function dailyImage(day){
   row(t('streakShort'),stats.daily.streak||1,cy+610);
   line(cy+660);
   x.textAlign='center';x.fillStyle='#6B655C';x.font=`400 28px ${fR}`;x.fillText(t('dailySame'),mid,cy+715);
-  x.fillStyle='#F6EEDC';x.font=`700 34px ${fUI}`;x.fillText('Pip & Cup',mid,cy+chh+78);
+  x.fillStyle='#F6EEDC';x.font=`700 34px ${fUI}`;x.fillText('Yamb Café',mid,cy+chh+78);
   return new Promise(res=>cv.toBlob(b=>res(b),'image/png'));
 }
 async function shareDaily(day){
@@ -721,7 +721,8 @@ function pipsHTML(v){
   return `<img class="dface" src="${DICE[v]}" alt="" width="96" height="96" draggable="false">`;
 }
 const mdie=v=>`<span class="mdie" aria-hidden="true">${pipsHTML(v)}</span>`;
-function miniFace(v){const on=FACE[v];let s='';for(let k=0;k<9;k++)s+=`<i${on.includes(k)?' class="on"':''}></i>`;return `<span class="mini" aria-hidden="true">${s}</span>`;}
+/* the sheet's upper rows are labelled with the same painted dice */
+function miniFace(v){return `<img class="mini" src="${DICE[v]}" alt="" aria-hidden="true" width="48" height="48" draggable="false">`;}
 const ICON={
   gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.6 L10.2 1.7 L13.8 1.7 L14.1 4.6 L15.8 5.3 L18.0 3.5 L20.5 6.0 L18.7 8.2 L19.4 9.9 L22.3 10.2 L22.3 13.8 L19.4 14.1 L18.7 15.8 L20.5 18.0 L18.0 20.5 L15.8 18.7 L14.1 19.4 L13.8 22.3 L10.2 22.3 L9.9 19.4 L8.2 18.7 L6.0 20.5 L3.5 18.0 L5.3 15.8 L4.6 14.1 L1.7 13.8 L1.7 10.2 L4.6 9.9 L5.3 8.2 L3.5 6.0 L6.0 3.5 L8.2 5.3Z"></path><circle cx="12" cy="12" r="3.2"></circle></svg>',
   back:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 3L5 8l5 5"></path></svg>',
@@ -731,6 +732,9 @@ const ICON={
   pause:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>',
   bulb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1.3 1.7 1.5 2.5h5c.2-.8.7-1.7 1.5-2.5A6 6 0 0 0 12 3z"></path></svg>',
   cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>',
+  trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"></path><path d="M17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"></path></svg>',
+  ask:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .9-1 1.6v.4"></path><path d="M12 17h.01"></path></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>',
   book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg>'
 };
 function dots(level){let s='<span class="dots" aria-hidden="true">';for(let i=0;i<5;i++)s+=`<i class="${i<=level?'on':''}"></i>`;return s+'</span>';}
@@ -789,41 +793,42 @@ function renderHome(){
   }).join('');
   let daily;
   const streakTxt=n=>n>=2?esc(t('streak',{n})):'';
-  const dkick=`<div class="row"><span class="kick red">${esc(t('daily'))}</span><span class="date">${esc(dateLabel(d.day))}</span></div>`;
+  const dkick=`<h2 class="sec">${esc(t('daily'))}</h2>`,ddate=`<span class="date">${esc(dateLabel(d.day))}</span>`;
   if(res&&res.done){
     const bits=[res.prof!=null?esc(t('profScore',{s:fmt(res.prof)})):'',streakTxt(stats.daily.streak||1),esc(t('dailyNext'))].filter(Boolean);
-    daily=`<section class="slip daily" aria-label="${esc(t('daily'))}">${dkick}
-      <h2>${esc(t('dailyDone',{s:fmt(res.score)}))}</h2>
-      <p>${bits.join(' · ')}</p>
-      <div class="btnRow"><button type="button" class="btnRed" data-act="daily">${esc(t('seeReceipt'))}</button></div></section>`;
+    daily=`${dkick}<div class="drow"><h2>${esc(t('dailyDone',{s:fmt(res.score)}))}</h2>${ddate}</div>
+      <p class="note left">${bits.join(' · ')}</p>
+      <button type="button" class="btnRed" data-act="daily">${esc(t('seeReceipt'))}</button>`;
   }else{
     const inprog=items.find(x=>x.m==='daily');
     /* the dice shown are today's real opening roll: the same for everyone */
     const first=E.rollDice(E.freshTurn(dailyRules().dice),'daily:'+d.day,0).dice;
     const st=streakTxt(stats.daily.streak||0);
-    daily=`<section class="slip daily" aria-label="${esc(t('daily'))}">${dkick}
-      <h2>${esc(t('dailyTitle'))}</h2>
+    daily=`${dkick}<div class="drow"><h2>${esc(t('dailyTitle'))}</h2>${ddate}</div>
       <div class="minidice" role="img" aria-label="${esc(first.join(' '))}">${first.map(mdie).join('')}</div>
       <button type="button" class="btnRed" data-act="daily">${esc(inprog?t('dailyResume'):t('dailyPlay'))}</button>
-      <p>${esc(t('dailyHow'))}${st?' · '+st:''}</p></section>`;
+      <p class="note">${esc(t('dailyHow'))}${st?' · '+st:''}</p>`;
   }
   const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
   $('home').innerHTML=`
     <div class="hero">
       <picture><source type="image/webp" srcset="art/home-800.webp 800w, art/home-1280.webp 1280w" sizes="100vw"><img src="art/home-800.jpg" alt="" width="800" height="446" decoding="async"></picture>
       <div class="wrap"><header class="top">
-        <div class="mark"><span class="word">Pip <span class="amp">&amp;</span> Cup</span></div>
+        <div class="mark"><span class="word">Yamb <span class="amp">Café</span></span></div>
         <div class="icons"><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
       </header></div>
     </div>
     <div class="wrap"><main class="homeIn">
       ${resumes?`<div class="modes">${resumes}</div>`:''}
-      ${daily}
-      <button type="button" class="bigmode" data-act="open" data-k="cpu">
-        <span class="bt"><span class="mt">${esc(t('playChar'))}</span><span class="md">${esc(t('cpuD'))}</span><span class="faces" aria-hidden="true">${faces}</span></span>${ICON.chev}</button>
-      <button type="button" class="bigmode" data-act="open" data-k="friends">
-        <span class="bt"><span class="mt">${esc(t('friends'))}</span><span class="md">${esc(t('friendsD'))}</span></span>${ICON.chev}</button>
-      <div class="footrow"><button type="button" class="sbtn ghost" data-act="open" data-k="records">${esc(t('records'))}</button><button type="button" class="sbtn ghost" data-act="open" data-k="howto">${esc(t('howTo'))}</button></div>${nudgeHTML()}
+      <section class="menu"><div class="menuIn">
+        ${daily}
+        <h2 class="sec next">${esc(t('atTable'))}</h2>
+        <button type="button" class="token" data-act="open" data-k="cpu">
+          <span class="bt"><span class="mt">${esc(t('playChar'))}</span><span class="md">${esc(t('cpuD'))}</span><span class="faces" aria-hidden="true">${faces}</span></span><span class="badge">${ICON.arrow}</span></button>
+        <button type="button" class="token" data-act="open" data-k="friends">
+          <span class="bt"><span class="mt">${esc(t('friends'))}</span><span class="md">${esc(t('friendsD'))}</span></span><span class="badge blue">${ICON.arrow}</span></button>
+        <div class="pills"><button type="button" class="pillbtn" data-act="open" data-k="records">${ICON.trophy}<span>${esc(t('records'))}</span></button><button type="button" class="pillbtn" data-act="open" data-k="howto">${ICON.ask}<span>${esc(t('howTo'))}</span></button></div>
+      </div></section>${nudgeHTML()}
     </main></div>`;
 }
 
@@ -923,7 +928,7 @@ function renderTray(){
   const annPill=tn.announced?`<span class="pill">N · ${esc(rowName(tn.announced))}</span>`:'';
   const clockOn=clockGame();
   const clockHTML=clockOn?`<span class="clockgrp"><span class="clock" id="clock" aria-label="${esc(t('tTimer'))}">–</span>${G.paused?'':`<button type="button" class="pzbtn" data-act="pause" aria-label="${esc(t('tPause'))}">${ICON.pause}</button>`}</span>`:'';
-  const who=`<span class="st"><b class="who">${esc(name(c))}</b><span>·</span><span>${esc(g.mode==='table'?t('tableTurn'):tn.roll?t('rollOf',{n:tn.roll}):t('toPlay'))}</span></span>`;
+  const who=`<span class="st"><b class="who">${esc(name(c))}</b><span class="rpill">${esc(g.mode==='table'?t('tableTurn'):tn.roll?t('rollOf',{n:tn.roll}):t('toPlay'))}</span></span>`;
   const idle=label=>`<button type="button" class="glass" disabled><b>${esc(label)}</b></button>`;
   const tipOn=ui.tip&&(ui.tip.type==='hold'||ui.tip.type==='announce');
   if(g.mode==='table'&&!g.over){
@@ -1145,7 +1150,7 @@ function renderModal(){
         `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
         `<div class="toggle"><span>${esc(t('modeRules'))}<small>${esc(rulesBrief(prefs.rules))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
-        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Pip &amp; Cup ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
+        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
       break;
     case 'lang':
       h=head(t('language'))+`<div class="langlist">${I.list().map(l=>`<button type="button" data-act="setlang" data-v="${l.code}" aria-pressed="${l.code===prefs.lang}"><span>${esc(l.name)}</span><span>${esc(l.short)}</span></button>`).join('')}</div>`;
@@ -1570,7 +1575,7 @@ function toast(msg,bad){
   clearTimeout(ui.msgT);ui.msgT=setTimeout(()=>{el.hidden=true;},Math.max(3200,1600+String(msg).length*45));
 }
 async function shareText(text,url){
-  try{if(navigator.share){await navigator.share({title:'Pip & Cup',text,url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  try{if(navigator.share){await navigator.share({title:'Yamb Café',text,url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
   const all=url&&!text.includes(url)?text+'\n'+url:text;
   try{await navigator.clipboard.writeText(all);toast(t('copied'));}catch(e){toast(all);}
 }

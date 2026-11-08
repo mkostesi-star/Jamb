@@ -1,7 +1,7 @@
 {
-  "name": "Pip & Cup",
-  "short_name": "Pip & Cup",
-  "description": "Pip & Cup: Jamb, the classic dice game, with daily dice, fair duels, house rules, characters, a coach and a real-dice score sheet.",
+  "name": "Yamb Café",
+  "short_name": "Yamb Café",
+  "description": "Yamb Café: Yamb (Jamb), the classic dice game, with daily dice, fair duels, house rules, characters, a coach and a real-dice score sheet.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",
