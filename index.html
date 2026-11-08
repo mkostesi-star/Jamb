@@ -94,7 +94,7 @@ button{cursor:pointer}
 .daily h2{margin:0;font:700 27px/1.1 var(--f-hand);color:var(--ink)}
 .daily p{margin:0;font:400 17px/1.3 var(--f-hand);color:var(--muted)}
 .minidice{display:flex;gap:7px}
-.mdie{width:30px;height:30px;box-sizing:border-box;padding:5px;border-radius:7px;background:var(--die);box-shadow:inset 0 -3px 0 var(--die-edge),0 2px 3px rgba(0,0,0,.25);display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);place-items:center}
+.mdie{width:32px;height:32px;display:block;border-radius:16%;box-shadow:0 2px 3px rgba(0,0,0,.25)}
 .mdie i{width:4.5px;height:4.5px;border-radius:50%;background:var(--pip);visibility:hidden}
 .mdie i.on{visibility:visible}.mdie i.one{background:var(--pip-one);width:6.5px;height:6.5px}
 .btnRed{min-height:48px;border:0;border-radius:10px;background:var(--cloth);color:#FFF7EA;font:700 17px var(--f-ui);letter-spacing:.01em;box-shadow:0 3px 0 var(--cloth-lo);padding:0 16px}
@@ -220,7 +220,10 @@ sup{font:700 calc(10px*var(--z)) var(--f-ui);color:var(--pc);margin-left:1px;ver
 .dice{display:flex;justify-content:center;gap:clamp(8px,3vw,14px);padding-top:20px;min-height:66px;align-items:flex-end}
 .dice.six{gap:clamp(6px,2vw,10px)}
 .die{--d:clamp(44px,13.5vw,58px);width:var(--d);height:var(--d);flex:none;box-sizing:border-box;padding:calc(var(--d)*.14);border:0;border-radius:23%;background:var(--die);
-  box-shadow:inset 0 -4px 0 var(--die-edge),0 4px 4px rgba(0,0,0,.45);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);place-items:center;transition:transform .16s ease,box-shadow .16s ease;transform:rotate(var(--r,0deg))}
+  box-shadow:0 4px 4px rgba(0,0,0,.45);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);place-items:center;transition:transform .16s ease,box-shadow .16s ease;transform:rotate(var(--r,0deg))}
+/* the painted dice (art/dice): one look for every die in the game */
+.die:not(.unset),.mdie{padding:0;background:transparent;border-radius:16%}
+.die img.dface,.mdie img.dface{grid-area:1/1/4/4;width:100%;height:100%;display:block;pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
 .six .die{--d:clamp(40px,12vw,52px)}
 .die i{display:block;width:calc(var(--d)*.16);height:calc(var(--d)*.16);border-radius:50%;background:var(--pip);visibility:hidden;box-shadow:inset 0 1px 1px rgba(0,0,0,.45)}
 .die i.on{visibility:visible}
@@ -231,12 +234,12 @@ sup{font:700 calc(10px*var(--z)) var(--f-ui);color:var(--pc);margin-left:1px;ver
 .dslot.kept::after{opacity:1;transform:scale(1)}
 .dslot .die{position:relative;z-index:1}
 .die.held{transform:translateY(-16px) scale(1.08);
-  box-shadow:inset 0 -4px 0 var(--die-edge),0 0 0 3px var(--pcl,var(--cream)),0 0 18px 3px rgba(255,255,255,.35),0 20px 14px -8px rgba(0,0,0,.6);
-  box-shadow:inset 0 -4px 0 var(--die-edge),0 0 0 3px var(--pcl,var(--cream)),0 0 18px 3px color-mix(in srgb,var(--pcl,#fff) 65%,transparent),0 20px 14px -8px rgba(0,0,0,.6)}
+  box-shadow:0 0 0 3px var(--pcl,var(--cream)),0 0 18px 3px rgba(255,255,255,.35),0 20px 14px -8px rgba(0,0,0,.6);
+  box-shadow:0 0 0 3px var(--pcl,var(--cream)),0 0 18px 3px color-mix(in srgb,var(--pcl,#fff) 65%,transparent),0 20px 14px -8px rgba(0,0,0,.6)}
 .die.held.popin{animation:popkeep .34s cubic-bezier(.34,1.56,.64,1)}
 @keyframes popkeep{0%{scale:.9}55%{scale:1.1}100%{scale:1}}
 .die.ghost{outline:2.5px dashed var(--gold);outline-offset:4px}
-.die.idle{opacity:.28;box-shadow:inset 0 -4px 0 var(--die-edge)}
+.die.idle{opacity:.28;box-shadow:none}
 .die.unset{background:rgba(246,238,220,.12);box-shadow:inset 0 0 0 2px var(--cream-line);color:var(--cream);font:700 22px var(--f-ui);display:grid;place-items:center;grid-template:none;padding:0}
 .die:disabled{cursor:default}
 .die.tumble{animation:tumble .56s cubic-bezier(.3,.7,.4,1) infinite}
@@ -354,7 +357,7 @@ sup{font:700 calc(10px*var(--z)) var(--f-ui);color:var(--pc);margin-left:1px;ver
 .scanbox{position:relative;width:100%;aspect-ratio:4/3;max-width:100%;background:#000;border-radius:12px;overflow:hidden}
 .scanbox video,.scanbox canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .found{display:flex;gap:6px;justify-content:center;margin-top:10px;min-height:40px}
-.found .mdie{width:38px;height:38px;padding:6px}
+.found .mdie{width:40px;height:40px}
 .found .mdie i{width:6px;height:6px}.found .mdie i.one{width:8px;height:8px}
 .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;max-width:calc(100% - 32px);padding:10px 14px;border-radius:10px;background:var(--slip);color:var(--text);font:600 15px var(--f-ui);box-shadow:0 8px 20px -6px var(--shadow);animation:pop .2s ease-out}
 .toast.bad{background:#FFE3DD;color:#7A1C14}
@@ -514,13 +517,13 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=73"></script>
-<script src="ai.js?v=73"></script>
-<script src="i18n.js?v=73"></script>
-<script src="audio.js?v=73"></script>
-<script src="music.js?v=73"></script>
-<script src="fx.js?v=73"></script>
-<script src="scan.js?v=73"></script>
-<script src="app.js?v=73"></script>
+<script src="engine.js?v=74"></script>
+<script src="ai.js?v=74"></script>
+<script src="i18n.js?v=74"></script>
+<script src="audio.js?v=74"></script>
+<script src="music.js?v=74"></script>
+<script src="fx.js?v=74"></script>
+<script src="scan.js?v=74"></script>
+<script src="app.js?v=74"></script>
 </body>
 </html>
