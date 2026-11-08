@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v7.2';
+const VERSION='v7.3';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -574,7 +574,7 @@ async function dailyImage(day){
   row(t('streakShort'),stats.daily.streak||1,cy+610);
   line(cy+660);
   x.textAlign='center';x.fillStyle='#6B655C';x.font=`400 28px ${fR}`;x.fillText(t('dailySame'),mid,cy+715);
-  x.fillStyle='#F6EEDC';x.font=`700 34px ${fUI}`;x.fillText('Jamb',mid,cy+chh+78);
+  x.fillStyle='#F6EEDC';x.font=`700 34px ${fUI}`;x.fillText('Pip & Cup',mid,cy+chh+78);
   return new Promise(res=>cv.toBlob(b=>res(b),'image/png'));
 }
 async function shareDaily(day){
@@ -756,7 +756,7 @@ function renderHome(){
     <div class="hero">
       <picture><source type="image/webp" srcset="art/home-800.webp 800w, art/home-1280.webp 1280w" sizes="100vw"><img src="art/home-800.jpg" alt="" width="800" height="446" decoding="async"></picture>
       <div class="wrap"><header class="top">
-        <div class="mark"><span class="word">Jamb</span><span class="tag">${esc(t('tagline'))}</span></div>
+        <div class="mark"><span class="word">Pip <span class="amp">&amp;</span> Cup</span></div>
         <div class="icons"><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
       </header></div>
     </div>
@@ -1088,7 +1088,7 @@ function renderModal(){
         `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
         `<div class="toggle"><span>${esc(t('modeRules'))}<small>${esc(rulesBrief(prefs.rules))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
-        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Jamb ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
+        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Pip &amp; Cup ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
       break;
     case 'lang':
       h=head(t('language'))+`<div class="langlist">${I.list().map(l=>`<button type="button" data-act="setlang" data-v="${l.code}" aria-pressed="${l.code===prefs.lang}"><span>${esc(l.name)}</span><span>${esc(l.short)}</span></button>`).join('')}</div>`;
@@ -1503,7 +1503,7 @@ function toast(msg,bad){
   clearTimeout(ui.msgT);ui.msgT=setTimeout(()=>{el.hidden=true;},Math.max(3200,1600+String(msg).length*45));
 }
 async function shareText(text,url){
-  try{if(navigator.share){await navigator.share({title:'Jamb',text,url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
+  try{if(navigator.share){await navigator.share({title:'Pip & Cup',text,url});return;}}catch(e){if(e&&e.name==='AbortError')return;}
   const all=url&&!text.includes(url)?text+'\n'+url:text;
   try{await navigator.clipboard.writeText(all);toast(t('copied'));}catch(e){toast(all);}
 }

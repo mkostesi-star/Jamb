@@ -1,7 +1,7 @@
 {
-  "name": "Jamb",
-  "short_name": "Jamb",
-  "description": "Jamb, the Balkan dice game: daily dice, fair duels, house rules, characters, a coach and a real-dice score sheet.",
+  "name": "Pip & Cup",
+  "short_name": "Pip & Cup",
+  "description": "Pip & Cup: Jamb, the classic dice game, with daily dice, fair duels, house rules, characters, a coach and a real-dice score sheet.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",
@@ -9,8 +9,8 @@
   "background_color": "#2A1A0D",
   "theme_color": "#2A1A0D",
   "icons": [
-    { "src": "icons/v6/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/v6/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/v6/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/v7/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/v7/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/v7/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

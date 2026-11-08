@@ -843,13 +843,16 @@ for(const l in STICK)V7[l].emo_ohno=STICK[l];
 const MUSD={en:'Café tunes and Balkan melodies',hr:'Melodije iz kafića i s Balkana',sr:'Melodije iz kafića i sa Balkana',bs:'Melodije iz kafića i sa Balkana',sl:'Melodije iz kavarne in z Balkana',mk:'Мелодии од кафе и од Балканот',de:'Café-Melodien und Balkan-Klänge'};
 for(const l in MUSD)V7[l].sMusicD=MUSD[l];
 for(const l in V7)Object.assign(D[l],V7[l]);
+/* v7.3: the app is called Pip & Cup; the game inside it is still Jamb (rows, rules, the Daily). */
+const BRAND='Pip & Cup';
+for(const l in D)['instIOS','instAndroid','nudgeT'].forEach(k=>{if(typeof D[l][k]==='string')D[l][k]=D[l][k].replace(/Jamb|Јамб/,BRAND);});
 
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
 const LAT2CYR=[['DŽ','Џ'],['Dž','Џ'],['dž','џ'],['LJ','Љ'],['Lj','Љ'],['lj','љ'],['NJ','Њ'],['Nj','Њ'],['nj','њ'],
   ['A','А'],['B','Б'],['V','В'],['G','Г'],['D','Д'],['Đ','Ђ'],['E','Е'],['Ž','Ж'],['Z','З'],['I','И'],['J','Ј'],['K','К'],['L','Л'],['M','М'],['N','Н'],['O','О'],['P','П'],['R','Р'],['S','С'],['T','Т'],['Ć','Ћ'],['U','У'],['F','Ф'],['H','Х'],['C','Ц'],['Č','Ч'],['Š','Ш'],
   ['a','а'],['b','б'],['v','в'],['g','г'],['d','д'],['đ','ђ'],['e','е'],['ž','ж'],['z','з'],['i','и'],['j','ј'],['k','к'],['l','л'],['m','м'],['n','н'],['o','о'],['p','п'],['r','р'],['s','с'],['t','т'],['ć','ћ'],['u','у'],['f','ф'],['h','х'],['c','ц'],['č','ч'],['š','ш']];
 function cyr(s){
-  return s.split(/(<[^>]*>|\{[^}]*\}|https?:\/\/\S+|Safari|Chrome|Edge)/).map((part,i)=>{
+  return s.split(/(<[^>]*>|\{[^}]*\}|https?:\/\/\S+|Safari|Chrome|Edge|Pip & Cup)/).map((part,i)=>{
     if(i%2){/* plural forms inside {n|…} are words, so they get transliterated too */
       if(part[0]==='{'&&part.includes('|')){const j=part.indexOf('|');return part.slice(0,j+1)+cyr(part.slice(j+1,-1))+'}';}
       return part;
