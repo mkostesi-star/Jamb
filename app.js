@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v7.5';
+const VERSION='v7.6';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -118,7 +118,7 @@ function untouched(){
 function mayUndo(){
   if(!G||!G.undo||!untouched())return false;
   if(G.mode==='daily'||G.mode==='duel')return false;
-  if(G.mode==='online')return onlineReady()&&G.undo.current===mySeat();
+  if(G.mode==='online')return onlineReady()&&G.undo.current===mySeat()&&(!isBot(G.current)||online.host);
   if(G.mode==='cpu'||G.mode==='pp')return !isBot(G.undo.current);
   return true;
 }
@@ -229,7 +229,7 @@ function readyApply(seat,force){
   if(!G||!G.paused)return false;
   const r=G.paused.ready||(G.paused.ready=[]);
   if(seat!=null){const i=r.indexOf(seat);if(i>=0)r.splice(i,1);else r.push(seat);}
-  const need=G.mode==='online'?G.players.map((p,i)=>i):humanSeats(G);
+  const need=humanSeats(G);
   if(force||need.every(i=>r.includes(i))){G.deadline=Date.now()+(G.left!=null?G.left:timerSec(G)*1000);G.left=null;G.paused=null;}
   return true;
 }
@@ -452,11 +452,14 @@ function showHint(){
 }
 
 /* ---------- characters ---------- */
-function say(i,ev,vars){
+function say(i,ev,vars,fromNet){
   const p=G&&G.players[i];if(!p||p.kind!=='cpu')return;
+  /* in a game on several phones the computers live on the host's phone; it tells the others what they say,
+     and each phone picks the words in its own language */
+  if(G.mode==='online'&&!fromNet){if(!(online&&online.host))return;const m={t:'say',i,ev,vars:vars||null};openConns().forEach(c=>sendTo(c,m));}
   const lines=tl('ch.'+p.char+'.'+ev);if(!lines.length)return;
   let s=lines[Math.floor(Math.random()*lines.length)];
-  for(const k in (vars||{}))s=s.split('{'+k+'}').join(vars[k]);
+  for(const k in (vars||{}))s=s.split('{'+k+'}').join(k==='row'?rowName(vars[k]):vars[k]);
   ui.bubble={i,text:s};clearTimeout(ui.bubbleT);
   ui.bubbleT=setTimeout(()=>{ui.bubble=null;if(screen==='game')renderBubble();},4200);
   if(screen==='game')renderBubble();
@@ -473,7 +476,7 @@ function react(p,r,s){
 /* ---------- computer turns ---------- */
 const bot={tk:0,timer:0};
 function cancelBot(){bot.tk++;clearTimeout(bot.timer);ui.botPick=null;}
-function botTurn(){return screen==='game'&&G&&!G.over&&!G.paused&&(G.mode==='cpu'||G.mode==='pp')&&isBot(G.current);}
+function botTurn(){return screen==='game'&&G&&!G.over&&!G.paused&&(G.mode==='cpu'||G.mode==='pp'||(G.mode==='online'&&!!online&&online.host&&onlineReady()&&G.status==='playing'))&&isBot(G.current);}
 function botLater(ms,fn){const tk=bot.tk;clearTimeout(bot.timer);bot.timer=setTimeout(()=>{if(tk===bot.tk&&botTurn())fn();},ms);}
 function maybeBot(){if(botTurn()&&!ui.rolling)botLater(G.turn.roll===0?1400:900,botStep);}
 function botStep(){
@@ -482,7 +485,7 @@ function botStep(){
   let a=null;
   try{a=AI.decide({rules:G.rules,sheet:cur().sheet,turn:tn},cur().char);}catch(e){a=null;}
   if(a&&a.type==='write'&&legal(a.c,a.r)){ui.botPick={c:a.c,r:a.r};setView(G.current);render();botLater(950,()=>writeCore(a.c,a.r));return;}
-  if(a&&a.type==='announce'&&E.canAnnounce(G.rules,cur().sheet,tn,a.r)){tn.announced=a.r;say(G.current,'calls',{row:rowName(a.r)});saveGame();render();botLater(900,()=>botHold(a.held));return;}
+  if(a&&a.type==='announce'&&E.canAnnounce(G.rules,cur().sheet,tn,a.r)){tn.announced=a.r;say(G.current,'calls',{row:a.r});saveGame();render();botLater(900,()=>botHold(a.held));return;}
   if(a&&a.type==='hold'&&E.canRollAgain(G.rules,cur().sheet,tn)){botHold(a.held);return;}
   const l=E.legalList(G.rules,cur().sheet,tn);if(l.length)writeCore(l[0].c,l[0].r);
 }
@@ -703,7 +706,7 @@ function rematch(){
   const st=((G.starter||0)+1)%plist.length;
   if(G.mode==='online'){
     const g=makeGame('online',G.rules,plist,{code:G.code,status:'playing',rev:G.rev||0,timer:G.timer||null});g.starter=st;g.current=st;startClock(g);
-    G=g;ui.view=st;saveGame();closeModal();render();return;
+    G=g;ui.view=st;saveGame();closeModal();render();maybeBot();return;
   }
   const g=makeGame(G.mode,G.rules,plist,{timer:G.timer||null});g.starter=st;g.current=st;g.view=st;startClock(g);
   openGame(g);
@@ -940,6 +943,7 @@ function renderTray(){
     acts=`<button type="button" class="bigbtn go" data-act="results">${esc(t('results'))}</button><button type="button" class="bigbtn ghost" data-act="exit">${esc(t('menu'))}</button>`;
   }else if(g.mode==='online'&&g.status==='waiting'){
     st=`<span class="st">${esc(t('playersN',{n:g.players.length}))}</span>`;
+    if(online.host)st+=(g.players.length<MAX_PLAYERS?`<button type="button" class="lnk" data-act="onaddbot">+ ${esc(t('addComputer'))}</button>`:'')+(botSeats().length?`<button type="button" class="lnk minus" data-act="onrmbot" aria-label="${esc(t('rmComputer'))}" title="${esc(t('rmComputer'))}">−</button>`:'');
     if(online.host){hint=esc(t('lobbyHost'));acts=`<button type="button" class="bigbtn cream" data-act="share">${esc(t('shareLink'))}</button><button type="button" class="bigbtn go" data-act="startonline"${g.players.length<2?' disabled':''}>${esc(t('startNow'))}</button>`;}
     else{hint=esc(t('lobbyGuest',{name:name(0)}));acts=idle(t('waitStart'));}
   }else if(othersTurn()){
@@ -978,7 +982,7 @@ function renderTray(){
   if(guideTip())hint='&nbsp;';/* the tip card says it; the tray line stays quiet */
   if(ui.msg)hint=`<span class="err">${esc(ui.msg)}</span>`;
   if(clockOn&&g.paused){
-    const r=g.paused.ready||[],seats=g.mode==='online'?g.players.map((p,i)=>i):humanSeats(g),me2=mySeat();
+    const r=g.paused.ready||[],seats=humanSeats(g),me2=mySeat();
     const by=g.paused.by!=null&&g.players[g.paused.by]?name(g.paused.by):'';
     const btns=seats.map(i=>{const on=r.includes(i),can=g.mode==='pp'||i===me2;
       return `<button type="button" class="rdy${on?' on':''}" style="--pc:${PCOL[i%6]}" data-act="ready" data-i="${i}"${can?'':' disabled'}>${on?'✓ ':''}${esc(name(i))}</button>`;}).join('');
@@ -1429,7 +1433,7 @@ function onHostData(conn,d){
   if(d.t==='pause'||d.t==='ready'){
     const seat=G.players.findIndex(p=>p.cid&&p.cid===d.cid);if(seat<0)return;
     const ok=d.t==='pause'?(clockGame()&&pauseApply(seat)):readyApply(seat);
-    if(ok){saveGame();render();if(d.t==='ready'&&!G.paused)A.turn();}
+    if(ok){saveGame();render();if(d.t==='ready'&&!G.paused){A.turn();maybeBot();}}
     return;
   }
   if(d.t==='hello'){
@@ -1458,6 +1462,11 @@ function onGuestData(d){
   if(!d||typeof d!=='object'||!online)return;
   if(d.t==='full'){setNet('full');return;}
   if(d.t==='emote'){onEmote(d,null);return;}
+  if(d.t==='say'){
+    if(!onlineReady()||!Number.isInteger(d.i)||!isBot(d.i)||typeof d.ev!=='string'||!/^[A-Za-z]{2,12}$/.test(d.ev))return;
+    const v=d.vars&&typeof d.vars==='object'&&ROWS.includes(d.vars.row)?{row:d.vars.row}:null;
+    say(d.i,d.ev,v,true);return;
+  }
   if(d.t==='state'&&d.G&&sameGame(d.G)){
     const mine=onlineReady()?(G.rev||0):-1,r=d.G.rev||0;
     if(r>mine)applyRemote(d.G);else if(r<mine)sendState();
@@ -1476,13 +1485,16 @@ function applyRemote(x){
       setTimeout(()=>rollFx(idx,()=>{const pend=net.pending;net.pending=null;if(pend&&(pend.rev||0)>(G.rev||0))applyRemote(pend);}),0);
     }
     for(let p=0;p<G.players.length;p++)for(const c of G.rules.cols)for(const r of ROWS){
-      if(old.players[p]&&old.players[p].sheet[c]&&old.players[p].sheet[c][r]===null&&G.players[p].sheet[c][r]!==null){ui.just={p,c,r};A.write();setTimeout(()=>{ui.just=null;},700);}
+      if(old.players[p]&&old.players[p].sheet[c]&&old.players[p].sheet[c][r]===null&&G.players[p].sheet[c][r]!==null){ui.just={p,c,r};A.write();setTimeout(()=>{ui.just=null;},700);if(online.host)react(p,r,G.players[p].sheet[c][r]);}
     }
-    if(G.over&&!old.over){recordGame(G);setTimeout(()=>openModal('result'),1200);}
+    if(G.over&&!old.over){
+      recordGame(G);setTimeout(()=>openModal('result'),1200);
+      if(online.host&&botSeats().length){const w=standings(G)[0].i,b=isBot(w)?w:someBot(-1);if(b>=0)setTimeout(()=>say(b,b===w?'win':'lose'),900);}
+    }
   }
   if(ui.view==null)ui.view=G.current;
   if(ui.sel&&!canWriteUI(G.current,ui.sel.c,ui.sel.r))ui.sel=null;
-  saveOnline();render();
+  saveOnline();render();maybeBot();
 }
 setInterval(()=>{
   const now=Date.now(),all=online&&online.host?openConns():(net.conn&&net.conn.open?[net.conn]:[]);
@@ -1519,6 +1531,8 @@ function startOnlineGame(){
   if(!onlineReady()||!online.host||G.status!=='waiting'||G.players.length<2)return;
   G.status='playing';G.current=0;G.starter=0;G.turn=freshTurn(G);ui.view=0;startClock(G);
   saveGame();render();
+  const b=someBot(-1);if(b>=0)setTimeout(()=>say(b,'greet'),600);
+  maybeBot();
 }
 function statusText(){
   switch(net.state){
@@ -1632,7 +1646,24 @@ function act(el,d){
     case 'cancel':ui.sel=null;render();break;
     case 'undo':doUndo();break;
     case 'hint':showHint();break;
-    case 'view':setView(+d.p);if(G.mode!=='online')saveGame();render();break;
+    case 'view':{
+      const p=+d.p;
+      /* in the lobby the host taps a computer to swap it for another character */
+      if(G.mode==='online'&&online&&online.host&&G.status==='waiting'&&isBot(p)){G.players[p].char=nextChar(G.players,G.players[p].char);A.tap();saveGame();render();break;}
+      setView(p);if(G.mode!=='online')saveGame();render();break;
+    }
+    case 'onaddbot':{
+      if(!onlineReady()||!online.host||G.status!=='waiting'||G.players.length>=MAX_PLAYERS)break;
+      const first=!botSeats().length;
+      G.players.push({name:null,kind:'cpu',char:nextChar(G.players),cid:null,sheet:E.newSheet(G.rules)});
+      saveGame();render();if(first)toast(t('botSwap'));break;
+    }
+    case 'onrmbot':{
+      if(!onlineReady()||!online.host||G.status!=='waiting')break;
+      const b=botSeats().pop();if(b==null)break;
+      G.players.splice(b,1);if(Array.isArray(G.stats))G.stats.splice(b,1);
+      saveGame();render();break;
+    }
     case 'exit':goHome();break;
     case 'results':openModal('result');break;
     case 'tdie':tableDie(+d.i);break;

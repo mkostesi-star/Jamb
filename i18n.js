@@ -842,6 +842,17 @@ for(const l in STICK)V7[l].emo_ohno=STICK[l];
 /* Music (v7.2): recorded café and Balkan tracks replace the synthesized waltz. */
 const MUSD={en:'Music while you play',hr:'Glazba dok igraš',sr:'Muzika dok igraš',bs:'Muzika dok igraš',sl:'Glasba med igro',mk:'Музика додека играш',de:'Musik beim Spielen'};
 for(const l in MUSD)V7[l].sMusicD=MUSD[l];
+/* computers in games on several phones */
+const ONBOT={
+  en:['Tap a computer\u2019s name to pick another opponent.','Remove a computer'],
+  hr:['Dodirni ime računala da odabereš drugog protivnika.','Makni računalo'],
+  sr:['Dodirni ime računara da izabereš drugog protivnika.','Skloni računar'],
+  bs:['Dodirni ime računara da izabereš drugog protivnika.','Skloni računar'],
+  sl:['Tapni ime računalnika, da izbereš drugega nasprotnika.','Odstrani računalnik'],
+  mk:['Допри го името на компјутерот за да избереш друг противник.','Тргни компјутер'],
+  de:['Tippe auf den Namen eines Computers, um einen anderen Gegner zu wählen.','Computer entfernen']
+};
+for(const l in ONBOT){V7[l].botSwap=ONBOT[l][0];V7[l].rmComputer=ONBOT[l][1];}
 for(const l in V7)Object.assign(D[l],V7[l]);
 /* v7.3: the app is called Pip & Cup; the game inside it is still Jamb (rows, rules, the Daily). */
 const BRAND='Pip & Cup';
