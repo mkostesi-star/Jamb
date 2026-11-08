@@ -56,7 +56,8 @@ button{cursor:pointer}
 /* header */
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:calc(14px + env(safe-area-inset-top,0px)) 12px}
 .mark{display:flex;flex-direction:column;gap:2px;min-width:0}
-.word{font:400 clamp(30px,8.6vw,42px)/1 var(--f-sign);white-space:nowrap;color:var(--cream);text-shadow:0 2px 0 rgba(0,0,0,.35);letter-spacing:.01em}
+/* the wordmark: cream and coffee letters with a crisp near-black outline (drawn behind the letters, so they keep their weight) and a hard drop shadow */
+.word{font:400 clamp(30px,8.6vw,42px)/1 var(--f-sign);white-space:nowrap;color:var(--cream);letter-spacing:.03em;-webkit-text-stroke:.11em #140B05;paint-order:stroke fill;text-shadow:0 .08em 0 #140B05}
 .tag{font:400 18px/1.1 var(--f-hand);color:var(--cream-dim)}
 .word .amp{color:var(--coffee)}
 .icons{display:flex;gap:8px}
@@ -74,7 +75,7 @@ button{cursor:pointer}
 .hero::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
   background:linear-gradient(180deg,rgba(30,17,8,.78) 0%,rgba(30,17,8,.35) 32%,rgba(30,17,8,0) 52%)}
 .hero .wrap{position:absolute;inset:0 0 auto;z-index:2}
-.hero .word{text-shadow:0 2px 10px rgba(0,0,0,.55)}
+.hero .word{text-shadow:0 .08em 0 #140B05,0 4px 14px rgba(0,0,0,.35)}
 .hero .tag{color:var(--cream);text-shadow:0 1px 6px rgba(0,0,0,.6)}
 .hero .ibtn{background:rgba(30,17,8,.35);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
 .hero+.wrap .homeIn{position:relative;z-index:3;margin-top:-44px;padding-top:0}
@@ -566,13 +567,13 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=80"></script>
-<script src="ai.js?v=80"></script>
-<script src="i18n.js?v=80"></script>
-<script src="audio.js?v=80"></script>
-<script src="music.js?v=80"></script>
-<script src="fx.js?v=80"></script>
-<script src="scan.js?v=80"></script>
-<script src="app.js?v=80"></script>
+<script src="engine.js?v=81"></script>
+<script src="ai.js?v=81"></script>
+<script src="i18n.js?v=81"></script>
+<script src="audio.js?v=81"></script>
+<script src="music.js?v=81"></script>
+<script src="fx.js?v=81"></script>
+<script src="scan.js?v=81"></script>
+<script src="app.js?v=81"></script>
 </body>
 </html>

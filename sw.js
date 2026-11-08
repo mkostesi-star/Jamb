@@ -1,7 +1,7 @@
 /* Keeps Yamb Café working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v8.0';
+const CACHE = 'jamb-v8.1';
 const CORE = [
-  './', 'index.html', 'engine.js?v=80', 'ai.js?v=80', 'i18n.js?v=80', 'audio.js?v=80', 'music.js?v=80', 'fx.js?v=80', 'scan.js?v=80', 'app.js?v=80', 'manifest.webmanifest',
+  './', 'index.html', 'engine.js?v=81', 'ai.js?v=81', 'i18n.js?v=81', 'audio.js?v=81', 'music.js?v=81', 'fx.js?v=81', 'scan.js?v=81', 'app.js?v=81', 'manifest.webmanifest',
   'icons/v7/icon-192.png', 'icons/v7/apple-touch-icon.png', 'icons/v7/favicon-64.png',
   'art/home-800.webp', 'art/home-1280.webp', 'art/home-800.jpg', 'art/wood-768.webp', 'art/winner-800.webp', 'art/daily-800.webp',
   'art/cast/ema.webp', 'art/cast/nono.webp', 'art/cast/mira.webp', 'art/cast/joza.webp', 'art/cast/profesor.webp',
