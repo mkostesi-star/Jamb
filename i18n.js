@@ -840,7 +840,7 @@ for(const l in GUIDE)Object.assign(V7[l],GUIDE[l]);
 const STICK={en:'Oh no!',hr:'Joj!',sr:'Joj!',bs:'Joj!',sl:'Ojoj!',mk:'Јао!',de:'Oh nein!'};
 for(const l in STICK)V7[l].emo_ohno=STICK[l];
 /* Music (v7.2): recorded café and Balkan tracks replace the synthesized waltz. */
-const MUSD={en:'Café tunes and Balkan melodies',hr:'Melodije iz kafića i s Balkana',sr:'Melodije iz kafića i sa Balkana',bs:'Melodije iz kafića i sa Balkana',sl:'Melodije iz kavarne in z Balkana',mk:'Мелодии од кафе и од Балканот',de:'Café-Melodien und Balkan-Klänge'};
+const MUSD={en:'Music while you play',hr:'Glazba dok igraš',sr:'Muzika dok igraš',bs:'Muzika dok igraš',sl:'Glasba med igro',mk:'Музика додека играш',de:'Musik beim Spielen'};
 for(const l in MUSD)V7[l].sMusicD=MUSD[l];
 for(const l in V7)Object.assign(D[l],V7[l]);
 /* v7.3: the app is called Pip & Cup; the game inside it is still Jamb (rows, rules, the Daily). */
