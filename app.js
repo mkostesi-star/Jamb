@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v7';
+const VERSION='v7.1';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -147,7 +147,11 @@ function countWrite(p,c,r,s,turn){
 /* ---------- reactions: a fixed set of quick signals between phones in online games. No free text.
    Spam guard on every phone: one reaction per 3 seconds, at most 6 per 30 seconds per player;
    the host drops anything faster before relaying it, and anyone can mute reactions. ---------- */
-const EMOTES=[['hi','👋'],['luck','🍀'],['nice','👏'],['wow','😮'],['ouch','😬'],['haha','😂'],['wait','⏳'],['gg','🤝']];
+/* Six character stickers, painted in the café style: Emma, Rosie, Frank, Grandpa, the Professor, Emma again. */
+const EMOTES=['hi','wow','nice','gg','wait','ohno'];
+const emoSrc=k=>`art/react/${k}.webp`;
+let emoLoaded=false;
+function emoPreload(){if(emoLoaded)return;emoLoaded=true;EMOTES.forEach(k=>{const i=new Image();i.decoding='async';i.src=emoSrc(k);});}
 const EMO_GAP=3000,EMO_WIN=30000,EMO_MAX=6,emoLog={};
 function emoAllowed(cid,now){
   const a=(emoLog[cid]=(emoLog[cid]||[]).filter(x=>now-x<EMO_WIN));
@@ -157,22 +161,25 @@ function emoAllowed(cid,now){
 const emoOn=()=>!!G&&G.mode==='online'&&onlineReady()&&G.status!=='over'&&!G.over&&mySeat()>=0;
 function emoHTML(){
   if(!emoOn())return '';
+  emoPreload();
   const cool=Date.now()<(ui.emoCool||0);
   let h=`<button type="button" class="emobtn${cool?' cool':''}${ui.emoOpen?' open':''}" data-act="emo" aria-label="${esc(t('emoBtn'))}" aria-expanded="${!!ui.emoOpen}">${ICON.smile}</button>`;
   if(ui.emoOpen){
     const muted=ui.emoMute||prefs.emotes===false;
-    h+=`<div class="emopop" role="menu">${EMOTES.map(([k,e])=>`<button type="button" role="menuitem" data-act="emosend" data-e="${k}"${cool?' disabled':''}><span class="ee">${e}</span><span class="el">${esc(t('emo_'+k))}</span></button>`).join('')}
+    h+=`<div class="emopop" role="menu">${EMOTES.map(k=>`<button type="button" role="menuitem" data-act="emosend" data-e="${k}"${cool?' disabled':''}><img class="es" src="${emoSrc(k)}" alt="" width="64" height="64" draggable="false"><span class="el">${esc(t('emo_'+k))}</span></button>`).join('')}
       <button type="button" class="emomute" data-act="emomute">${esc(muted?t('emoUnmute'):t('emoMute'))}</button></div>`;
   }
   return h;
 }
 function showEmote(seat,id){
-  const em=EMOTES.find(x=>x[0]===id);if(!em||!G||!G.players[seat])return;
+  if(!EMOTES.includes(id)||!G||!G.players[seat])return;
   if(seat!==mySeat()&&(ui.emoMute||prefs.emotes===false))return;
   const chip=document.querySelector(`.chip[data-p="${seat}"]`),r=chip?chip.getBoundingClientRect():{left:innerWidth/2-40,width:80,bottom:70};
-  const b=document.createElement('div');b.className='emo';b.setAttribute('role','status');
-  b.innerHTML=`<span class="ee">${em[1]}</span><span class="el">${esc(name(seat))}: ${esc(t('emo_'+id))}</span>`;
+  document.querySelectorAll(`.emo[data-p="${seat}"]`).forEach(o=>o.remove());
+  const b=document.createElement('div');b.className='emo';b.dataset.p=seat;b.setAttribute('role','status');
+  b.innerHTML=`<img class="es" src="${emoSrc(id)}" alt="" width="88" height="88" draggable="false"><span class="el">${esc(name(seat))}: ${esc(t('emo_'+id))}</span>`;
   b.style.setProperty('--pc',PCOL_LITE[seat%6]);
+  b.style.setProperty('--rot',(Math.random()*10-5).toFixed(1)+'deg');
   document.body.appendChild(b);
   const w=b.offsetWidth,x=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2));
   b.style.left=x+'px';b.style.top=(r.bottom+8)+'px';
@@ -180,7 +187,7 @@ function showEmote(seat,id){
   if(seat!==mySeat()){A.tap();A.haptic(10);}
 }
 function sendEmote(id){
-  if(!emoOn()||!EMOTES.some(x=>x[0]===id))return;
+  if(!emoOn()||!EMOTES.includes(id))return;
   const now=Date.now();
   if(!emoAllowed(prefs.cid,now)){toast(t('emoSlow'));return;}
   ui.emoOpen=false;ui.emoCool=now+EMO_GAP;
@@ -190,7 +197,7 @@ function sendEmote(id){
   renderTray();setTimeout(()=>{if(screen==='game')renderTray();},EMO_GAP+50);
 }
 function onEmote(d,fromConn){
-  if(!G||G.mode!=='online'||typeof d.cid!=='string'||!EMOTES.some(x=>x[0]===d.e)||d.cid===prefs.cid)return;
+  if(!G||G.mode!=='online'||typeof d.cid!=='string'||!EMOTES.includes(d.e)||d.cid===prefs.cid)return;
   const seat=G.players.findIndex(p=>p.cid===d.cid);if(seat<0)return;
   if(!emoAllowed(d.cid,Date.now()))return;
   if(online&&online.host)openConns().forEach(c=>{if(c!==fromConn)sendTo(c,{t:'emote',cid:d.cid,e:d.e});});

@@ -836,6 +836,9 @@ de:{g1keep:'Tippe die Würfel an, die du behalten willst, und wirf den Rest. Du 
   g6end:'Mehr brauchst du nicht. Wenn du festhängst, tippe auf die Glühbirne.',gotIt:'Verstanden',guideAgain:'Tipps wieder zeigen',guideOn:'Die Tipps kommen im nächsten Spiel gegen den Computer wieder.',savedPic:'Bild gespeichert, Ergebnis kopiert'}
 };
 for(const l in GUIDE)Object.assign(V7[l],GUIDE[l]);
+/* Reaction stickers (v7.1): the old "Ouch" becomes "Oh no"; Good luck, Ouch and Haha are retired. */
+const STICK={en:'Oh no!',hr:'Joj!',sr:'Joj!',bs:'Joj!',sl:'Ojoj!',mk:'Јао!',de:'Oh nein!'};
+for(const l in STICK)V7[l].emo_ohno=STICK[l];
 for(const l in V7)Object.assign(D[l],V7[l]);
 
 /* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
