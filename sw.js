@@ -1,11 +1,11 @@
 /* Keeps Pip & Cup working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v7.4';
+const CACHE = 'jamb-v7.5';
 const CORE = [
-  './', 'index.html', 'engine.js?v=74', 'ai.js?v=74', 'i18n.js?v=74', 'audio.js?v=74', 'music.js?v=74', 'fx.js?v=74', 'scan.js?v=74', 'app.js?v=74', 'manifest.webmanifest',
+  './', 'index.html', 'engine.js?v=75', 'ai.js?v=75', 'i18n.js?v=75', 'audio.js?v=75', 'music.js?v=75', 'fx.js?v=75', 'scan.js?v=75', 'app.js?v=75', 'manifest.webmanifest',
   'icons/v7/icon-192.png', 'icons/v7/apple-touch-icon.png', 'icons/v7/favicon-64.png',
   'art/home-800.webp', 'art/home-1280.webp', 'art/home-800.jpg', 'art/wood-768.webp', 'art/winner-800.webp', 'art/daily-800.webp',
   'art/cast/ema.webp', 'art/cast/nono.webp', 'art/cast/mira.webp', 'art/cast/joza.webp', 'art/cast/profesor.webp',
-  'art/dice/1.webp', 'art/dice/2.webp', 'art/dice/3.webp', 'art/dice/4.webp', 'art/dice/5.webp', 'art/dice/6.webp'
+  'art/dice/1.webp', 'art/dice/2.webp', 'art/dice/3.webp', 'art/dice/4.webp', 'art/dice/5.webp', 'art/dice/6.webp', 'art/cup.webp'
 ];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 

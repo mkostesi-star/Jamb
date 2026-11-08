@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v7.4';
+const VERSION='v7.5';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -295,27 +295,78 @@ function rollCore(after){
     if(after)after();
   });
 }
-/* Dice that were thrown shake, tumble with their faces spinning, then land one by one. Phones set to reduce motion get a quick face flip instead. */
+/* ---------- the dice cup ----------
+   The dice to be thrown go into the leather cup, it shakes on the tray, tips over, and they tumble out.
+   Holding Roll or shaking the phone keeps it shaking until you let go; a tap, the computer and other
+   phones get a short shake. The cup lives outside the tray so re-renders never restart its animation. */
+const CUP_MIN=380;
+let cupEl=null;
+function cupNode(){
+  if(!cupEl){cupEl=document.createElement('div');cupEl.className='cup';cupEl.setAttribute('aria-hidden','true');cupEl.innerHTML='<img src="art/cup.webp" alt="" draggable="false">';document.body.appendChild(cupEl);}
+  return cupEl;
+}
+/* the dice the next roll will throw: all of them on the first roll, otherwise the ones not kept */
+function freeIdx(){const t=G&&G.turn;if(!t)return [];const h=t.roll===0?t.held.map(()=>false):t.held;return h.map((x,i)=>x?-1:i).filter(i=>i>=0);}
+function cupStart(idx){
+  if(reduce||!idx||!idx.length||screen!=='game'||ui.cup)return !!ui.cup;
+  const all=[...document.querySelectorAll('#dice .die')],ds=all.filter((d,i)=>idx.includes(i));if(!ds.length)return false;
+  const rs=ds.map(d=>d.getBoundingClientRect()),dw=rs[0].width;if(!dw)return false;
+  const cx=rs.reduce((a,r)=>a+r.left+r.width/2,0)/rs.length,bottom=Math.max(...rs.map(r=>r.bottom));
+  const el=cupNode(),h=Math.round(dw*1.95),w=Math.round(h*0.742);
+  el.getAnimations().forEach(a=>a.cancel());const img=el.firstChild;img.getAnimations().forEach(a=>a.cancel());
+  el.style.cssText=`display:block;left:${Math.round(cx-w/2)}px;top:${Math.round(bottom-h+4)}px;width:${w}px;height:${h}px`;
+  ui.cup={idx:idx.slice(),t0:performance.now()};
+  ds.forEach(d=>d.classList.add('incup'));
+  el.animate([{opacity:0,transform:'translateY(-34px) scale(.92)'},{opacity:1,transform:'none'}],{duration:150,easing:'cubic-bezier(.2,.9,.3,1.2)'});
+  img.animate([{transform:'rotate(0) translateX(0)'},{transform:'rotate(-9deg) translate(-5px,-4px)'},{transform:'rotate(0) translateX(0)'},{transform:'rotate(9deg) translate(5px,-4px)'},{transform:'rotate(0) translateX(0)'}],{duration:240,iterations:Infinity,delay:110});
+  return true;
+}
+/* tip it over toward the dice and let them out */
+function cupPour(){
+  const el=cupEl;if(!el||!ui.cup){ui.cup=null;return;}
+  ui.cup=null;el.firstChild.getAnimations().forEach(a=>a.cancel());
+  const a=el.animate([{transform:'none',opacity:1},{transform:'translate(12px,-8px) rotate(68deg)',opacity:1,offset:.5},{transform:'translate(26px,-18px) rotate(108deg)',opacity:0}],{duration:300,easing:'ease-in'});
+  a.onfinish=()=>{if(!ui.cup)el.style.display='none';};
+  setTimeout(()=>document.querySelectorAll('#dice .die.incup').forEach(d=>d.classList.remove('incup')),120);
+}
+/* a hold that ended without a roll, or the game changed underneath: the cup lifts away and the dice come back */
+function cupCancel(){
+  if(!ui.cup)return;ui.cup=null;
+  const el=cupEl;
+  if(el){el.firstChild.getAnimations().forEach(a=>a.cancel());const a=el.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(-24px)'}],{duration:160,easing:'ease-in'});a.onfinish=()=>{if(!ui.cup)el.style.display='none';};}
+  document.querySelectorAll('#dice .die.incup').forEach(d=>d.classList.remove('incup'));
+}
+/* Dice that were thrown go through the cup, tumble with their faces spinning, then land one by one. Phones set to reduce motion get a quick face flip instead. */
 function rollFx(idx,done){
-  clearInterval(ui.rollT);
+  clearInterval(ui.rollT);clearTimeout(ui.cupT);
   const g=G;
   if(reduce||!idx.length){
+    cupCancel();
     ui.rolling=false;ui.rollIdx=null;A.land(idx.length||1,LAND_STEP);render();
     document.querySelectorAll('#dice .die').forEach((d,i)=>{if(!idx.includes(i))return;d.classList.remove('flip');void d.offsetWidth;d.classList.add('flip');setTimeout(()=>d.classList.remove('flip'),360);});
     if(done)done();return;
   }
-  ui.rolling=true;ui.rollIdx=idx;A.shake(520);render();
+  /* already shaking from a held Roll or a shaken phone? Then it only needs to finish its minimum shake */
+  const was=!!ui.cup;
+  if(!was)cupStart(idx);
+  const wait=ui.cup?Math.max(0,CUP_MIN-(performance.now()-ui.cup.t0)):0;
+  if(!was||wait>80)A.shake(Math.max(240,wait+160));
+  ui.rolling=true;ui.rollIdx=idx;render();
+  ui.cupT=setTimeout(()=>{
+  if(G!==g){cupCancel();ui.rolling=false;ui.rollIdx=null;return;}
+  cupPour();
   let n=0;
   ui.rollT=setInterval(()=>{
     if(G!==g){clearInterval(ui.rollT);ui.rolling=false;ui.rollIdx=null;return;}
     tickDice();
-    if(++n>=9){
+    if(++n>=5){
       clearInterval(ui.rollT);ui.rolling=false;ui.rollIdx=null;
       A.land(idx.length,LAND_STEP);render();landFx(idx);
       const st=document.querySelector('#tray .status .st');if(st)FX.pulse(st,'bump',460);
       if(done)done();
     }
   },62);
+  },wait);
 }
 function toggleHold(i){
   const t=G.turn;
@@ -609,6 +660,7 @@ function acceptDuel(o){
 
 /* ---------- screens ---------- */
 function showScreen(s){
+  if(s!=='game')cupCancel();
   screen=s;prefs.screen=s;prefs.mode=G?G.mode:null;savePrefs();
   $('home').hidden=s!=='home';$('game').hidden=s!=='game';$('tray').hidden=s!=='game';
   document.documentElement.lang=I.locale(prefs.lang);
@@ -838,7 +890,7 @@ function renderBubble(){
 function dieHTML(v,i,o){
   const r=((i*37+v*11)%9)-4;
   if(o.unset)return `<button type="button" class="die unset${o.picked?' ghost':''}" data-act="tdie" data-i="${i}" aria-label="${esc(t('setDie',{n:i+1}))}">?</button>`;
-  return `<span class="dslot${o.held?' kept':''}"><button type="button" class="die${o.held?' held':''}${o.held&&ui.popDie===i?' popin':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${pipsHTML(o.idle?0:o.tumble?1+Math.floor(Math.random()*6):v)}</button></span>`;
+  return `<span class="dslot${o.held?' kept':''}"><button type="button" class="die${o.held?' held':''}${o.held&&ui.popDie===i?' popin':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}${ui.cup&&ui.cup.idx.includes(i)?' incup':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${pipsHTML(o.idle?0:o.tumble?1+Math.floor(Math.random()*6):v)}</button></span>`;
 }
 /* first-game guide: short tips in the first game against the computer, each shown once */
 function guideTip(){
@@ -1518,7 +1570,7 @@ function doInstall(){
 function setupMotion(){
   A.motion.stop();
   if(!prefs.shake||!A.motion.supported()||screen!=='game')return;
-  A.motion.start(()=>{if(canRoll()){ui.shaking=true;A.rattleStart();const g=document.querySelector('.glass');if(g)g.classList.add('shaking');}},()=>{if(ui.shaking){ui.shaking=false;A.rattleStop();doRoll();}});
+  A.motion.start(()=>{if(canRoll()){ui.shaking=true;A.rattleStart();cupStart(freeIdx());const g=document.querySelector('.glass');if(g)g.classList.add('shaking');}},()=>{if(ui.shaking){ui.shaking=false;A.rattleStop();doRoll();if(!ui.rolling)cupCancel();}});
 }
 async function askMotion(){
   if(ui.motionAsked||!prefs.shake)return;ui.motionAsked=true;
@@ -1535,7 +1587,7 @@ document.addEventListener('pointerdown',e=>{
   const gl=e.target.closest('.glass[data-act="roll"]');
   if(gl&&canRoll()){
     askMotion();
-    ui.shaking=true;ui.pressAt=Date.now();A.rattleStart();gl.classList.add('shaking');
+    ui.shaking=true;ui.pressAt=Date.now();A.rattleStart();gl.classList.add('shaking');cupStart(freeIdx());
     try{gl.setPointerCapture(e.pointerId);}catch(err){}
   }
 },{passive:true});
@@ -1544,9 +1596,9 @@ document.addEventListener('pointerup',e=>{
   const gl=e.target.closest('.glass');ui.pressAt=0;
   ui.shaking=false;A.rattleStop();if(gl)gl.classList.remove('shaking');
   ui.skipClick=true;setTimeout(()=>{ui.skipClick=false;},400);
-  doRoll();
+  doRoll();if(!ui.rolling)cupCancel();
 });
-document.addEventListener('pointercancel',()=>{if(ui.shaking){ui.shaking=false;ui.pressAt=0;A.rattleStop();}});
+document.addEventListener('pointercancel',()=>{if(ui.shaking){ui.shaking=false;ui.pressAt=0;A.rattleStop();cupCancel();}});
 const SOFT=new Set(['exit','results','daily','resume','endask','endno','endsaved','pickchar','open','close','editrules','pladd','pladdbot','plrm','plchar',
   'startcpu','startpp','starttable','startonline','startduel','acceptduel','rematch','host','join','setlang','saverules','userules','loadset','preset']);
 document.addEventListener('click',e=>{
