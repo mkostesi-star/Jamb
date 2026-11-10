@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v8.1';
+const VERSION='v8.2';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -75,10 +75,14 @@ function makeGame(mode,rules,plist,extra){
   g.turn=freshTurn(g);
   return g;
 }
-function saveGame(){
+/* Games on several phones: every move gives the game a new position id that remembers the ids before it (pos.anc).
+   That is how the host tells "this phone is a few moves ahead of me" from "this phone is on another track".
+   Changes that are not moves (pause, ready, a name, a seat) keep the position: saveGame(true). */
+function stampPos(g){const p=g.pos;g.pos={id:uid(),anc:p&&p.id?[p.id].concat(p.anc||[]).slice(0,60):[]};}
+function saveGame(meta){
   if(!G)return;
   G.updated=Date.now();
-  if(G.mode==='online'){if(onlineReady()){G.rev=(G.rev||0)+1;saveOnline();sendState();}}
+  if(G.mode==='online'){if(onlineReady()){if(!meta||!G.pos)stampPos(G);G.rev=(G.rev||0)+1;saveOnline();sendState();}}
   else store.set(SLOT+G.mode,JSON.stringify(G));
 }
 const cur=()=>G.players[G.current];
@@ -237,29 +241,46 @@ function doPause(){
   if(!clockGame()||G.paused)return;
   if(G.mode==='online'&&!online.host){sendTo(net.conn,{t:'pause',cid:prefs.cid});return;}
   const seat=G.mode==='online'?mySeat():G.current;
-  if(pauseApply(seat)){A.tap();saveGame();render();}
+  if(pauseApply(seat)){A.tap();saveGame(true);render();}
 }
 function doReady(seat,force){
   if(!G||!G.paused)return;
   if(G.mode==='online'&&!online.host){sendTo(net.conn,{t:'ready',cid:prefs.cid});return;}
-  if(readyApply(seat,force)){A.tap();saveGame();render();if(!G.paused){A.turn();maybeBot();}}
+  if(readyApply(seat,force)){A.tap();saveGame(true);render();if(!G.paused){A.turn();maybeBot();}}
 }
 /* Out of time: the dice go into the first free box from the top, leftmost column first, exactly as they lie.
    If there was no roll yet, the game rolls once first. Never better than playing the turn yourself. */
-function forceTimeout(){
+function forceTimeout(away){
   if(ui.forcing||!G||G.over)return;
-  ui.forcing=true;const p=G.current,g=G;
+  ui.forcing=true;const p=G.current,g=G,id=G.id;
   const finish=()=>{
     ui.forcing=false;
-    if(G!==g||G.over||G.current!==p)return;
+    if(G!==g||G.id!==id||G.over||G.current!==p||G.turn.roll<1)return;
     const mv=E.legalList(G.rules,G.players[p].sheet,G.turn)[0];
     if(!mv)return;
     pst(p).timeouts++;
-    toast(t('tTimeout',{name:name(p),row:rowName(mv.r)+' '+E.COLS[mv.c].sym}));
+    toast(t(away?'awayDone':'tTimeout',{name:name(p),row:rowName(mv.r)+' '+E.COLS[mv.c].sym}));
     ui.sel=null;writeCore(mv.c,mv.r);
   };
   if(G.turn.roll===0)rollCore(finish);else finish();
 }
+/* The host can move on for a player whose phone has been gone for a while (any game, with or without a timer). */
+const AWAY_MS=8000;
+function awaySeat(){
+  if(!G||G.mode!=='online'||!online||!online.host||!onlineReady()||G.status!=='playing'||G.over||G.paused)return -1;
+  const s=G.current,p=G.players[s];
+  if(!p||p.kind==='cpu'||s===mySeat()||openConns().some(c=>c._cid===p.cid))return -1;
+  return s;
+}
+function awayNow(){const s=awaySeat();return s>=0&&net.away&&net.away.seat===s&&Date.now()-net.away.t>=AWAY_MS;}
+setInterval(()=>{
+  const s=awaySeat();
+  if(s<0)net.away=null;else if(!net.away||net.away.seat!==s)net.away={seat:s,t:Date.now()};
+  /* once the host has moved on for a phone, its later turns pass by themselves until that phone is back */
+  if(s>=0&&net.skip.has(G.players[s].cid)&&Date.now()-net.away.t>=3000&&!ui.rolling&&!ui.forcing){forceTimeout(true);return;}
+  const show=awayNow();
+  if(show!==!!ui.awayShown){ui.awayShown=show;if(screen==='game'&&G&&G.mode==='online'&&!ui.rolling)renderTray();}
+},1000);
 let lastTick=-1;
 setInterval(()=>{
   if(screen!=='game'||!clockGame())return;
@@ -291,9 +312,14 @@ function rollCore(after){
   G.turn=next;saveGame();
   rollFx(idx,()=>{
     if(G!==g)return;
-    const pend=net.pending;net.pending=null;if(pend&&(pend.rev||0)>(G.rev||0))applyRemote(pend);
     if(after)after();
   });
+}
+/* A roll from another phone that arrived while dice were still tumbling plays as soon as they land. */
+function rollChain(){
+  if(ui.rolling)return;
+  if(!ui.rollNext){if(ui.holdTurn){ui.holdTurn=null;render();}if(!bot.live)maybeBot();return;}
+  const idx=ui.rollNext;ui.rollNext=null;ui.holdTurn=null;rollFx(idx);
 }
 /* ---------- the dice cup ----------
    The dice to be thrown go into the leather cup, it shakes on the tray, tips over, and they tumble out.
@@ -344,7 +370,7 @@ function rollFx(idx,done){
     cupCancel();
     ui.rolling=false;ui.rollIdx=null;A.land(idx.length||1,LAND_STEP);render();
     document.querySelectorAll('#dice .die').forEach((d,i)=>{if(!idx.includes(i))return;d.classList.remove('flip');void d.offsetWidth;d.classList.add('flip');setTimeout(()=>d.classList.remove('flip'),360);});
-    if(done)done();return;
+    if(done)done();rollChain();return;
   }
   /* already shaking from a held Roll or a shaken phone? Then it only needs to finish its minimum shake */
   const was=!!ui.cup;
@@ -364,6 +390,7 @@ function rollFx(idx,done){
       A.land(idx.length,LAND_STEP);render();landFx(idx);
       const st=document.querySelector('#tray .status .st');if(st)FX.pulse(st,'bump',460);
       if(done)done();
+      rollChain();
     }
   },62);
   },wait);
@@ -425,7 +452,8 @@ function writeCore(c,r){
 function doUndo(){
   if(!mayUndo())return;
   cancelBot();
-  const u=G.undo;
+  const u=G.undo,now=G.players;
+  u.players.forEach((p,i)=>{if(now[i]){p.cid=now[i].cid;p.name=now[i].name;}});
   G.players=u.players;G.current=u.current;G.turn=u.turn;G.over=u.over;G.view=u.view;if(u.stats)G.stats=u.stats;
   if(Array.isArray(G.log))G.log.length=Math.min(G.log.length,u.logLen||0);
   if(G.mode==='online'){G.status='playing';ui.view=G.current;}
@@ -474,10 +502,11 @@ function react(p,r,s){
 }
 
 /* ---------- computer turns ---------- */
-const bot={tk:0,timer:0};
-function cancelBot(){bot.tk++;clearTimeout(bot.timer);ui.botPick=null;}
+const bot={tk:0,timer:0,live:false};
+function cancelBot(){bot.tk++;clearTimeout(bot.timer);bot.live=false;ui.botPick=null;}
 function botTurn(){return screen==='game'&&G&&!G.over&&!G.paused&&(G.mode==='cpu'||G.mode==='pp'||(G.mode==='online'&&!!online&&online.host&&onlineReady()&&G.status==='playing'))&&isBot(G.current);}
-function botLater(ms,fn){const tk=bot.tk;clearTimeout(bot.timer);bot.timer=setTimeout(()=>{if(tk===bot.tk&&botTurn())fn();},ms);}
+function botLater(ms,fn){const tk=bot.tk;clearTimeout(bot.timer);bot.live=true;bot.timer=setTimeout(()=>{if(tk!==bot.tk)return;bot.live=false;if(botTurn())fn();},ms);}
+setInterval(()=>{if(!bot.live&&!ui.rolling&&botTurn())maybeBot();},1500);
 function maybeBot(){if(botTurn()&&!ui.rolling)botLater(G.turn.roll===0?1400:900,botStep);}
 function botStep(){
   const tn=G.turn;
@@ -496,6 +525,7 @@ function botRoll(){if(!ui.rolling&&E.canRollAgain(G.rules,cur().sheet,G.turn))ro
 function standings(g){return g.players.map((p,i)=>({i,score:E.total(g.rules,p.sheet)})).sort((a,b)=>b.score-a.score);}
 function finishGame(){
   cancelBot();
+  if(G.mode==='online'&&(stats.recIds||[]).includes(G.id))return;   /* already counted on this phone */
   const st=standings(G),me=mySeat();
   stats.played=(stats.played||0)+1;
   if(G.mode==='cpu'&&!prefs.guideDone){prefs.guideDone=true;savePrefs();ui.guideEnd=true;}
@@ -507,8 +537,8 @@ function finishGame(){
   recordGame(G);
   if(G.mode==='duel'){stats.duels[G.duel.id]={score:E.total(G.rules,G.players[0].sheet),at:Date.now(),from:G.duel.from||null};}
   saveStats();
-  const g=G;
-  setTimeout(()=>{if(G===g&&screen==='game')openModal('result');},1300);
+  const g=G,gid=G.id;
+  setTimeout(()=>{if(G===g&&G.id===gid&&G.over&&screen==='game')openModal('result');},1300);
   startReview(g);
 }
 function grade(loss){return loss<0.5?'best':loss<3?'good':loss<8?'inacc':loss<20?'mistake':'blunder';}
@@ -663,6 +693,7 @@ function acceptDuel(o){
 
 /* ---------- screens ---------- */
 function showScreen(s){
+  if(s==='home'&&ui.fresh&&screen==='game'){ui.fresh=false;prefs.screen='home';savePrefs();location.reload();return;}   /* a newer version arrived during the game */
   if(s!=='game')cupCancel();
   screen=s;prefs.screen=s;prefs.mode=G?G.mode:null;savePrefs();
   $('home').hidden=s!=='home';$('game').hidden=s!=='game';$('tray').hidden=s!=='game';
@@ -675,6 +706,7 @@ function openGame(g){
   cancelBot();
   if(G&&G.mode==='online'&&g.mode!=='online'){destroyPeer();online=null;}
   G=g;ui.sel=null;ui.tip=null;ui.tipText='';ui.botPick=null;ui.just=null;ui.view=null;ui.pick=-1;ui.bubble=null;
+  ui.rollNext=null;ui.holdTurn=null;ui.forcing=false;ui.awayShown=false;net.away=null;if(g.mode!=='online')net.skip.clear();
   if(G.mode==='pp'&&timerSec(G)&&!G.paused&&!G.over)startClock(G);
   closeModal();showScreen('game');
   if(G.mode!=='online')saveGame();
@@ -705,8 +737,10 @@ function rematch(){
   const plist=G.players.map(p=>({name:p.name,kind:p.kind,char:p.char,cid:p.cid}));
   const st=((G.starter||0)+1)%plist.length;
   if(G.mode==='online'){
-    const g=makeGame('online',G.rules,plist,{code:G.code,status:'playing',rev:G.rev||0,timer:G.timer||null});g.starter=st;g.current=st;startClock(g);
-    G=g;ui.view=st;saveGame();closeModal();render();maybeBot();return;
+    if(!G.over)return;
+    const g=makeGame('online',G.rules,plist,{code:G.code,status:'playing',rev:G.rev||0,pos:G.pos,timer:G.timer||null});g.starter=st;g.current=st;startClock(g);
+    cancelBot();for(const k of Object.keys(G))delete G[k];Object.assign(G,g);   /* same game object, so the other phones' moves keep landing in it */
+    ui.view=st;ui.sel=null;ui.just=null;saveGame();closeModal();render();maybeBot();return;
   }
   const g=makeGame(G.mode,G.rules,plist,{timer:G.timer||null});g.starter=st;g.current=st;g.view=st;startClock(g);
   openGame(g);
@@ -935,10 +969,11 @@ function renderTray(){
     const can=me&&!ui.rolling;
     dice=tn.dice.map((v,i)=>v?dieHTML(v,i,{table:true,can,ghost:ui.pick===i||(tipOn&&ui.tip.held[i])}):dieHTML(0,i,{unset:true,picked:ui.pick===i})).join('');
   }else{
-    const showIdle=tn.roll===0&&!ui.rolling;
+    const dt=ui.holdTurn&&ui.holdTurn.dice.length===tn.dice.length?ui.holdTurn:tn;   /* a newer roll is waiting its turn to be shown */
+    const showIdle=dt.roll===0&&!ui.rolling;
     const can=me&&!g.over&&!ui.rolling&&tn.roll>=1&&tn.roll<3&&E.canRollAgain(g.rules,cur().sheet,tn);
     const rolling=i=>ui.rolling&&ui.rollIdx&&ui.rollIdx.includes(i);
-    dice=tn.dice.map((v,i)=>dieHTML(v,i,{held:tn.held[i]&&!showIdle&&!rolling(i),idle:showIdle,can,tumble:rolling(i),ghost:tipOn&&ui.tip.held&&ui.tip.held[i]&&!ui.rolling})).join('');
+    dice=dt.dice.map((v,i)=>dieHTML(v,i,{held:dt.held[i]&&!showIdle&&!rolling(i),idle:showIdle,can,tumble:rolling(i),ghost:tipOn&&ui.tip.held&&ui.tip.held[i]&&!ui.rolling})).join('');
   }
   if(g.mode==='online'&&!onlineReady()){st=`<span class="st">${esc(statusText())}</span>`;hint='&nbsp;';acts=idle(t('roll'));}
   else if(g.over){
@@ -955,6 +990,7 @@ function renderTray(){
     st=who+(annPill||undo);
     hint=ui.rolling?'&nbsp;':esc(isBot(c)?(tn.announced&&tn.roll===1?t('calls',{name:name(c),row:rowName(tn.announced)}):t('thinking',{name:name(c)})):t('hWaitTurn',{name:name(c)}));
     acts=idle(t('waitTurn',{name:name(c)}));
+    if(awayNow()&&!ui.rolling){hint=esc(t('awayHint',{name:name(c)}));acts=`<button type="button" class="bigbtn cream" data-act="skipaway">${esc(t('awaySkip'))}</button>`;}
   }else{
     st=who+(annPill||undo);
     const sel=ui.sel,selCall=sel&&sel.c==='ann'&&!tn.announced;
@@ -1347,7 +1383,8 @@ function tableRoll(n){
 /* ---------- online: two to six phones (PeerJS). The host's phone relays every move to the others. ---------- */
 let online=null;
 const MAX_PLAYERS=6;
-const net={peer:null,conn:null,conns:[],state:'idle',retryT:0,pending:null};
+const net={peer:null,conn:null,conns:[],state:'idle',retryT:0,away:null,skip:new Set()};
+const PV=2;   /* how the phones talk to each other; phones on another version are asked to reopen the game */
 const PEER_PREFIX='jamb4two-game-',CODE_CHARS='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const hasPeer=()=>typeof window.Peer==='function';
 const onlineReady=()=>G&&G.mode==='online'&&!!online&&typeof G.code==='string'&&G.code===online.code&&validG(G);
@@ -1373,10 +1410,14 @@ function destroyPeer(){
   if(net.peer){const p=net.peer;net.peer=null;try{p.destroy();}catch(e){}}
 }
 function sendTo(c,m){if(c&&c.open){try{c.send(m);}catch(e){}}}
-function sendState(except){
+/* A game on its way to another phone. "now" lets the receiver turn the turn clock into its own time,
+   so phones with wrong clocks still count down together. */
+const wire=x=>Object.assign({t:'state',pv:PV,now:Date.now(),G},x||{});
+function fixClock(g,sent){if(g&&g.deadline&&typeof sent==='number')g.deadline+=Date.now()-sent;return g;}
+function sendState(){
   if(!onlineReady())return;
-  const m={t:'state',G};
-  if(online.host)openConns().forEach(c=>{if(c!==except)sendTo(c,m);});
+  const m=wire();
+  if(online.host)openConns().forEach(c=>sendTo(c,m));
   else sendTo(net.conn,m);
 }
 function peerOpts(){return Object.assign({debug:0},window.JAMB_PEER_OPTS||{});}
@@ -1423,7 +1464,7 @@ function adoptGuest(conn){
 function adoptHost(conn){
   if(net.conn&&net.conn!==conn){const o=net.conn;net.conn=null;try{o.close();}catch(e){}}
   net.conn=conn;
-  const opened=()=>{if(net.conn!==conn)return;clearTimeout(net.retryT);conn._seen=Date.now();setNet('connected');sendTo(conn,{t:'hello',cid:prefs.cid,name:prefs.name||null,G:onlineReady()?G:null});};
+  const opened=()=>{if(net.conn!==conn)return;clearTimeout(net.retryT);conn._seen=Date.now();setNet('connected');sendTo(conn,{t:'hello',pv:PV,now:Date.now(),cid:prefs.cid,name:prefs.name||null,G:onlineReady()?G:null});};
   conn.on('open',opened);
   conn.on('data',d=>{if(net.conn===conn){conn._seen=Date.now();onGuestData(d);}});
   conn.on('close',()=>{if(net.conn!==conn)return;net.conn=null;if(online&&!online.host&&net.state!=='full'){setNet('opening');retryLater(connectGuest,1500);}});
@@ -1432,40 +1473,64 @@ function adoptHost(conn){
   if(conn.open)opened();
 }
 const sameGame=x=>validG(x)&&x.code===online.code;
+/* The host's phone is the referee. Phones play their own moves at once and send the result; the host takes it only
+   if it was built on the game the host has now (hostSubmit), then tells everyone. Anything else is answered with the
+   host's game, and the phone falls back to it. That keeps every phone on the same game when two things happen
+   at the same moment, a phone was away, or a phone sends something it may not. */
+function hostSubmit(conn,d){
+  const x=d.G;
+  if(!x||!sameGame(x)||!x.pos||typeof x.pos.id!=='string'||!G.pos)return;
+  if(x.pos.id===G.pos.id)return;                                   /* nothing new */
+  const seat=G.players.findIndex(p=>p.cid&&p.cid===conn._cid);
+  const ahead=Array.isArray(x.pos.anc)&&x.pos.anc.includes(G.pos.id);
+  const fresh=x.id!==G.id;                                         /* a rematch */
+  const may=seat>=0&&G.status!=='waiting'&&(fresh?(G.over&&!x.over&&progress(x)===0&&x.status==='playing'):(!G.over&&(G.current===seat||(!!G.undo&&G.undo.current===seat&&untouched()))));
+  const table=Array.isArray(x.players)&&x.players.length===G.players.length&&x.players.every((p,i)=>p&&p.kind===G.players[i].kind&&(fresh||i===seat||JSON.stringify(p.sheet)===JSON.stringify(G.players[i].sheet)));
+  if(!(ahead&&may&&table)){sendTo(conn,wire({reject:x.pos.id}));return;}
+  fixClock(x,d.now);
+  x.players.forEach((p,i)=>{const h=G.players[i];p.cid=h.cid;p.name=h.name;p.char=h.char;});   /* who sits where is the host's call */
+  if(G.paused&&!x.over){const moved=fresh||x.current!==G.current;x.paused=G.paused;x.left=moved?timerSec(x)*1000:G.left;x.deadline=null;}
+  else{x.paused=null;x.left=null;}
+  x.rev=(G.rev||0)+1;
+  applyRemote(x);sendState();
+}
 function onHostData(conn,d){
-  if(!d||typeof d!=='object'||!online||!onlineReady()||d.t==='ping')return;
-  if(d.t==='emote'){onEmote(d,conn);return;}
+  if(!d||typeof d!=='object'||!online||!onlineReady())return;
+  if(d.t==='ping'){
+    /* a phone that shows another game than the host's gets the host's game again */
+    if(conn._cid&&typeof d.pos==='string'&&G.pos&&(d.pos!==G.pos.id||d.rev!==G.rev))sendTo(conn,wire({sync:true}));
+    return;
+  }
+  if(d.t==='emote'){if(conn._cid)onEmote({t:'emote',cid:conn._cid,e:d.e},conn);return;}
   if(d.t==='pause'||d.t==='ready'){
-    const seat=G.players.findIndex(p=>p.cid&&p.cid===d.cid);if(seat<0)return;
+    const seat=G.players.findIndex(p=>p.cid&&p.cid===conn._cid);if(seat<0)return;
     const ok=d.t==='pause'?(clockGame()&&pauseApply(seat)):readyApply(seat);
-    if(ok){saveGame();render();if(d.t==='ready'&&!G.paused){A.turn();maybeBot();}}
+    if(ok){saveGame(true);render();if(d.t==='ready'&&!G.paused){A.turn();maybeBot();}}
     return;
   }
   if(d.t==='hello'){
-    if(d.G&&sameGame(d.G)&&(d.G.rev||0)>(G.rev||0))applyRemote(d.G);
     const cid=typeof d.cid==='string'?d.cid.slice(0,40):'',nm=typeof d.name==='string'?d.name.trim().slice(0,16):'';
     if(!cid)return;
-    conn._cid=cid;
+    if(d.pv!==PV){sendTo(conn,{t:'ver',pv:PV});sendTo(conn,{t:'full'});toast(t('verMismatch'),true);return;}
+    conn._cid=cid;net.skip.delete(cid);
     const seat=G.players.findIndex(p=>p.cid===cid);
     const free=G.players.findIndex((p,i)=>i>0&&p.kind==='human'&&!p.cid);
-    if(seat<0&&free>=0&&G.status!=='waiting'){G.players[free].cid=cid;saveGame();render();}
+    if(seat<0&&free>=0&&G.status!=='waiting'){G.players[free].cid=cid;saveGame(true);render();}
     else if(seat<0){
       if(G.status!=='waiting'||G.players.length>=MAX_PLAYERS){sendTo(conn,{t:'full'});return;}
       G.players.push({name:nm||null,kind:'human',char:null,cid,sheet:E.newSheet(G.rules)});
-      saveGame();render();
-    }else if(nm&&!G.players[seat].name){G.players[seat].name=nm;saveGame();render();}
-    sendTo(conn,{t:'state',G});
+      saveGame(true);render();
+    }else if(nm&&!G.players[seat].name){G.players[seat].name=nm;saveGame(true);render();}
+    if(d.G)hostSubmit(conn,d);                                      /* moves the phone made while it was away */
+    sendTo(conn,wire());
     return;
   }
-  if(d.t==='state'&&d.G&&sameGame(d.G)){
-    const mine=G.rev||0,r=d.G.rev||0;
-    if(r>mine){applyRemote(d.G);sendState(conn);}
-    else if(r<mine)sendTo(conn,{t:'state',G});
-  }
+  if(d.t==='state')hostSubmit(conn,d);
 }
 function onGuestData(d){
   if(!d||typeof d!=='object'||!online)return;
-  if(d.t==='full'){setNet('full');return;}
+  if(d.t==='full'){if(net.state!=='version')setNet('full');return;}
+  if(d.t==='ver'){if(net.state!=='version')toast(t('verMismatch'),true);setNet('version');return;}
   if(d.t==='emote'){onEmote(d,null);return;}
   if(d.t==='say'){
     if(!onlineReady()||!Number.isInteger(d.i)||!isBot(d.i)||typeof d.ev!=='string'||!/^[A-Za-z]{2,12}$/.test(d.ev))return;
@@ -1473,37 +1538,49 @@ function onGuestData(d){
     say(d.i,d.ev,v,true);return;
   }
   if(d.t==='state'&&d.G&&sameGame(d.G)){
-    const mine=onlineReady()?(G.rev||0):-1,r=d.G.rev||0;
-    if(r>mine)applyRemote(d.G);else if(r<mine)sendState();
+    const x=d.G;
+    if(d.pv!==PV||!x.pos||typeof x.pos.id!=='string'){if(net.state!=='version')toast(t('verMismatch'),true);setNet('version');return;}
+    if(net.state==='version')setNet('connected');
+    fixClock(x,d.now);
+    const mine=onlineReady()&&G.pos?G.pos:null;
+    if(!mine){applyRemote(x);return;}
+    const anc=mine.anc||[];
+    if(d.reject){if(d.reject===mine.id||anc.includes(d.reject))applyRemote(x);return;}   /* the host did not take my move: back to the host's game */
+    if(x.pos.id===mine.id){if((x.rev||0)!==(G.rev||0))applyRemote(x);return;}           /* same game; pause, names and the like may differ */
+    if(anc.includes(x.pos.id)){if(d.sync)sendState();return;}                            /* I am a move or two ahead; mine are on their way */
+    applyRemote(x);
   }
 }
+/* Take over the game as another phone sent it. The game object stays the same one, so a roll that is still
+   landing on screen finishes normally and then shows the new state. */
 function applyRemote(x){
   if(!G||G.mode!=='online')return;
-  if(ui.rolling){net.pending=x;return;}
-  const old=onlineReady()?G:null;
-  G=clone(x);
+  const old=onlineReady()?Object.assign({},G):null;
+  for(const k of Object.keys(G))delete G[k];
+  Object.assign(G,x);
   if(old){
-    if((old.turn.roll===0&&G.turn.roll>0)||(old.status==='waiting'&&G.status==='playing'))ui.view=G.current;
-    if(G.turn.roll>0&&(G.current!==old.current||G.turn.roll>old.turn.roll)){
-      const fresh=G.current!==old.current||old.turn.roll===0;
-      const idx=G.turn.dice.map((v,i)=>i).filter(i=>fresh||!old.turn.held[i]);
-      setTimeout(()=>rollFx(idx,()=>{const pend=net.pending;net.pending=null;if(pend&&(pend.rev||0)>(G.rev||0))applyRemote(pend);}),0);
-    }
-    for(let p=0;p<G.players.length;p++)for(const c of G.rules.cols)for(const r of ROWS){
+    const fresh=G.id!==old.id;
+    if(fresh){cancelBot();ui.sel=null;ui.just=null;if(ui.modal&&ui.modal.kind==='result')closeModal();}
+    if(fresh||(old.turn.roll===0&&G.turn.roll>0)||(old.status==='waiting'&&G.status==='playing'))ui.view=G.current;
+    if(G.turn.roll>0&&(fresh||G.current!==old.current||G.turn.roll>old.turn.roll)){
+      const all=fresh||G.current!==old.current||old.turn.roll===0;
+      ui.rollNext=G.turn.dice.map((v,i)=>i).filter(i=>all||!old.turn.held[i]);
+      if(ui.rolling){if(!ui.holdTurn)ui.holdTurn=old.turn;}else setTimeout(rollChain,0);
+    }else if(fresh||G.current!==old.current||G.turn.roll===0){ui.rollNext=null;ui.holdTurn=null;}   /* that turn is over: nothing left to show of it */
+    if(!fresh)for(let p=0;p<G.players.length;p++)for(const c of G.rules.cols)for(const r of ROWS){
       if(old.players[p]&&old.players[p].sheet[c]&&old.players[p].sheet[c][r]===null&&G.players[p].sheet[c][r]!==null){ui.just={p,c,r};A.write();setTimeout(()=>{ui.just=null;},700);if(online.host)react(p,r,G.players[p].sheet[c][r]);}
     }
-    if(G.over&&!old.over){
-      recordGame(G);setTimeout(()=>openModal('result'),1200);
-      if(online.host&&botSeats().length){const w=standings(G)[0].i,b=isBot(w)?w:someBot(-1);if(b>=0)setTimeout(()=>say(b,b===w?'win':'lose'),900);}
-    }
+    if(G.over&&!old.over)finishGame();
   }
-  if(ui.view==null)ui.view=G.current;
+  if(ui.view==null||!G.players[ui.view])ui.view=G.current;
   if(ui.sel&&!canWriteUI(G.current,ui.sel.c,ui.sel.r))ui.sel=null;
-  saveOnline();render();maybeBot();
+  saveOnline();render();
+  if(!ui.rolling&&!bot.live)maybeBot();
 }
 setInterval(()=>{
   const now=Date.now(),all=online&&online.host?openConns():(net.conn&&net.conn.open?[net.conn]:[]);
-  all.forEach(c=>{sendTo(c,{t:'ping'});if(c._seen&&now-c._seen>16000){try{c.close();}catch(e){}}});
+  const ping=online&&!online.host&&onlineReady()&&G.pos?{t:'ping',pos:G.pos.id,rev:G.rev||0}:{t:'ping'};   /* a guest says what it is showing */
+  all.forEach(c=>{sendTo(c,ping);if(c._seen&&now-c._seen>16000){try{c.close();}catch(e){}}});
 },5000);
 function hostGame(){
   if(!hasPeer()){toast(t('onNoLib'),true);return;}
@@ -1528,6 +1605,7 @@ function resumeOnline(s){
   online={code:s.code,host:!!s.host};net.state='idle';
   const g=validG(s.G)&&s.G.code===s.code?s.G:makeGame('online',prefs.rules,[{name:prefs.name,cid:prefs.cid}],{code:'',status:'waiting'});
   if(typeof s.seat==='number'&&g.players[s.seat]&&!g.players.some(p=>p.cid===prefs.cid))g.players[s.seat].cid=prefs.cid;
+  if(g.code&&!g.pos)stampPos(g);
   openGame(g);
   const go=()=>{if(!hasPeer())setNet('off');else if(online.host)startHost();else connectGuest();};
   if(hasPeer())go();else window.addEventListener('load',go,{once:true});
@@ -1545,14 +1623,15 @@ function statusText(){
     case 'waiting':return online.host?t('waitingPhones'):t('waitingPhone');
     case 'hostAway':return t('hostAway',{name:onlineReady()?name(0):t('player',{n:1})});
     case 'full':return t('tableFull');
+    case 'version':return t('verMismatch');
     case 'unsupported':case 'off':return t('notConnected');
     default:return t('opening');
   }
 }
 function onlineBanner(){
   if(!G||G.mode!=='online'||!online)return '';
-  const dot=net.state==='connected'?'var(--ok)':(net.state==='waiting'||net.state==='hostAway')?'var(--warn)':'var(--cream-dim)';
-  return `<div class="tagcard" style="margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:${dot};flex:none"></span><span class="tt"><span class="tm">${esc(statusText())} · ${esc(online.code)}</span></span><button type="button" class="sbtn" data-act="open" data-k="online">${esc(online.host&&G.status==='waiting'?t('shareShort'):t('gameBtn'))}</button></div>`;
+  const dot=net.state==='connected'?'var(--ok)':(net.state==='waiting'||net.state==='hostAway'||net.state==='version')?'var(--warn)':'var(--cream-dim)';
+  return `<div class="tagcard" style="margin-bottom:8px"><span style="width:10px;height:10px;border-radius:50%;background:${dot};flex:none"></span><span class="tt"><span class="tm"${net.state==='version'?' style="white-space:normal"':''}>${esc(statusText())}${net.state==='version'?'':' · '+esc(online.code)}</span></span><button type="button" class="sbtn" data-act="open" data-k="online">${esc(online.host&&G.status==='waiting'?t('shareShort'):t('gameBtn'))}</button></div>`;
 }
 function onlineModalHTML(m){
   let h=head(t('modeOnline'));const nameVal=esc(m.fName!=null?m.fName:(prefs.name||''));
@@ -1650,6 +1729,7 @@ function act(el,d){
     case 'announce':if(ui.sel)doAnnounce(ui.sel.r);break;
     case 'cancel':ui.sel=null;render();break;
     case 'undo':doUndo();break;
+    case 'skipaway':if(awayNow()&&!ui.rolling){net.skip.add(G.players[G.current].cid);forceTimeout(true);}break;
     case 'hint':showHint();break;
     case 'view':{
       const p=+d.p;
@@ -1782,6 +1862,14 @@ function start(){
   showScreen('home');
 }
 start();
-if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+/* The newest version is fetched whenever the game is opened with a connection. A phone that keeps the game open for days
+   asks again when it comes back to the front, and reloads on the home screen (never in the middle of a game). */
+if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>{
+  const had=!!navigator.serviceWorker.controller;let asked=Date.now();
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-asked>20*60000){asked=Date.now();try{reg.update().catch(()=>{});}catch(e){}}});
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had||ui.fresh)return;ui.fresh=true;if(screen==='home'&&!ui.modal)location.reload();});
+});
 window.__jamb={get G(){return G;},get online(){return online;},net,ui,prefs,stats};
 })();

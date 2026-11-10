@@ -1,0 +1,14 @@
+{
+  "name": "yamb-cafe-tests",
+  "private": true,
+  "description": "Automated checks for Yamb Café: games on several phones, and how well the computer plays.",
+  "scripts": {
+    "online": "node online.js",
+    "ai": "node ai-bench.js"
+  },
+  "dependencies": {
+    "peer": "^1.0.2",
+    "peerjs": "1.5.5",
+    "express": "^4.19.2"
+  }
+}

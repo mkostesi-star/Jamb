@@ -856,6 +856,17 @@ for(const l in ONBOT){V7[l].botSwap=ONBOT[l][0];V7[l].rmComputer=ONBOT[l][1];}
 /* v8 home menu: the section above the ways to play */
 const ATT={en:'At the table',hr:'Za stolom',sr:'Za stolom',bs:'Za stolom',sl:'Za mizo',mk:'На масата',de:'Am Tisch'};
 for(const l in ATT)V7[l].atTable=ATT[l];
+/* v8.2 games on several phones: moving on for a phone that is gone, and phones on different versions */
+const NETS={
+  en:['{name}’s phone is not connected.','Move on without waiting','{name}’s phone is not connected. Their dice went into {row}.','Phones have different versions. Close Yamb Café on each phone and open it again.'],
+  hr:['{name} – mobitel nije povezan.','Nastavi bez čekanja','{name} – mobitel nije povezan, kocke idu u polje {row}.','Mobiteli imaju različite verzije. Zatvori Yamb Café na svakom mobitelu i otvori ga ponovno.'],
+  sr:['{name} – telefon nije povezan.','Nastavi bez čekanja','{name} – telefon nije povezan, kockice idu u polje {row}.','Telefoni imaju različite verzije. Zatvori Yamb Café na svakom telefonu i otvori ga ponovo.'],
+  bs:['{name} – telefon nije povezan.','Nastavi bez čekanja','{name} – telefon nije povezan, kockice idu u polje {row}.','Telefoni imaju različite verzije. Zatvori Yamb Café na svakom telefonu i otvori ga ponovo.'],
+  sl:['{name} – telefon ni povezan.','Nadaljuj brez čakanja','{name} – telefon ni povezan, kocke gredo v polje {row}.','Telefoni imajo različne različice. Zapri Yamb Café na vsakem telefonu in ga znova odpri.'],
+  mk:['{name} – телефонот не е поврзан.','Продолжи без чекање','{name} – телефонот не е поврзан, коцките одат во полето {row}.','Телефоните имаат различни верзии. Затвори го Yamb Café на секој телефон и отвори го повторно.'],
+  de:['Das Handy von {name} ist nicht verbunden.','Ohne Warten weiter','Das Handy von {name} ist nicht verbunden. Die Würfel stehen jetzt bei {row}.','Die Handys haben verschiedene Versionen. Schließe Yamb Café auf jedem Handy und öffne es neu.']
+};
+for(const l in NETS){V7[l].awayHint=NETS[l][0];V7[l].awaySkip=NETS[l][1];V7[l].awayDone=NETS[l][2];V7[l].verMismatch=NETS[l][3];}
 for(const l in V7)Object.assign(D[l],V7[l]);
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan
    languages, Yamb in English and German, where Yamb is the spelling people know and search for. */
