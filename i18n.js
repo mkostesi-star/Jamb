@@ -868,6 +868,39 @@ const NETS={
 };
 for(const l in NETS){V7[l].awayHint=NETS[l][0];V7[l].awaySkip=NETS[l][1];V7[l].awayDone=NETS[l][2];V7[l].verMismatch=NETS[l][3];}
 for(const l in V7)Object.assign(D[l],V7[l]);
+/* v8.3 language pass over Slovenian, Macedonian and German (each change is listed in the plan doc for native readers),
+   and "1 game · 1 win" on the home screen in every language. */
+const PASS83={
+  en:{statsLine:'{p} {p|game|games} · {w} {w|win|wins} · best {b}'},
+  hr:{statsLine:'{p} {p|igra|igre|igara} · {w} {w|pobjeda|pobjede|pobjeda} · najbolje {b}'},
+  sr:{statsLine:'{p} {p|igra|igre|igara} · {w} {w|pobeda|pobede|pobeda} · najbolje {b}'},
+  bs:{statsLine:'{p} {p|igra|igre|igara} · {w} {w|pobjeda|pobjede|pobjeda} · najbolje {b}'},
+  sl:{statsLine:'{p} {p|igra|igri|igre|iger} · {w} {w|zmaga|zmagi|zmage|zmag} · najboljše {b}',
+    modePPD:'Do šestih na enem telefonu, lahko tudi računalnik',
+    sAmbD:'Tih klepet in skodelice med igro',
+    presets:'Izhodišče',
+    g_blunder:'Kiks',
+    'ch.ema.yourJamb':'Vau, kako ti je to uspelo?',
+    'ch.nono.yourBig':'Ni slabo za mladino.',
+    'ch.mira.lose':'Sreča je bila tvoja. Revanša, resno.'},
+  mk:{statsLine:'{p} {p|игра|игри} · {w} {w|победа|победи} · најдобро {b}',
+    'colD.free':'Кое било поле, по кој било ред.',
+    sendLink:'Испрати им ја врската на другите и почни кога сите ќе влезат.',
+    duelSendD:'Испрати му го дуелот на пријател. Ќе ги добие истите коцки и ќе го види твојот резултат кога ќе заврши.',
+    bonusAt:'кога 1–6 ќе стигне',
+    howIntro:'Играчите се редуваат. Фрли {n} коцки до три пати, меѓу фрлањата задржи кои сакаш, па резултатот запиши го во едно поле. Ако коцките не одговараат на полето, се пишува 0. Кога сите листови се полни, победува најголемиот збир.',
+    friendsD:'Еден телефон, повеќе телефони, дуел или вистински коцки',
+    rmComputer:'Отстрани компјутер',
+    'ch.nono.yourJamb':'Браво! Тоа не ѝ успеа ни на жена ми.',
+    'ch.joza.yourZero':'Нула! Пиши ја големо!'},
+  de:{statsLine:'{p} {p|Spiel|Spiele} · {w} {w|Sieg|Siege} · Bestwert {b}',
+    dailyNext:'Morgen neue Würfel',
+    lost:'Verschenkt',
+    'ch.nono.yourBig':'Nicht schlecht für die Jugend.',
+    'ch.mira.yourZero':'Ojoj, du armes Ding.'}
+};
+for(const l in PASS83)Object.assign(D[l],PASS83[l]);
+D.mk.lobbyHost=D.mk.hWaitJoin=D.mk.sendLink;
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan
    languages, Yamb in English and German, where Yamb is the spelling people know and search for. */
 const BRAND='Yamb Café';

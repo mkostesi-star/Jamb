@@ -100,8 +100,8 @@ function colModel(rules,col,par){
   const ones=rules.mid==='plain'?1:(col['1']!==null?col['1']:par[0]);
   return{par,open,UW,pb:pBonus(rules,UW,open,par),Emax:col.max!==null?col.max:par[6],Emin:col.min!==null?col.min:par[7],E1:ones};
 }
-function makeBox(rules,m,c,r,prof){
-  const ri=ROWS.indexOf(r),par=m.par,mult=(prof&&prof.mult&&prof.mult[r])||1,bias=(prof&&prof.colBias&&prof.colBias[c])||0;
+function makeBox(rules,m,c,r,prof,extra){
+  const ri=ROWS.indexOf(r),par=m.par,mult=(prof&&prof.mult&&prof.mult[r])||1,bias=((prof&&prof.colBias&&prof.colBias[c])||0)+(extra||0);
   let u;
   if(ri<6){
     const rest=m.open.filter(i=>i!==ri),tbl=[];
@@ -120,7 +120,18 @@ function makeBox(rules,m,c,r,prof){
 function buildCtx(g,prof){
   const {rules,sheet,turn}=g,pars=parsFor(rules),models={};
   for(const col of rules.cols)models[col]=colModel(rules,sheet[col],col==='hand'?pars.H:pars.S);
-  const mk=(col,r)=>makeBox(rules,models[col],col,r,prof);
+  /* In a column filled in order, writing the next box also brings the boxes waiting behind it one turn closer.
+     A player who knows this (prof.chain) adds to such a write the share of the turns still left in the game that the
+     rest of that column needs, so those columns keep moving and no queue of forced boxes is left for the end. */
+  const chain=(prof&&prof.chain)||0;
+  let left=0;
+  if(chain)for(const col of rules.cols)for(const r of ROWS)if(sheet[col][r]===null)left++;
+  const waiting=(col,r)=>{
+    const d=E.COLS[col];let n=0;
+    if(d.chains)for(const ch of d.chains){const i=ch.indexOf(r);if(i>=0)for(let k=i+1;k<ch.length;k++)if(sheet[col][ch[k]]===null)n++;}
+    return n;
+  };
+  const mk=(col,r)=>makeBox(rules,models[col],col,r,prof,chain?chain*waiting(col,r)/left:0);
   let l1,l2;
   if(turn.announced){const b=mk('ann',turn.announced);l1=[b];l2=[b];}
   else{
@@ -179,7 +190,7 @@ const CHARACTERS={
   nono:{temp:2.4,level:1,colBias:{down:2.5,up:-1},annBias:-4},
   mira:{temp:1.6,level:2,mult:{jamb:1.6,poker:1.25}},
   joza:{temp:0.5,level:3,annBias:2.5},
-  profesor:{temp:0,level:4}
+  profesor:{temp:0,level:4,chain:30}
 };
 const LEVELS={easy:{temp:3},medium:{temp:1.2},hard:{temp:0}};
 function profileOf(p){if(!p)return CHARACTERS.profesor;if(typeof p==='string')return CHARACTERS[p]||LEVELS[p]||CHARACTERS.profesor;return p;}
@@ -191,9 +202,9 @@ function decide(g,prof,rnd){
   return toAction(pick(opts,P0.temp,rnd),g.turn.dice);
 }
 
-/* Coach: best option and how the chosen one compares. */
+/* Coach: best option and how the chosen one compares. The coach sees the game exactly as the Professor does. */
 function best(g){
-  const opts=options(g,null);
+  const opts=options(g,CHARACTERS.profesor);
   if(!opts.length)return null;
   let b=opts[0];for(const o of opts)if(o.v>b.v)b=o;
   let second=-1e9;for(const o of opts)if(o!==b&&o.v>second)second=o.v;
@@ -206,7 +217,7 @@ function judge(g,action){
   else if(action.type==='announce')chosen=r.opts.find(o=>o.t==='a'&&o.r===action.r);
   else{const [hk]=heldKey(g.turn.dice,action.held);chosen=r.opts.find(o=>o.t==='h'&&o.hk===hk);}
   if(!chosen&&action.type==='announce'){
-    const ctx=buildCtx(g,null),b=ctx.mk('ann',action.r);gen++;
+    const ctx=buildCtx(g,CHARACTERS.profesor),b=ctx.mk('ann',action.r);gen++;
     const rc={nd:ctx.nd,legal:[null,[b],[b],[b]],cont:[null,true,true]},key=keyOf(g.turn.dice);
     let he=-1e9;for(const [hk,n] of holds(key)){const e=holdValue(rc,hk,n,1);if(e>he)he=e;}
     chosen={t:'a',r:action.r,v:he};
@@ -216,7 +227,7 @@ function judge(g,action){
 }
 /* Luck of one roll: value of what came up minus the value you could expect before rolling. */
 function luck(g,afterDice){
-  const ctx=buildCtx(g,null),t=g.turn;
+  const ctx=buildCtx(g,CHARACTERS.profesor),t=g.turn;
   gen++;
   let exp;
   if(t.roll===0)exp=firstRollValue(ctx);

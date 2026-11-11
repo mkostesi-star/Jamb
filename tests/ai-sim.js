@@ -11,17 +11,21 @@ function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a
 function roll(turn,rnd){
   const t={roll:turn.roll,dice:turn.dice.slice(),held:turn.held.slice(),announced:turn.announced,drawn:0};
   if(t.roll===0)t.held=t.held.map(()=>false);
-  t.dice=t.dice.map((v,i)=>t.held[i]?v:1+Math.floor(rnd()*6));
+  // one draw for every die, kept or not, so two players who keep the same dice see the same new ones
+  t.dice=t.dice.map((v,i)=>{const x=1+Math.floor(rnd()*6);return t.held[i]?v:x;});
   t.roll++;return t;
 }
 // One player's game from start to finish. Returns the total and the sheet. onDecision sees every choice.
+// Every turn has its own dice, fixed by the seed and the turn number, so two ways of playing meet the same luck
+// and can be compared game by game.
 function playGame(AI,rules,prof,seed,onDecision,start){
-  const dice=mulberry(seed>>>0),pick=mulberry((seed^0x9E3779B9)>>>0);
+  const pick=mulberry((seed^0x9E3779B9)>>>0);let dice=null,tn=0;
+  const turnDice=()=>mulberry((Math.imul(seed>>>0,2654435761)^Math.imul(tn+1,40503))>>>0);
   const sheet=start?JSON.parse(JSON.stringify(start.sheet)):E.newSheet(rules);
   let turn=start&&start.turn?JSON.parse(JSON.stringify(start.turn)):null,first=start&&start.first;
   let guard=0;
   while(!E.full(rules,sheet)||first){
-    if(!turn){turn=roll(E.freshTurn(rules.dice),dice);}
+    if(!turn){dice=turnDice();turn=roll(E.freshTurn(rules.dice),dice);}else if(!dice)dice=turnDice();
     for(;;){
       if(++guard>5000)throw new Error('game does not end');
       let a;
@@ -36,12 +40,13 @@ function playGame(AI,rules,prof,seed,onDecision,start){
       if(!E.canRollAgain(rules,sheet,turn))throw new Error('illegal roll');
       turn.held=a.held.slice();turn=roll(turn,dice);
     }
-    turn=null;
+    turn=null;tn++;
   }
   return {total:E.total(rules,sheet),sheet};
 }
 function stats(xs){const n=xs.length,m=xs.reduce((a,b)=>a+b,0)/n;const v=xs.reduce((a,b)=>a+(b-m)*(b-m),0)/Math.max(1,n-1);return {n,mean:m,sd:Math.sqrt(v),se:Math.sqrt(v/n)};}
-function average(AI,rules,prof,n,seed0){const xs=[];for(let i=0;i<n;i++)xs.push(playGame(AI,rules,prof,(seed0||1000)+i*7919).total);return stats(xs);}
+function totals(AI,rules,prof,n,seed0){const xs=[];for(let i=0;i<n;i++)xs.push(playGame(AI,rules,prof,(seed0||1000)+i*7919).total);return xs;}
+function average(AI,rules,prof,n,seed0){return stats(totals(AI,rules,prof,n,seed0));}
 const RULESETS={
   classic:E.presetRules('classic'),
   quick:E.presetRules('quick'),
@@ -51,4 +56,4 @@ const RULESETS={
   flatKenta:E.normRules(Object.assign({},E.DEFAULT_RULES,{kenta:'flat'})),
   plainMid:E.normRules(Object.assign({},E.DEFAULT_RULES,{mid:'plain'}))
 };
-module.exports={E,loadAI,playGame,average,stats,mulberry,roll,RULESETS};
+module.exports={E,loadAI,playGame,average,totals,stats,mulberry,roll,RULESETS};
