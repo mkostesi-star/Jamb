@@ -118,6 +118,8 @@ function turn(){
 /* a soft clock tick for the last seconds of a turn */
 function tick(){if(!ready())return;const t=ctx.currentTime;knock(t,1500,1100,0.03,0.05);}
 function hold(){haptic(8);if(!ready())return;burst(ctx.currentTime,{freq:1900,q:2,dur:0.02,gain:0.22});}
+/* A reaction sticker arriving: a soft two-note pop. */
+function pop(){if(!ready())return;const t=ctx.currentTime;knock(t,520,760,0.09,0.11);ping(t+0.07,1040,0.16,0.035);}
 function tap(){if(!ready())return;burst(ctx.currentTime,{freq:2600,q:1.5,dur:0.015,gain:0.12});}
 /* A ballpoint pen writing a number. */
 function write(){
@@ -252,6 +254,6 @@ function motionStop(){
   clearTimeout(motion.timer);motion.handler=null;motion.on=false;motion.shaking=false;motion.prev=null;
 }
 
-root.JambAudio={set,unlock,sleep,tick,rattleStart,rattleStop,shake,land,hold,tap,press,swish,turn,write,zero,bonus,jamb,win,haptic,
+root.JambAudio={set,unlock,sleep,tick,pop,rattleStart,rattleStop,shake,land,hold,tap,press,swish,turn,write,zero,bonus,jamb,win,haptic,
   motion:{supported:motionSupported,request:motionRequest,start:motionStart,stop:motionStop}};
 })(typeof self!=='undefined'?self:this);

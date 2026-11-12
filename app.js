@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v8.3';
+const VERSION='v8.4';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -28,14 +28,15 @@ function detectLang(){
   let list=[];try{list=(navigator.languages&&navigator.languages.length)?navigator.languages:[navigator.language||'en'];}catch(e){}
   for(const raw of list){
     const l=String(raw||'').toLowerCase();
-    if(l.startsWith('sr'))return /latn/.test(l)?'sr':'sr-Cyrl';
     const b=l.split('-')[0];
-    if(['en','hr','bs','sl','mk','de'].includes(b))return b;
+    if(b==='mk')return 'sr';
+    if(['en','hr','sr','bs','sl','de'].includes(b))return b;
   }
   return 'en';
 }
 let prefs=Object.assign({lang:detectLang(),sound:true,music:true,emotes:true,ambience:false,haptics:true,shake:true,hints:true,name:null,rules:E.normRules({}),sets:[],char:'mira',screen:'home',mode:null},jget(PKEY,{}));
 prefs.rules=E.normRules(prefs.rules);
+if(prefs.lang==='sr-Cyrl'||prefs.lang==='mk')prefs.lang='sr';
 if(!I.has(prefs.lang))prefs.lang='en';
 /* v6.5: the sheet fits the screen by default; the bigger sizes are now Large and Huge */
 if(prefs.zoomV!==2){prefs.zoom='fit';prefs.zoomV=2;store.set(PKEY,JSON.stringify(prefs));}
@@ -186,9 +187,11 @@ function showEmote(seat,id){
   b.style.setProperty('--rot',(Math.random()*10-5).toFixed(1)+'deg');
   document.body.appendChild(b);
   const w=b.offsetWidth,x=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2));
-  b.style.left=x+'px';b.style.top=(r.bottom+8)+'px';
+  /* under the player's name when it is on screen; when the sheet is scrolled or enlarged, at the top of what is visible */
+  const top=Math.max(54,Math.min(innerHeight-b.offsetHeight-140,r.bottom+8));
+  b.style.left=x+'px';b.style.top=top+'px';
   setTimeout(()=>{b.classList.add('out');setTimeout(()=>b.remove(),400);},2600);
-  if(seat!==mySeat()){A.tap();A.haptic(10);}
+  A.pop();if(seat!==mySeat())A.haptic(10);
 }
 function sendEmote(id){
   if(!emoOn()||!EMOTES.includes(id))return;
@@ -1032,7 +1035,10 @@ function renderTray(){
       ${g.mode==='online'&&online&&online.host?`<button type="button" class="lnk" style="justify-self:center" data-act="resumenow">${esc(t('tResumeNow'))}</button>`:''}</div>`;
     return;
   }
-  $('tray').innerHTML=`<div class="trayIn">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}<div class="status">${st}<span class="sright">${clockHTML}${emoHTML()}</span></div><div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div>${keysHTML(g)}</div>${tipHTML()}`;
+  /* The name and the roll number are already in the name chip on top and on the Roll button, so when the status line
+     has nothing else to show (no clock, reactions, undo or call) it is left out and the chalkboard gets the room. */
+  const emo=emoHTML(),bare=!clockOn&&!emo&&st===who&&g.mode!=='table';
+  $('tray').innerHTML=`<div class="trayIn${bare?' bare':''}">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}${bare?'':`<div class="status">${st}<span class="sright">${clockHTML}${emo}</span></div>`}<div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div>${keysHTML(g)}</div>${tipHTML()}`;
 }
 /* keyboard keys, shown in the desktop layout during the first games */
 function keysHTML(g){
@@ -1184,7 +1190,6 @@ function renderModal(){
       h=head(t('settings'))+`<div class="toggle"><span>${esc(t('language'))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="lang">${esc(I.name(prefs.lang))}</button></div>`+
         `<h3>${esc(t('sSoundG'))}</h3>`+sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+
         `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
-        `<div class="toggle"><span>${esc(t('modeRules'))}<small>${esc(rulesBrief(prefs.rules))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="editrules">${esc(t('change'))}</button></div>`+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
         `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
       break;

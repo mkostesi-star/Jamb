@@ -1,4 +1,4 @@
-/* Jamb interface text. English is the default; Serbian Cyrillic is generated from Serbian Latin. */
+/* Jamb interface text. English is the default. */
 (function(root){
 'use strict';
 const D={};
@@ -901,6 +901,16 @@ const PASS83={
 };
 for(const l in PASS83)Object.assign(D[l],PASS83[l]);
 D.mk.lobbyHost=D.mk.hWaitJoin=D.mk.sendLink;
+/* v8.4: the game is played on any device, so the texts say "device" where they said "phone". */
+const DEV84={
+ "en": { "waitingPhone": "Waiting for the other device", "modePPD": "Up to six on one device, computers welcome", "modeOnline": "Several devices", "modeOnlineD": "2 to 6 players, each on their own device", "modeTableD": "Roll your own dice, the game keeps score", "mOnline": "Several devices · {code}", "hStartPass": "Pass the device, then roll.", "shakeHint": "shake the device, or hold and let go", "tableIntro": "Roll your own dice. The game keeps the sheet, minds the rules and does the sums.", "sShakeD": "Shake the device like a glass of dice", "onlineIntro": "No accounts, just a link. Two to six devices; keep the game open on each one while you play.", "connectedN": "Devices connected: {n}", "waitingPhones": "Waiting for the other devices", "friendsD": "One device, several devices, a duel or real dice", "sEmotesD": "Reactions from friends playing on their own devices", "recPhone": "Records are kept on this device.", "awayHint": "{name}’s device is not connected.", "awayDone": "{name}’s device is not connected. Their dice went into {row}.", "verMismatch": "Devices have different versions. Close Yamb Café on each one and open it again."},
+ "hr": { "waitingPhone": "Čekamo drugi uređaj", "modePPD": "Do šest na jednom uređaju, može i računalo", "modeOnline": "Više uređaja", "modeOnlineD": "2 do 6 igrača, svatko na svom uređaju", "modeTableD": "Bacaj svoje kocke, igra vodi evidenciju", "mOnline": "Više uređaja · {code}", "hStartPass": "Predaj uređaj pa baci.", "shakeHint": "protresi uređaj ili drži pa pusti", "tableIntro": "Bacaj svoje kocke. Igra vodi evidenciju, pazi na pravila i sve zbraja.", "sShakeD": "Protresi uređaj kao čašu s kockama", "onlineIntro": "Bez računa, samo poveznica. Od dva do šest uređaja; neka igra bude otvorena na svakom dok igrate.", "connectedN": "Povezanih uređaja: {n}", "waitingPhones": "Čekamo ostale uređaje", "friendsD": "Jedan uređaj, više uređaja, dvoboj ili prave kocke", "sEmotesD": "Reakcije prijatelja koji igraju na svojim uređajima", "recPhone": "Rekordi se čuvaju na ovom uređaju.", "awayHint": "{name} – uređaj nije povezan.", "awayDone": "{name} – uređaj nije povezan, kocke idu u polje {row}.", "verMismatch": "Uređaji imaju različite verzije. Zatvori Yamb Café na svakom uređaju i otvori ga ponovno.", "modePP": "Jedan uređaj", "m_pp": "Jedan uređaj", "endOnline": "Završi igru na više uređaja"},
+ "sr": { "waitingPhone": "Čekamo drugi uređaj", "modePPD": "Do šest na jednom uređaju, može i računar", "modeOnline": "Više uređaja", "modeOnlineD": "2 do 6 igrača, svako na svom uređaju", "modeTableD": "Bacaj svoje kockice, igra vodi evidenciju", "mOnline": "Više uređaja · {code}", "hStartPass": "Predaj uređaj pa baci.", "shakeHint": "protresi uređaj ili drži pa pusti", "tableIntro": "Bacaj svoje kockice. Igra vodi evidenciju, pazi na pravila i sve sabira.", "sShakeD": "Protresi uređaj kao čašu sa kockicama", "onlineIntro": "Bez naloga, samo link. Od dva do šest uređaja; neka igra bude otvorena na svakom dok igrate.", "connectedN": "Povezanih uređaja: {n}", "waitingPhones": "Čekamo ostale uređaje", "friendsD": "Jedan uređaj, više uređaja, dvoboj ili prave kocke", "sEmotesD": "Reakcije prijatelja koji igraju na svojim uređajima", "recPhone": "Rekordi se čuvaju na ovom uređaju.", "awayHint": "{name} – uređaj nije povezan.", "awayDone": "{name} – uređaj nije povezan, kockice idu u polje {row}.", "verMismatch": "Uređaji imaju različite verzije. Zatvori Yamb Café na svakom uređaju i otvori ga ponovo.", "modePP": "Jedan uređaj", "m_pp": "Jedan uređaj", "endOnline": "Završi igru na više uređaja"},
+ "bs": { "waitingPhone": "Čekamo drugi uređaj", "modePPD": "Do šest na jednom uređaju, može i računar", "modeOnline": "Više uređaja", "modeOnlineD": "2 do 6 igrača, svako na svom uređaju", "modeTableD": "Bacaj svoje kockice, igra vodi evidenciju", "mOnline": "Više uređaja · {code}", "hStartPass": "Predaj uređaj pa baci.", "shakeHint": "protresi uređaj ili drži pa pusti", "tableIntro": "Bacaj svoje kockice. Igra vodi evidenciju, pazi na pravila i sve sabira.", "sShakeD": "Protresi uređaj kao čašu s kockicama", "onlineIntro": "Bez računa, samo link. Od dva do šest uređaja; neka igra bude otvorena na svakom dok igrate.", "connectedN": "Povezanih uređaja: {n}", "waitingPhones": "Čekamo ostale uređaje", "friendsD": "Jedan uređaj, više uređaja, dvoboj ili prave kocke", "sEmotesD": "Reakcije prijatelja koji igraju na svojim uređajima", "recPhone": "Rekordi se čuvaju na ovom uređaju.", "awayHint": "{name} – uređaj nije povezan.", "awayDone": "{name} – uređaj nije povezan, kockice idu u polje {row}.", "verMismatch": "Uređaji imaju različite verzije. Zatvori Yamb Café na svakom uređaju i otvori ga ponovo.", "modePP": "Jedan uređaj", "m_pp": "Jedan uređaj", "endOnline": "Završi igru na više uređaja"},
+ "sl": { "waitingPhone": "Čakamo na drugo napravo", "modePPD": "Do šestih na eni napravi, lahko tudi računalnik", "modeOnline": "Več naprav", "modeOnlineD": "2 do 6 igralcev, vsak na svoji napravi", "modeTableD": "Meči svoje kocke, igra vodi evidenco", "mOnline": "Več naprav · {code}", "hStartPass": "Podaj napravo, nato vrzi.", "shakeHint": "stresi napravo ali drži in spusti", "tableIntro": "Meči svoje kocke. Igra vodi evidenco, pazi na pravila in vse sešteje.", "sShakeD": "Stresi napravo kot kozarec s kockami", "onlineIntro": "Brez računov, samo povezava. Od dveh do šestih naprav; med igro naj bo igra odprta na vsaki.", "connectedN": "Povezane naprave: {n}", "waitingPhones": "Čakamo na ostale naprave", "friendsD": "Ena naprava, več naprav, dvoboj ali prave kocke", "sEmotesD": "Odzivi prijateljev, ki igrajo na svojih napravah", "recPhone": "Rekordi so shranjeni na tej napravi.", "awayHint": "{name} – naprava ni povezana.", "awayDone": "{name} – naprava ni povezana, kocke gredo v polje {row}.", "verMismatch": "Naprave imajo različne različice. Zapri Yamb Café na vsaki napravi in ga znova odpri.", "modePP": "Ena naprava", "m_pp": "Ena naprava", "endOnline": "Končaj igro na več napravah"},
+ "de": { "waitingPhone": "Warte auf das andere Gerät", "modePPD": "Bis zu sechs an einem Gerät, Computer gern dabei", "modeOnline": "Mehrere Geräte", "modeOnlineD": "2 bis 6 Spieler, jeder auf seinem Gerät", "modeTableD": "Mit eigenen Würfeln, das Spiel zählt mit", "mOnline": "Mehrere Geräte · {code}", "hStartPass": "Gerät weitergeben, dann würfeln.", "shakeHint": "Gerät schütteln oder halten und loslassen", "tableIntro": "Würfelt mit euren eigenen Würfeln. Das Spiel führt das Blatt, achtet auf die Regeln und rechnet alles zusammen.", "sShakeD": "Schüttle das Gerät wie einen Würfelbecher", "onlineIntro": "Kein Konto, nur ein Link. Zwei bis sechs Geräte; lasst das Spiel auf jedem offen, solange ihr spielt.", "connectedN": "Verbundene Geräte: {n}", "waitingPhones": "Warte auf die anderen Geräte", "friendsD": "Ein Gerät, mehrere Geräte, ein Duell oder echte Würfel", "sEmotesD": "Reaktionen von Freunden, die auf ihren eigenen Geräten spielen", "recPhone": "Die Rekorde werden auf diesem Gerät gespeichert.", "awayHint": "Das Gerät von {name} ist nicht verbunden.", "awayDone": "Das Gerät von {name} ist nicht verbunden. Die Würfel stehen jetzt bei {row}.", "verMismatch": "Die Geräte haben verschiedene Versionen. Schließe Yamb Café auf jedem Gerät und öffne es neu.", "modePP": "Ein Gerät", "m_pp": "Ein Gerät"}
+};
+for(const l in DEV84)Object.assign(D[l],DEV84[l]);
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan
    languages, Yamb in English and German, where Yamb is the spelling people know and search for. */
 const BRAND='Yamb Café';
@@ -908,37 +918,15 @@ for(const l in D)['instIOS','instAndroid','nudgeT'].forEach(k=>{if(typeof D[l][k
 const toYamb=s=>typeof s==='string'?s.replace(/\bJamb/g,'Yamb').replace(/\bJAMB/g,'YAMB'):s;
 ['en','de'].forEach(l=>{for(const k in D[l]){const v=D[l][k];D[l][k]=Array.isArray(v)?v.map(toYamb):toYamb(v);}});
 
-/* Serbian Cyrillic from Serbian Latin; tags and {placeholders} are left alone. */
-const LAT2CYR=[['DŽ','Џ'],['Dž','Џ'],['dž','џ'],['LJ','Љ'],['Lj','Љ'],['lj','љ'],['NJ','Њ'],['Nj','Њ'],['nj','њ'],
-  ['A','А'],['B','Б'],['V','В'],['G','Г'],['D','Д'],['Đ','Ђ'],['E','Е'],['Ž','Ж'],['Z','З'],['I','И'],['J','Ј'],['K','К'],['L','Л'],['M','М'],['N','Н'],['O','О'],['P','П'],['R','Р'],['S','С'],['T','Т'],['Ć','Ћ'],['U','У'],['F','Ф'],['H','Х'],['C','Ц'],['Č','Ч'],['Š','Ш'],
-  ['a','а'],['b','б'],['v','в'],['g','г'],['d','д'],['đ','ђ'],['e','е'],['ž','ж'],['z','з'],['i','и'],['j','ј'],['k','к'],['l','л'],['m','м'],['n','н'],['o','о'],['p','п'],['r','р'],['s','с'],['t','т'],['ć','ћ'],['u','у'],['f','ф'],['h','х'],['c','ц'],['č','ч'],['š','ш']];
-function cyr(s){
-  return s.split(/(<[^>]*>|\{[^}]*\}|https?:\/\/\S+|Safari|Chrome|Edge|Yamb Café)/).map((part,i)=>{
-    if(i%2){/* plural forms inside {n|…} are words, so they get transliterated too */
-      if(part[0]==='{'&&part.includes('|')){const j=part.indexOf('|');return part.slice(0,j+1)+cyr(part.slice(j+1,-1))+'}';}
-      return part;
-    }
-    let out='';
-    for(let k=0;k<part.length;){
-      let hit=null;
-      for(const [l,c] of LAT2CYR){if(part.startsWith(l,k)){hit=[l,c];break;}}
-      if(hit){out+=hit[1];k+=hit[0].length;}else{out+=part[k];k++;}
-    }
-    return out;
-  }).join('');
-}
-const SRC={};
-for(const k in D.sr){const v=D.sr[k];SRC[k]=Array.isArray(v)?v.map(cyr):cyr(v);}
-D['sr-Cyrl']=SRC;
+/* v8.4: six languages. Macedonian and Serbian Cyrillic were dropped; the Macedonian texts above are no longer used. */
+delete D.mk;
 
 const LANGS=[
   {code:'en',name:'English',short:'EN',locale:'en'},
   {code:'hr',name:'Hrvatski',short:'HR',locale:'hr'},
-  {code:'sr',name:'Srpski (latinica)',short:'SR',locale:'sr-Latn'},
-  {code:'sr-Cyrl',name:'Српски (ћирилица)',short:'СР',locale:'sr-Cyrl'},
+  {code:'sr',name:'Srpski',short:'SR',locale:'sr-Latn'},
   {code:'bs',name:'Bosanski',short:'BS',locale:'bs'},
   {code:'sl',name:'Slovenščina',short:'SL',locale:'sl'},
-  {code:'mk',name:'Македонски',short:'МК',locale:'mk'},
   {code:'de',name:'Deutsch',short:'DE',locale:'de'}
 ];
 function get(lang,k){const d=D[lang]||D.en;return d[k]!=null?d[k]:D.en[k];}

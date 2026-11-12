@@ -99,8 +99,58 @@ function pick(){
   return order[pos++];
 }
 function nextName(){if(!upcoming)upcoming=pick();return upcoming;}
+/* Recordings play through an <audio> element: the browser streams and decodes them on its own, away from the game's
+   sound effects, so a busy moment in the game cannot make the music crackle and a whole song never sits decoded in
+   memory. Where the element's volume cannot be set (iPhone and iPad) it is routed through the game's audio instead.
+   If the element cannot play, the old way (decode the whole file) takes over. */
+let el=null,elGain=null,volLocked=false,useBuf=false,fadeF=0,fadeT=0;
+function elSetup(){
+  if(el)return true;
+  if(typeof Audio!=='function')return false;
+  try{
+    el=new Audio();el.preload='auto';
+    el.volume=0.5;volLocked=el.volume!==0.5;
+    if(volLocked){const src=ctx.createMediaElementSource(el);elGain=ctx.createGain();elGain.gain.value=0.0001;src.connect(elGain);elGain.connect(tOut);}
+  }catch(e){el=null;return false;}
+  return true;
+}
+function elApply(){
+  if(!el)return;
+  if(volLocked){try{elGain.gain.setTargetAtTime(Math.max(0.0001,fadeF),ctx.currentTime,0.03);}catch(e){}}
+  else el.volume=Math.max(0,Math.min(1,fadeF*level*TRIM*0.9));
+}
+function elFade(to,sec,done){
+  clearInterval(fadeT);
+  const from=fadeF,t0=Date.now(),ms=Math.max(1,sec*1000);
+  fadeT=setInterval(()=>{
+    const k=Math.min(1,(Date.now()-t0)/ms);fadeF=from+(to-from)*k;elApply();
+    if(k>=1){clearInterval(fadeT);fadeT=0;if(done)done();}
+  },40);
+}
 function playTrack(t,offset){
   const my=++gen;if(upcoming===t)upcoming=null;
+  if(useBuf||!elSetup()){playBuf(t,offset,my);return;}
+  clearInterval(fadeT);fadeF=0;elApply();
+  const fail=()=>{
+    if(my!==gen||!on)return;
+    try{el.pause();}catch(e){}
+    useBuf=true;playBuf(t,offset,my);
+  };
+  el.onended=()=>{
+    if(!cur||cur.my!==my)return;
+    cur=null;last=t;
+    if(on&&my===gen){clearTimeout(gapT);gapT=setTimeout(()=>{if(on&&my===gen)playTrack(nextName(),0);},GAP*1000);}
+  };
+  el.onerror=fail;
+  try{
+    el.src=url(t);
+    if(offset){const seek=()=>{el.removeEventListener('loadedmetadata',seek);try{el.currentTime=Math.min(offset,Math.max(0,(el.duration||offset+9)-8));}catch(e){}};el.addEventListener('loadedmetadata',seek);}
+    const p=el.play();
+    const ok=()=>{if(my!==gen||!on){return;}fails=0;cur={t,el:true,my};elFade(1,offset?1.5:0.3);};
+    if(p&&p.then)p.then(ok).catch(fail);else ok();
+  }catch(e){fail();}
+}
+function playBuf(t,offset,my){
   decode(t).then(b=>{
     if(my!==gen||!on)return;
     fails=0;
@@ -122,6 +172,11 @@ function playTrack(t,offset){
 }
 function fadeCur(sec){
   if(!cur)return null;const c=cur;cur=null;
+  if(c.el){
+    let at=0;try{at=el.currentTime||0;}catch(e){}
+    const g=gen;elFade(0,sec,()=>{if(!cur||!cur.el){try{if(gen===g||!on)el.pause();}catch(e){}}});
+    return {t:c.t,at};
+  }
   const at=Math.max(0,ctx.currentTime-c.t0);
   try{c.g.gain.cancelScheduledValues(ctx.currentTime);c.g.gain.setValueAtTime(c.g.gain.value,ctx.currentTime);c.g.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+sec);c.n.stop(ctx.currentTime+sec+0.05);}catch(e){}
   return {t:c.t,at};
@@ -143,11 +198,13 @@ function start(audioCtx,wet,dry){
 }
 function stop(){
   if(!on)return;on=false;gen++;clearTimeout(gapT);
-  const r=fadeCur(0.6);if(r)resumeAt=r;
+  const hidden=typeof document!=='undefined'&&document.hidden;
+  const r=fadeCur(hidden?0.01:0.6);if(r)resumeAt=r;
+  if(hidden&&el){clearInterval(fadeT);fadeT=0;fadeF=0;elApply();try{el.pause();}catch(e){}}   /* timers may freeze in the background: stop at once */
   wStop();
 }
 /* quieter while a game is being played than on the menus */
-function setLevel(v){level=v;if(!ctx)return;if(out&&wOn)ramp(out,v,0.8);if(tOut)ramp(tOut,v*TRIM,0.8);}
+function setLevel(v){level=v;if(!ctx)return;if(out&&wOn)ramp(out,v,0.8);if(tOut)ramp(tOut,v*TRIM,0.8);if(el&&!volLocked&&!fadeT)elApply();}
 /* 'daily' while a Daily Jamb is on screen: its theme comes in (unless already playing), then the usual mix follows */
 function setMood(m){
   m=m==='daily'?'daily':'main';if(m===mood)return;mood=m;
