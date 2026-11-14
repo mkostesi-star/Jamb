@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v8.5';
+const VERSION='v8.6';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -1191,7 +1191,7 @@ function renderModal(){
         `<h3>${esc(t('sSoundG'))}</h3>`+sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+
         `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
-        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))}</p>`;
+        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))} · <a href="privacy/" target="_blank" rel="noopener" style="color:inherit">${esc(t('privacy'))}</a></p>`;
       break;
     case 'lang':
       h=head(t('language'))+`<div class="langlist">${I.list().map(l=>`<button type="button" data-act="setlang" data-v="${l.code}" aria-pressed="${l.code===prefs.lang}"><span>${esc(l.name)}</span><span>${esc(l.short)}</span></button>`).join('')}</div>`;

@@ -911,6 +911,9 @@ const DEV84={
  "de": { "waitingPhone": "Warte auf das andere Gerät", "modePPD": "Bis zu sechs an einem Gerät, Computer gern dabei", "modeOnline": "Mehrere Geräte", "modeOnlineD": "2 bis 6 Spieler, jeder auf seinem Gerät", "modeTableD": "Mit eigenen Würfeln, das Spiel zählt mit", "mOnline": "Mehrere Geräte · {code}", "hStartPass": "Gerät weitergeben, dann würfeln.", "shakeHint": "Gerät schütteln oder halten und loslassen", "tableIntro": "Würfelt mit euren eigenen Würfeln. Das Spiel führt das Blatt, achtet auf die Regeln und rechnet alles zusammen.", "sShakeD": "Schüttle das Gerät wie einen Würfelbecher", "onlineIntro": "Kein Konto, nur ein Link. Zwei bis sechs Geräte; lasst das Spiel auf jedem offen, solange ihr spielt.", "connectedN": "Verbundene Geräte: {n}", "waitingPhones": "Warte auf die anderen Geräte", "friendsD": "Ein Gerät, mehrere Geräte, ein Duell oder echte Würfel", "sEmotesD": "Reaktionen von Freunden, die auf ihren eigenen Geräten spielen", "recPhone": "Die Rekorde werden auf diesem Gerät gespeichert.", "awayHint": "Das Gerät von {name} ist nicht verbunden.", "awayDone": "Das Gerät von {name} ist nicht verbunden. Die Würfel stehen jetzt bei {row}.", "verMismatch": "Die Geräte haben verschiedene Versionen. Schließe Yamb Café auf jedem Gerät und öffne es neu.", "modePP": "Ein Gerät", "m_pp": "Ein Gerät"}
 };
 for(const l in DEV84)Object.assign(D[l],DEV84[l]);
+/* v8.6: link to the privacy page in Settings */
+const PRIV86={en:'Privacy',hr:'Privatnost',sr:'Privatnost',bs:'Privatnost',sl:'Zasebnost',de:'Datenschutz'};
+for(const l in PRIV86)D[l].privacy=PRIV86[l];
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan
    languages, Yamb in English and German, where Yamb is the spelling people know and search for. */
 const BRAND='Yamb Café';

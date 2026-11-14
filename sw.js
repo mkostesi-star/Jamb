@@ -1,7 +1,7 @@
 /* Keeps Yamb Café working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v8.5';
+const CACHE = 'jamb-v8.6';
 const CORE = [
-  './', 'index.html', 'engine.js?v=85', 'ai.js?v=85', 'i18n.js?v=85', 'audio.js?v=85', 'music.js?v=85', 'fx.js?v=85', 'scan.js?v=85', 'app.js?v=85', 'manifest.webmanifest',
+  './', 'index.html', 'engine.js?v=86', 'ai.js?v=86', 'i18n.js?v=86', 'audio.js?v=86', 'music.js?v=86', 'fx.js?v=86', 'scan.js?v=86', 'app.js?v=86', 'manifest.webmanifest',
   'icons/v7/icon-192.png', 'icons/v7/apple-touch-icon.png', 'icons/v7/favicon-64.png',
   'art/home-800.webp', 'art/home-1280.webp', 'art/home-800.jpg', 'art/wood-768.webp', 'art/winner-800.webp', 'art/daily-800.webp',
   'art/cast/ema.webp', 'art/cast/nono.webp', 'art/cast/mira.webp', 'art/cast/joza.webp', 'art/cast/profesor.webp',
@@ -27,7 +27,10 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
 
   if (url.origin === self.location.origin) {
-    const key = req.mode === 'navigate' ? './' : req;
+    /* Only the game itself is the app shell. Other pages on the site (the privacy page) keep their own entry,
+       so opening them can never replace the game in the offline copy. */
+    const shell = req.mode === 'navigate' && (url.pathname === '/' || url.pathname.endsWith('/index.html'));
+    const key = shell ? './' : req;
     e.respondWith(
       fetch(req)
         .then(res => {
@@ -37,7 +40,7 @@ self.addEventListener('fetch', e => {
           }
           return res;
         })
-        .catch(() => caches.match(key, { ignoreSearch: true }).then(hit => hit || caches.match('./')))
+        .catch(() => caches.match(key, { ignoreSearch: true }).then(hit => hit || (shell ? caches.match('./') : undefined)))
     );
     return;
   }
