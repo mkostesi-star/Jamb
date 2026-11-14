@@ -1,14 +1,19 @@
 {
   "name": "yamb-cafe-tests",
   "private": true,
-  "description": "Automated checks for Yamb Café: games on several phones, and how well the computer plays.",
+  "description": "Automated checks for Yamb Café: games on several devices, how well the computer plays, and the database script.",
   "scripts": {
     "online": "node online.js",
-    "ai": "node ai-bench.js"
+    "ai": "node ai-bench.js",
+    "sql": "node sql.js"
   },
   "dependencies": {
+    "express": "^4.19.2",
     "peer": "^1.0.2",
-    "peerjs": "1.5.5",
-    "express": "^4.19.2"
+    "peerjs": "1.5.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@supabase/supabase-js": "^2.119.0"
   }
 }

@@ -166,13 +166,35 @@ function rollDice(turn,seed,turnNo){
   return t;
 }
 
+/* A finished one-column game as a short list: for each turn [row, kept before the 2nd roll, kept before the 3rd roll].
+   "Kept" is a number with bit i set when die i stayed on the table. With the seed, the list is enough to play the
+   whole game again, which is how a Daily Yamb score is checked before it goes on the high scores. */
+function replayMoves(rules,seed,moves){
+  if(!Array.isArray(moves)||rules.cols.length!==1||rules.cols[0]!=='free'||moves.length!==ROWS.length)return null;
+  const sheet=newSheet(rules);
+  for(let tn=0;tn<moves.length;tn++){
+    const m=moves[tn];
+    if(!Array.isArray(m)||m.length<1||m.length>3||!m.every(Number.isInteger))return null;
+    const r=ROWS[m[0]];
+    if(r===undefined||sheet.free[r]!==null)return null;
+    let turn=rollDice(freshTurn(rules.dice),seed,tn);
+    for(let k=1;k<m.length;k++){
+      if(m[k]<0||m[k]>=(1<<rules.dice))return null;
+      turn.held=turn.dice.map((_,i)=>!!(m[k]>>i&1));
+      turn=rollDice(turn,seed,tn);
+    }
+    sheet.free[r]=score(rules,r,turn.dice,turn.roll);
+  }
+  return{sheet,total:total(rules,sheet)};
+}
+
 const EPOCH=Date.UTC(2026,9,31);
 function localDay(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function dailyNumber(day){const [y,m,dd]=day.split('-').map(Number);return Math.round((Date.UTC(y,m-1,dd)-EPOCH)/864e5)+1;}
 
 const API={ROWS,UPPER,LOWER,COLS,COL_ORDER,DEFAULT_RULES,PRESETS,DAILY_RULES,normRules,presetRules,sameRules,encodeRules,decodeRules,encodeObj,decodeObj,
   counts,scoreC,score,newSheet,colTotals,total,filled,boxes,full,nextBoxes,canWrite,legalList,hasLater,canRollAgain,canAnnounce,freshTurn,
-  hashStr,streamAt,rollDice,cryptoDie,localDay,dailyNumber};
+  hashStr,streamAt,rollDice,cryptoDie,replayMoves,localDay,dailyNumber};
 root.JambEngine=API;
 if(typeof module!=='undefined'&&module.exports)module.exports=API;
 })(typeof self!=='undefined'?self:this);
