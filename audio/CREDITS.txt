@@ -9,10 +9,12 @@ music/*.mp3, from Pixabay Music (pixabay.com), under the Pixabay Content License
 (free to use in the app, no credit required, not to be sold or handed out on their own):
   morning-cafe.mp3  "French Morning Cafe Music" by AndriiH (Pixabay 590613), the Daily Jamb theme
   cafe-cafe.mp3     "Cafe Cafe Music" by AndriiH (Pixabay 575986)
-  cafe-aurec.mp3    "Cafe Music" by Aurec (Pixabay 604790)
-  cafe-lofi.mp3     "Cafe Lofi" by ZephiraMusic (Pixabay 591791)
-  balkan-joy.mp3    "Balkan Joy" by Sonican (Pixabay 266520)
-  battonya.mp3      "Battonya (Balkan Music)" by Artmanzh (Pixabay 330439)
+  italian-cafe.mp3  "Italian Cafe Music" by AndriiH (Pixabay 567456)
+  cafe-rome.mp3     "Italy Cafe Rome" by AndriiH (Pixabay 567443)
+  bossa-cafe.mp3    "Bossa Nova Cafe Music" by AndriiH (Pixabay 590467)
+  coffee-shop.mp3   "Cafe Coffee Shop Music" by AndriiH (Pixabay 579806)
+  cafe-corner.mp3   "Cafe Cafe Music" by AndriiH (Pixabay 567426)
+  cafe-hotel.mp3    "Restaurant Cafe Hotel Music" by AndriiH (Pixabay 571627)
   Edited for Jamb: trailing silence trimmed, levelled to -16 LUFS, short fade-out, 112 kbps MP3.
 
 All other sounds, and the fallback waltz "Table by the window" that plays when the tracks can't load,

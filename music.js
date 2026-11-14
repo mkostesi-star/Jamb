@@ -84,7 +84,7 @@ function wStop(){if(!wOn)return;wOn=false;clearInterval(timer);ramp(out,0.0001,0
 /* All tracks are mastered to the same loudness (-16 LUFS); TRIM puts them at the waltz's level, so the
    balance with the café sounds stays as it was. Only the playing track is decoded; the next one is
    downloaded (not decoded) while it plays, which keeps memory low on phones. */
-const MAIN=['cafe-cafe','cafe-aurec','balkan-joy','cafe-lofi','battonya'],DAILY='morning-cafe',TRIM=0.86,GAP=1.6;
+const MAIN=['cafe-cafe','italian-cafe','bossa-cafe','cafe-rome','coffee-shop','cafe-corner','cafe-hotel'],DAILY='morning-cafe',TRIM=0.86,GAP=1.6;
 let tOut=null,raw={},cur=null,order=[],pos=0,last=null,mood='main',dailyDone=false,fails=0,gen=0,resumeAt=null,gapT=0,upcoming=null,useWaltz=false;
 const url=t=>'audio/music/'+t+'.mp3';
 function fetchRaw(t){
