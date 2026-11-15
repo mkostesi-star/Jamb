@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.0';
+const VERSION='v9.1';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -324,48 +324,30 @@ function rollChain(){
   if(!ui.rollNext){if(ui.holdTurn){ui.holdTurn=null;render();}if(!bot.live)maybeBot();return;}
   const idx=ui.rollNext;ui.rollNext=null;ui.holdTurn=null;rollFx(idx);
 }
-/* ---------- the dice cup ----------
-   The dice to be thrown go into the leather cup, it shakes on the tray, tips over, and they tumble out.
-   Holding Roll or shaking the phone keeps it shaking until you let go; a tap, the computer and other
-   phones get a short shake. The cup lives outside the tray so re-renders never restart its animation. */
+/* ---------- shaking the tray ----------
+   The dice to be thrown rattle on the silver tray while it shakes. Holding Roll or shaking the phone keeps it
+   shaking until you let go; a tap, the computer and other phones get a short shake. Then the cups spin and settle. */
 const CUP_MIN=380;
-let cupEl=null;
-function cupNode(){
-  if(!cupEl){cupEl=document.createElement('div');cupEl.className='cup';cupEl.setAttribute('aria-hidden','true');cupEl.innerHTML='<img src="art/cup.webp" alt="" draggable="false">';document.body.appendChild(cupEl);}
-  return cupEl;
-}
 /* the dice the next roll will throw: all of them on the first roll, otherwise the ones not kept */
 function freeIdx(){const t=G&&G.turn;if(!t)return [];const h=t.roll===0?t.held.map(()=>false):t.held;return h.map((x,i)=>x?-1:i).filter(i=>i>=0);}
 function cupStart(idx){
   if(reduce||!idx||!idx.length||screen!=='game'||ui.cup)return !!ui.cup;
-  const all=[...document.querySelectorAll('#dice .die')],ds=all.filter((d,i)=>idx.includes(i));if(!ds.length)return false;
-  const rs=ds.map(d=>d.getBoundingClientRect()),dw=rs[0].width;if(!dw)return false;
-  const cx=rs.reduce((a,r)=>a+r.left+r.width/2,0)/rs.length,bottom=Math.max(...rs.map(r=>r.bottom));
-  const el=cupNode(),h=Math.round(dw*1.95),w=Math.round(h*0.742);
-  el.getAnimations().forEach(a=>a.cancel());const img=el.firstChild;img.getAnimations().forEach(a=>a.cancel());
-  el.style.cssText=`display:block;left:${Math.round(cx-w/2)}px;top:${Math.round(bottom-h+4)}px;width:${w}px;height:${h}px`;
+  const el=$('dice');if(!el)return false;
   ui.cup={idx:idx.slice(),t0:performance.now()};
-  ds.forEach(d=>d.classList.add('incup'));
-  el.animate([{opacity:0,transform:'translateY(-34px) scale(.92)'},{opacity:1,transform:'none'}],{duration:150,easing:'cubic-bezier(.2,.9,.3,1.2)'});
-  img.animate([{transform:'rotate(0) translateX(0)'},{transform:'rotate(-9deg) translate(-5px,-4px)'},{transform:'rotate(0) translateX(0)'},{transform:'rotate(9deg) translate(5px,-4px)'},{transform:'rotate(0) translateX(0)'}],{duration:240,iterations:Infinity,delay:110});
+  el.classList.add('shaking');
+  el.querySelectorAll('.die').forEach((d,i)=>{if(idx.includes(i))d.classList.add('incup');});
   return true;
 }
-/* tip it over toward the dice and let them out */
-function cupPour(){
-  const el=cupEl;if(!el||!ui.cup){ui.cup=null;return;}
-  ui.cup=null;el.firstChild.getAnimations().forEach(a=>a.cancel());
-  const a=el.animate([{transform:'none',opacity:1},{transform:'translate(12px,-8px) rotate(68deg)',opacity:1,offset:.5},{transform:'translate(26px,-18px) rotate(108deg)',opacity:0}],{duration:300,easing:'ease-in'});
-  a.onfinish=()=>{if(!ui.cup)el.style.display='none';};
-  setTimeout(()=>document.querySelectorAll('#dice .die.incup').forEach(d=>d.classList.remove('incup')),120);
-}
-/* a hold that ended without a roll, or the game changed underneath: the cup lifts away and the dice come back */
-function cupCancel(){
-  if(!ui.cup)return;ui.cup=null;
-  const el=cupEl;
-  if(el){el.firstChild.getAnimations().forEach(a=>a.cancel());const a=el.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(-24px)'}],{duration:160,easing:'ease-in'});a.onfinish=()=>{if(!ui.cup)el.style.display='none';};}
+function cupStop(){
+  ui.cup=null;
+  const el=$('dice');if(el)el.classList.remove('shaking');
   document.querySelectorAll('#dice .die.incup').forEach(d=>d.classList.remove('incup'));
 }
-/* Dice that were thrown go through the cup, tumble with their faces spinning, then land one by one. Phones set to reduce motion get a quick face flip instead. */
+/* the shake is over: the cups are let go */
+function cupPour(){cupStop();}
+/* a hold that ended without a roll, or the game changed underneath */
+function cupCancel(){if(ui.cup)cupStop();}
+/* Dice that were thrown rattle on the shaking tray, spin with their faces changing, then settle one by one. Phones set to reduce motion get a quick face flip instead. */
 function rollFx(idx,done){
   clearInterval(ui.rollT);clearTimeout(ui.cupT);
   const g=G;
@@ -379,7 +361,8 @@ function rollFx(idx,done){
   const was=!!ui.cup;
   if(!was)cupStart(idx);
   const wait=ui.cup?Math.max(0,CUP_MIN-(performance.now()-ui.cup.t0)):0;
-  if(!was||wait>80)A.shake(Math.max(240,wait+160));
+  /* the spin is timed to settle as the cups land */
+  if(!was||wait>80)A.shake(wait+310);else A.spin(wait+310);
   ui.rolling=true;ui.rollIdx=idx;render();
   ui.cupT=setTimeout(()=>{
   if(G!==g){cupCancel();ui.rolling=false;ui.rollIdx=null;return;}
@@ -753,16 +736,19 @@ function rematch(){
 }
 
 /* ---------- rendering helpers ---------- */
-/* every die in the game is one of the six painted faces (art/dice), loaded up front so rolls never flash */
-const DICE=[0,1,2,3,4,5,6].map(v=>v?`art/dice/${v}.webp`:'');
+/* every die in the game is one of the six porcelain cup-dice (art/cup), loaded up front so rolls never flash.
+   The score sheet's row labels keep the small painted die faces (art/dice): at that size they read better. */
+const DICE=[0,1,2,3,4,5,6].map(v=>v?`art/cup/${v}.webp`:'');
+const FACES=[0,1,2,3,4,5,6].map(v=>v?`art/dice/${v}.webp`:'');
 DICE.forEach(s=>{if(s){const im=new Image();im.decoding='async';im.src=s;}});
+['art/tray.webp','art/saucer.webp'].forEach(s=>{const im=new Image();im.decoding='async';im.src=s;});
 function pipsHTML(v){
   if(!v)return '';
-  return `<img class="dface" src="${DICE[v]}" alt="" width="96" height="96" draggable="false">`;
+  return `<img class="dface" src="${DICE[v]}" alt="" width="192" height="169" draggable="false">`;
 }
 const mdie=v=>`<span class="mdie" aria-hidden="true">${pipsHTML(v)}</span>`;
 /* the sheet's upper rows are labelled with the same painted dice */
-function miniFace(v){return `<img class="mini" src="${DICE[v]}" alt="" aria-hidden="true" width="48" height="48" draggable="false">`;}
+function miniFace(v){return `<img class="mini" src="${FACES[v]}" alt="" aria-hidden="true" width="48" height="48" draggable="false">`;}
 const ICON={
   gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 4.6 L10.2 1.7 L13.8 1.7 L14.1 4.6 L15.8 5.3 L18.0 3.5 L20.5 6.0 L18.7 8.2 L19.4 9.9 L22.3 10.2 L22.3 13.8 L19.4 14.1 L18.7 15.8 L20.5 18.0 L18.0 20.5 L15.8 18.7 L14.1 19.4 L13.8 22.3 L10.2 22.3 L9.9 19.4 L8.2 18.7 L6.0 20.5 L3.5 18.0 L5.3 15.8 L4.6 14.1 L1.7 13.8 L1.7 10.2 L4.6 9.9 L5.3 8.2 L3.5 6.0 L6.0 3.5 L8.2 5.3Z"></path><circle cx="12" cy="12" r="3.2"></circle></svg>',
   back:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 3L5 8l5 5"></path></svg>',
@@ -813,6 +799,16 @@ function nudgeHTML(){
   if(isStandalone()||prefs.nudged||(stats.played||0)<2)return '';
   return `<div class="nudge" role="note"><b>${esc(t('nudgeT'))}</b><span>${esc(t('nudgeD'))}</span><div class="row2"><button type="button" class="sbtn" data-act="nudgeyes">${esc(t('installShort'))}</button><button type="button" class="sbtn ghost" data-act="nudgeno">${esc(t('notNow'))}</button></div></div>`;
 }
+/* one line of the menu: the name, a dotted leader, and the player's best score where the price would be */
+function mline(k,name,desc,best,extra){
+  const pr=best>0?esc(fmt(best)):ICON.chev;
+  return `<button type="button" class="mline" data-act="open" data-k="${k}"><span class="ml1"><span class="mt">${esc(name)}</span><span class="dots" aria-hidden="true"></span><span class="pr"${best>0?` aria-label="${esc(t('menuBest',{s:fmt(best)}))}"`:''}>${pr}</span></span><span class="md">${esc(desc)}</span>${extra||''}</button>`;
+}
+/* the best score in these modes (all modes when null), from the account when signed in */
+function bestOf(modes){
+  const av=acctView(),recs=av?av.recs:Object.values(stats.records||{});
+  return recs.reduce((m,r)=>(!modes||modes.includes(r.mode))&&r.best&&r.best.s>m?r.best.s:m,0);
+}
 function renderHome(){
   const d=dailyToday(),res=stats.daily.results[d.day];
   const items=[];
@@ -837,7 +833,7 @@ function renderHome(){
   const bd=boards['d'+d.day]&&boards['d'+d.day].data,btop=bd&&bd.top&&bd.top[0];
   const bline=btop?`<p class="note left">${esc(t('boardBest',{s:fmt(btop.score),name:btop.name||t('playerAnon')}))} · ${esc(t('boardCount',{n:bd.count}))}${bd.me?' · '+esc(t('boardPlace',{r:bd.me.rank,n:bd.count})):''}</p>`:'';
   const streakTxt=n=>n>=2?esc(t('streak',{n})):'';
-  const dkick=`<h2 class="sec">${esc(t('daily'))}</h2>`,ddate=`<span class="date">${esc(dateLabel(d.day))}</span>`;
+  const dkick=`<h2 class="sec">${esc(t('menuSpecial'))}</h2>`,ddate=`<span class="date">${esc(dateLabel(d.day))}</span>`;
   if(res&&res.done){
     const bits=[res.prof!=null?esc(t('profScore',{s:fmt(res.prof)})):'',streakTxt(stats.daily.streak||1),esc(t('dailyNext'))].filter(Boolean);
     daily=`${dkick}<div class="drow"><h2>${esc(t('dailyDone',{s:fmt(res.score)}))}</h2>${ddate}</div>
@@ -848,7 +844,7 @@ function renderHome(){
     /* the dice shown are today's real opening roll: the same for everyone */
     const first=E.rollDice(E.freshTurn(dailyRules().dice),'daily:'+d.day,0).dice;
     const st=streakTxt(stats.daily.streak||0);
-    daily=`${dkick}<div class="drow"><h2>${esc(t('dailyTitle'))}</h2>${ddate}</div>
+    daily=`${dkick}<div class="drow"><h2>${esc(t('daily'))}</h2>${ddate}</div>
       <div class="minidice" role="img" aria-label="${esc(first.join(' '))}">${first.map(mdie).join('')}</div>
       <button type="button" class="btnRed" data-act="daily">${esc(inprog?t('dailyResume'):t('dailyPlay'))}</button>
       <p class="note">${esc(t('dailyHow'))}${st?' · '+st:''}</p>${bline}`;
@@ -856,7 +852,7 @@ function renderHome(){
   const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
   $('home').innerHTML=`
     <div class="hero">
-      <picture><source type="image/webp" srcset="art/home-800.webp 800w, art/home-1280.webp 1280w" sizes="100vw"><img src="art/home-800.jpg" alt="" width="800" height="446" decoding="async"></picture>
+      <picture><source type="image/webp" srcset="art/cafe-800.webp 800w, art/cafe-1280.webp 1280w" sizes="100vw"><img src="art/cafe-800.jpg" alt="" width="800" height="447" decoding="async"></picture>
       <div class="wrap"><header class="top">
         <div class="mark"><span class="word">Yamb <span class="amp">Café</span></span></div>
         <div class="icons"><button type="button" class="ibtn${acctOn()?' on':''}" data-act="open" data-k="account" aria-label="${esc(acctOn()?t('acSignedAs',{name:acctName()}):t('account'))}">${ICON.user}</button><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
@@ -867,11 +863,11 @@ function renderHome(){
       <section class="menu"><div class="menuIn">
         ${daily}
         <h2 class="sec next">${esc(t('atTable'))}</h2>
-        <button type="button" class="token" data-act="open" data-k="cpu">
-          <span class="bt"><span class="mt">${esc(t('playChar'))}</span><span class="md">${esc(t('cpuD'))}</span><span class="faces" aria-hidden="true">${faces}</span></span><span class="badge">${ICON.arrow}</span></button>
-        <button type="button" class="token" data-act="open" data-k="friends">
-          <span class="bt"><span class="mt">${esc(t('friends'))}</span><span class="md">${esc(t('friendsD'))}</span></span><span class="badge blue">${ICON.arrow}</span></button>
-        <div class="pills"><button type="button" class="pillbtn" data-act="open" data-k="records">${ICON.trophy}<span>${esc(t('records'))}</span></button><button type="button" class="pillbtn" data-act="open" data-k="howto">${ICON.ask}<span>${esc(t('howTo'))}</span></button></div>
+        ${mline('cpu',t('playChar'),t('cpuD'),bestOf(['cpu']),`<span class="faces" aria-hidden="true">${faces}</span>`)}
+        ${mline('friends',t('friends'),t('friendsD'),bestOf(['pp','online','duel','table']))}
+        <h2 class="sec next">${esc(t('menuSides'))}</h2>
+        ${mline('records',t('records'),t('menuRecordsD'),bestOf(null))}
+        ${mline('howto',t('howTo'),t('menuHowD'),0)}
       </div></section>${nudgeHTML()}
     </main></div>`;
 }
@@ -1045,7 +1041,7 @@ function renderTray(){
   /* The name and the roll number are already in the name chip on top and on the Roll button, so when the status line
      has nothing else to show (no clock, reactions, undo or call) it is left out and the chalkboard gets the room. */
   const emo=emoHTML(),bare=!clockOn&&!emo&&st===who&&g.mode!=='table';
-  $('tray').innerHTML=`<div class="trayIn${bare?' bare':''}">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}${bare?'':`<div class="status">${st}<span class="sright">${clockHTML}${emo}</span></div>`}<div class="dice${g.rules.dice===6?' six':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div>${keysHTML(g)}</div>${tipHTML()}`;
+  $('tray').innerHTML=`<div class="trayIn${bare?' bare':''}">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}${bare?'':`<div class="status">${st}<span class="sright">${clockHTML}${emo}</span></div>`}<div class="dice${g.rules.dice===6?' six':''}${ui.cup?' shaking':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div>${keysHTML(g)}</div>${tipHTML()}`;
 }
 /* keyboard keys, shown in the desktop layout during the first games */
 function keysHTML(g){

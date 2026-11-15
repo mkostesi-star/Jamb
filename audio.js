@@ -69,27 +69,58 @@ function rattleBurst(len){
     t+=rnd(0.025,0.07);
   }
 }
+/* Recorded porcelain: a cup spinning on the tray (audio/sfx). The loop plays while Roll is held; the end, where the
+   spin speeds up and settles, plays with every roll and is timed to finish as the dice land. Until the recordings
+   have loaded, the synthesized rattle stands in. */
+const SFX={};
+function loadSfx(){
+  if(SFX.started||!ctx)return;SFX.started=true;
+  ['spin-loop','spin-end'].forEach(n=>{
+    fetch('audio/sfx/'+n+'.mp3').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
+      .then(b=>new Promise((ok,no)=>ctx.decodeAudioData(b,ok,no))).then(buf=>{SFX[n]=buf;}).catch(()=>{});
+  });
+}
+let loopNode=null;
+function playBuf(buf,o){
+  const s=ctx.createBufferSource();s.buffer=buf;
+  const g=ctx.createGain(),t=ctx.currentTime+(o.delay||0);
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(o.gain,t+(o.fade||0.03));
+  s.connect(g);g.connect(o.out||master);
+  if(o.loop){s.loop=true;s.loopStart=0.06;s.loopEnd=Math.max(0.2,buf.duration-0.06);}
+  s.start(t,o.offset||0);
+  return{s,g};
+}
 function rattleStart(){
   if(!ready())return;
-  rattleStop();rattleBurst(0.25);
-  shakeTimer=setInterval(()=>{if(ready())rattleBurst(0.25);},230);
+  rattleStop();
+  if(SFX['spin-loop']){loopNode=playBuf(SFX['spin-loop'],{gain:0.55,fade:0.08,loop:true,offset:0.06});}
+  else{rattleBurst(0.25);shakeTimer=setInterval(()=>{if(ready())rattleBurst(0.25);},230);}
   haptic([12,40,12,40,12]);
 }
-function rattleStop(){if(shakeTimer){clearInterval(shakeTimer);shakeTimer=0;}}
-function shake(ms){if(!ready())return;rattleBurst((ms||450)/1000);}
-/* Dice landing on a wooden table: a body thud, a hard click, then a smaller bounce. One die every `step` ms, matching the screen. */
+function rattleStop(){
+  if(shakeTimer){clearInterval(shakeTimer);shakeTimer=0;}
+  if(loopNode){const n=loopNode;loopNode=null;try{const t=ctx.currentTime;n.g.gain.cancelScheduledValues(t);n.g.gain.setValueAtTime(n.g.gain.value,t);n.g.gain.linearRampToValueAtTime(0.0001,t+0.08);n.s.stop(t+0.1);}catch(e){}}
+}
+/* the end of the spin, lined up so it settles `ms` from now (the loud part ends 0.74 s into the clip) */
+function spin(ms){
+  if(!ready()||!SFX['spin-end'])return false;
+  const lead=Math.max(0.12,(ms||450)/1000),off=Math.max(0,0.74-lead),delay=Math.max(0,lead-0.74);
+  playBuf(SFX['spin-end'],{gain:0.75,fade:0.04,offset:off,delay});
+  return true;
+}
+function shake(ms){if(!ready())return;if(!spin(ms))rattleBurst((ms||450)/1000);}
+/* Porcelain cups settling on a silver tray: a small body knock, a bright porcelain tink and a little shimmer from
+   the tray. One cup every `step` ms, matching the screen. (To be replaced by a recorded cup-on-saucer clink.) */
 function land(n,step){
   haptic(18);
   if(!ready())return;
   const t0=ctx.currentTime+0.015,st=(step||55)/1000;
   for(let i=0;i<(n||5);i++){
     const t=t0+i*st+rnd(-0.006,0.006);
-    knock(t,rnd(190,240),rnd(85,110),0.09,rnd(0.28,0.4));
-    burst(t,{freq:rnd(900,1600),q:2.5,dur:0.05,gain:rnd(0.3,0.5)});
-    const b=t+rnd(0.07,0.1);
-    knock(b,rnd(220,260),120,0.05,0.1);
-    burst(b,{freq:rnd(1300,2000),q:3,dur:0.03,gain:0.12});
-    if(Math.random()<0.35)burst(b+rnd(0.04,0.07),{freq:rnd(2200,3200),q:4,dur:0.02,gain:0.07});
+    knock(t,rnd(380,480),rnd(220,260),0.06,rnd(0.14,0.2));
+    ping(t,rnd(2050,2650),0.14,rnd(0.045,0.07));
+    burst(t,{freq:rnd(2600,3600),q:3,dur:0.03,gain:rnd(0.14,0.22)});
+    if(Math.random()<0.5)ping(t+rnd(0.05,0.08),rnd(4800,6200),0.05,0.015);
   }
 }
 /* A soft wooden tock for buttons. */
@@ -214,6 +245,7 @@ function set(o){
 function unlock(){
   if(!opt.sound)return;
   const c=ac();if(!c)return;
+  loadSfx();
   if(c.state!=='running'){try{c.resume().then(()=>{if(opt.ambience)startAmbience();syncMusic();});}catch(e){}}
   else{if(opt.ambience)startAmbience();syncMusic();}
 }
@@ -254,6 +286,6 @@ function motionStop(){
   clearTimeout(motion.timer);motion.handler=null;motion.on=false;motion.shaking=false;motion.prev=null;
 }
 
-root.JambAudio={set,unlock,sleep,tick,pop,rattleStart,rattleStop,shake,land,hold,tap,press,swish,turn,write,zero,bonus,jamb,win,haptic,
+root.JambAudio={set,unlock,sleep,tick,pop,rattleStart,rattleStop,shake,spin,land,hold,tap,press,swish,turn,write,zero,bonus,jamb,win,haptic,
   motion:{supported:motionSupported,request:motionRequest,start:motionStart,stop:motionStop}};
 })(typeof self!=='undefined'?self:this);

@@ -30,10 +30,11 @@
   --paper:#FCFDFA; --grid:rgba(60,115,185,.14); --margin:#E27474;
   --text:#2A1D12; --muted:#6B5A45; --line:rgba(42,29,18,.18); --line-strong:rgba(42,29,18,.5);
   --cream:#F6EEDC; --cream-dim:#E8D9BC; --cream-line:rgba(246,238,220,.42);
-  --ink:#1F3FA6; --ink-lite:#9FB4FF; --red:#C8322B; --red-lite:#FF9A8E; --coffee:#D9A066;
+  --ink:#6B3A1E; --ink-lite:#E2B98C; --red:#C8322B; --red-lite:#FF9A8E; --coffee:#D9A066;
   --hl:rgba(255,220,50,.62); --hl-strong:rgba(255,206,0,.9); --gold:#FFD27A;
   --die:#FFFCF2; --die-edge:#D9CBAE; --pip:#1B140E; --pip-one:#C8322B;
   --ok:#5BC489; --warn:#FFC27A; --scrim:rgba(10,6,3,.62); --shadow:rgba(0,0,0,.55);
+  --porcelain:#F0E1C2; --porcelain-shade:#D3B99B; --espresso:#2A1A12; --walnut:#4A2F1C; --coffee-deep:#522E16; --brass:#C9A24B; --marble:#E4DED2;
   --f-sign:'Alfa Slab One',Georgia,serif;
   --f-ui:'Alegreya Sans','Segoe UI',Roboto,sans-serif;
   --f-serif:'Alegreya',Georgia,'Times New Roman',serif;
@@ -140,19 +141,31 @@ button{cursor:pointer}
 .nudge>span{display:block;margin-top:3px;font:400 15px/1.35 var(--f-ui);color:var(--cream-dim)}
 .nudge .row2{display:flex;gap:8px;margin-top:10px}.nudge .row2 .sbtn{flex:1}
 .footrow .sbtn{flex:1;padding:0 8px;font-size:13px;letter-spacing:.03em}
-/* home: one printed menu card. Daily section, then "At the table" with raised buttons, then two pills. */
-.menu{position:relative;border-radius:6px;padding:7px;color:var(--text);background-color:var(--slip);
-  background-image:radial-gradient(rgba(120,86,48,.07) 1px,transparent 1.3px),radial-gradient(rgba(120,86,48,.05) 1px,transparent 1.3px);background-size:7px 7px,11px 11px;background-position:0 0,3px 5px;
-  box-shadow:0 18px 30px -12px rgba(0,0,0,.7),0 2px 0 rgba(0,0,0,.25)}
-.menuIn{border:1px solid rgba(42,29,18,.28);border-radius:3px;padding:16px 14px 14px;display:flex;flex-direction:column;gap:10px}
-.sec{display:flex;align-items:center;gap:10px;margin:0;font:700 14px/1.2 var(--f-sc);letter-spacing:.16em;color:#A8261F;text-align:center}
-.sec::before,.sec::after{content:"";flex:1;min-width:16px;height:1px;background:rgba(42,29,18,.3)}
-.sec.next{margin-top:2px}
+/* home: the painted menu card (art/menucard.webp), drawn as a frame: the corners keep their size, the sides stretch with the menu */
+.menu{position:relative;color:var(--text);background:none;border-style:solid;border-color:transparent;border-width:40px 36px 42px;
+  border-image-source:url(art/menucard.webp);border-image-slice:150 fill;border-image-width:80px;border-image-repeat:stretch;
+  filter:drop-shadow(0 14px 16px rgba(0,0,0,.5)) drop-shadow(0 2px 1px rgba(0,0,0,.25))}
+.menuIn{padding:6px 0 0;display:flex;flex-direction:column;gap:10px}
+.sec{display:flex;align-items:center;gap:10px;margin:0;font:700 14px/1.2 var(--f-sc);letter-spacing:.16em;color:var(--coffee-deep);text-align:center}
+.sec::before,.sec::after{content:"";flex:1;min-width:12px;height:1px;background:linear-gradient(90deg,transparent,var(--brass) 30%,var(--brass) 70%,transparent)}
+.sec.next{margin-top:8px}
+/* menu lines: the name, a dotted leader, and your best score where the price would be */
+.mline{display:block;width:100%;box-sizing:border-box;text-align:left;background:none;border:0;border-radius:8px;padding:7px 4px 8px;color:var(--text)}
+.mline:active,.mline.pressing{background:rgba(201,162,75,.16)}
+.mline .ml1{display:flex;align-items:baseline;gap:6px}
+.mline .mt{font:700 20px/1.18 var(--f-serif);min-width:0}
+.mline .dots{flex:1;min-width:12px;border-bottom:2px dotted rgba(82,46,22,.5);translate:0 -5px}
+.mline .pr{flex:none;font:800 19px var(--f-serif);font-variant-numeric:lining-nums;color:var(--coffee-deep)}
+.mline .pr svg{width:13px;height:13px;color:var(--coffee-deep);translate:0 1px}
+.mline .md{display:block;margin-top:2px;font:italic 400 15px/1.3 var(--f-ui);color:var(--muted)}
+.mline .faces{display:flex;padding-left:8px;margin-top:6px}
+.mline .faces .cmini{--fi:4px;width:32px;height:32px;margin-left:-8px;box-shadow:inset 0 0 0 2px #F3E8D2,inset 0 0 0 4px var(--ring),0 2px 4px -1px rgba(0,0,0,.3)}
 .drow{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px}
 .drow h2{margin:0;font:800 27px/1.1 var(--f-serif);color:var(--text)}
 .drow .date{font:italic 500 15px var(--f-ui);color:var(--muted);white-space:nowrap}
 .menu .minidice{gap:8px;padding:0 2px}
-.menu .mdie{width:42px;height:42px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));box-shadow:none}
+.menu .mdie{width:44px;height:44px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.28));box-shadow:none}
+.menu .mdie img.dface{object-fit:contain}
 .menu .btnRed{min-height:52px;border-radius:12px;font:800 20px var(--f-ui);box-shadow:0 4px 0 var(--cloth-lo),inset 0 1px 0 rgba(255,255,255,.18)}
 .menu .btnRed:active{box-shadow:0 1px 0 var(--cloth-lo)}
 .menu .note{margin:0;text-align:center;font:500 21px/1.2 var(--f-hand);color:var(--muted)}
@@ -261,27 +274,29 @@ sup{font:700 calc(10px*var(--z)) var(--f-ui);color:var(--pc);margin-left:1px;ver
 .pill{flex:none;font:700 13px var(--f-ui);letter-spacing:.05em;border:1.5px solid var(--pcl);border-radius:999px;padding:2px 10px;color:var(--cream)}
 .lnk{flex:none;background:none;border:0;color:var(--cream);font:700 14px var(--f-ui);letter-spacing:.01em;text-decoration:underline;text-underline-offset:3px;min-height:34px;padding:0 4px}
 .lnk.minus{min-width:40px;min-height:40px;padding:0;border-radius:20px;border:1.5px solid rgba(246,238,220,.45);text-decoration:none;font-size:20px;line-height:1}
-.dice{display:flex;justify-content:center;gap:clamp(8px,3vw,14px);padding:20px 6px 12px;min-height:66px;align-items:flex-end;border-radius:20px;border:6px solid #8A5A33;
-  background-color:#2C5944;background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.4px),radial-gradient(rgba(0,0,0,.12) 1px,transparent 1.4px);background-size:5px 5px,7px 7px;background-position:0 0,2px 3px;
-  box-shadow:inset 0 6px 14px rgba(0,0,0,.55),0 5px 0 #5E3C24,0 10px 14px -6px rgba(0,0,0,.6)}
-.dice.six{gap:clamp(6px,2vw,10px)}
-.die{--d:clamp(44px,13.5vw,58px);width:var(--d);height:var(--d);flex:none;box-sizing:border-box;padding:calc(var(--d)*.14);border:0;border-radius:23%;background:var(--die);
+.dice{--d:clamp(42px,13vw,56px);display:flex;justify-content:center;gap:clamp(4px,1.8vw,10px);padding:calc(var(--d)*.32) 7% calc(var(--d)*.42);min-height:66px;align-items:flex-end;
+  border:0;border-radius:0;background:url(art/tray.webp) center/100% 100% no-repeat;box-shadow:none}
+.dice.six{--d:clamp(36px,11vw,50px);gap:clamp(3px,1.2vw,8px);padding-inline:5%}
+/* shaking the tray before a roll */
+.dice.shaking{animation:trayshake .13s ease-in-out infinite alternate}
+@keyframes trayshake{from{translate:-2px 0;rotate:-.7deg}to{translate:2px -1px;rotate:.7deg}}
+.die{width:var(--d);height:var(--d);flex:none;box-sizing:border-box;padding:calc(var(--d)*.14);border:0;border-radius:23%;background:var(--die);
   box-shadow:0 4px 4px rgba(0,0,0,.45);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);place-items:center;transition:transform .16s ease,box-shadow .16s ease;transform:rotate(var(--r,0deg))}
-/* the painted dice (art/dice): one look for every die in the game */
-.die:not(.unset),.mdie{padding:0;background:transparent;border-radius:16%}
-.die img.dface,.mdie img.dface{grid-area:1/1/4/4;width:100%;height:100%;display:block;pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
-.six .die{--d:clamp(36px,11.5vw,52px)}
+/* the porcelain cup-dice (art/cup): one look for every die in the game */
+.die:not(.unset),.mdie{padding:0;background:transparent;border-radius:0;box-shadow:none}
+.die img.dface,.mdie img.dface{grid-area:1/1/4/4;width:100%;height:100%;display:block;object-fit:contain;object-position:50% 100%;pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+.die img.dface{filter:drop-shadow(0 3px 2px rgba(20,10,4,.45))}
 .die i{display:block;width:calc(var(--d)*.16);height:calc(var(--d)*.16);border-radius:50%;background:var(--pip);visibility:hidden;box-shadow:inset 0 1px 1px rgba(0,0,0,.45)}
 .die i.on{visibility:visible}
 .die i.one{background:var(--pip-one);width:calc(var(--d)*.23);height:calc(var(--d)*.23)}
-/* each die sits in a slot; a kept die pops up off the table, straightens and glows in the player's colour, leaving its shadow below */
+/* each die sits in a slot on the tray; a kept die goes onto a saucer (art/saucer.webp), straight, with a soft glow in the player's colour */
 .dslot{position:relative;display:inline-grid;place-items:center;flex:none}
-.dslot::after{content:"";position:absolute;left:14%;right:14%;bottom:-4px;height:9px;border-radius:50%;background:rgba(0,0,0,.42);filter:blur(3px);opacity:0;transform:scale(.5);transition:opacity .2s ease,transform .28s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+.dslot::after{content:"";position:absolute;left:50%;bottom:calc(var(--d)*-.2);width:calc(var(--d)*1.2);height:calc(var(--d)*.54);translate:-50% 0;
+  background:url(art/saucer.webp) center/contain no-repeat;opacity:0;transform:scale(.6);transition:opacity .18s ease,transform .26s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
 .dslot.kept::after{opacity:1;transform:scale(1)}
 .dslot .die{position:relative;z-index:1}
-.die.held{transform:translateY(-16px) scale(1.08);
-  box-shadow:0 0 0 3px var(--pcl,var(--cream)),0 0 18px 3px rgba(255,255,255,.35),0 20px 14px -8px rgba(0,0,0,.6);
-  box-shadow:0 0 0 3px var(--pcl,var(--cream)),0 0 18px 3px color-mix(in srgb,var(--pcl,#fff) 65%,transparent),0 20px 14px -8px rgba(0,0,0,.6)}
+.die.held{transform:translateY(calc(var(--d)*-.2));box-shadow:none}
+.die.held img.dface{filter:drop-shadow(0 0 5px color-mix(in srgb,var(--pcl,#fff) 80%,transparent)) drop-shadow(0 3px 2px rgba(20,10,4,.4))}
 .die.held.popin{animation:popkeep .34s cubic-bezier(.34,1.56,.64,1)}
 @keyframes popkeep{0%{scale:.9}55%{scale:1.1}100%{scale:1}}
 .die.ghost{outline:2.5px dashed var(--gold);outline-offset:4px}
@@ -376,6 +391,7 @@ sup{font:700 calc(10px*var(--z)) var(--f-ui);color:var(--pc);margin-left:1px;ver
 .bnote{margin:8px 0 0!important}
 .ibtn.on{background:var(--cream);color:#2A1A12;border-color:var(--cream)}
 /* three round buttons beside the name: on narrow phones the name and the buttons give each other room */
+@media (max-width:400px){.menu{border-width:36px 30px 38px;border-image-width:70px}.mline .mt{font-size:19px}}
 @media (max-width:400px){.top{gap:8px}.word{font-size:clamp(26px,7.6vw,30px)}.icons{gap:6px}.icons .ibtn{min-width:40px;height:40px;border-radius:20px;padding:0 8px}}
 
 .err{color:var(--red);font-weight:600}
@@ -447,17 +463,20 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 .cell.pressing:not(:disabled){scale:.94}
 .glass.pressing:not(:disabled){scale:.98}
 
-.dslot:nth-child(2) .die.tumble{animation-delay:-.12s}.dslot:nth-child(3) .die.tumble{animation-delay:-.3s}.dslot:nth-child(4) .die.tumble{animation-delay:-.05s}.dslot:nth-child(5) .die.tumble{animation-delay:-.22s}.dslot:nth-child(6) .die.tumble{animation-delay:-.4s}
-@keyframes tumble{0%{translate:0 0;rotate:var(--spin,0deg)}20%{translate:-3px -26px;rotate:calc(var(--spin,0deg) - 120deg)}45%{translate:2px 2px;rotate:calc(var(--spin,0deg) + 60deg)}65%{translate:-1px -12px;rotate:calc(var(--spin,0deg) - 50deg)}85%{translate:1px 1px;rotate:calc(var(--spin,0deg) + 20deg)}100%{translate:0 0;rotate:var(--spin,0deg)}}
+.die.tumble{animation:cupspin .34s ease-in-out infinite alternate}
+.dslot:nth-child(2) .die.tumble{animation-delay:-.12s}.dslot:nth-child(3) .die.tumble{animation-delay:-.21s}.dslot:nth-child(4) .die.tumble{animation-delay:-.05s}.dslot:nth-child(5) .die.tumble{animation-delay:-.17s}.dslot:nth-child(6) .die.tumble{animation-delay:-.26s}
+/* a cup spinning on the tray: it turns on its own axis and hops a little */
+@keyframes cupspin{0%{scale:1 1;rotate:-8deg;translate:0 0}22%{scale:.84 1.03;rotate:6deg;translate:0 calc(var(--d)*-.13)}48%{scale:.72 1;rotate:-3deg;translate:0 calc(var(--d)*-.04)}52%{scale:-.72 1;rotate:3deg;translate:0 calc(var(--d)*-.04)}78%{scale:-.84 1.03;rotate:-6deg;translate:0 calc(var(--d)*-.09)}100%{scale:-1 1;rotate:8deg;translate:0 0}}
 .die.flip{animation:flip .3s ease}
-/* the dice cup (art/cup.webp): free dice shrink into it, it shakes, tips, and they pop back out */
-.cup{position:fixed;z-index:45;display:none;pointer-events:none;transform-origin:50% 92%;filter:drop-shadow(0 10px 8px rgba(0,0,0,.55))}
-.cup img{display:block;width:100%;height:100%;transform-origin:50% 90%;-webkit-user-drag:none}
-.die.incup{opacity:0;scale:.3}
+.die.incup{animation:rattle .1s ease-in-out infinite alternate}
+.dslot:nth-child(2n) .die.incup{animation-delay:-.05s}.dslot:nth-child(3n) .die.incup{animation-duration:.12s}
+@keyframes rattle{from{translate:-1.5px 0;rotate:-7deg}to{translate:1.5px -3px;rotate:6deg}}
 .dslot .die{transition:transform .26s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease,scale .24s cubic-bezier(.34,1.56,.64,1),opacity .16s ease}
 @keyframes flip{0%{opacity:.25;filter:brightness(1.4)}100%{opacity:1;filter:none}}
 .die.landed{animation:landed .34s cubic-bezier(.3,1.5,.5,1) both}
-@keyframes landed{0%{translate:0 -12px;scale:1.06}55%{translate:0 0;scale:1.08 .9}100%{translate:0 0;scale:1}}
+.die.landed{animation-duration:.46s}
+/* settling: the cup wobbles less and less until it stands still */
+@keyframes landed{0%{translate:0 -8px;rotate:9deg}30%{translate:0 0;rotate:-6deg}55%{rotate:3.5deg}78%{rotate:-1.5deg}100%{translate:0 0;rotate:0deg}}
 .enter{animation:screenIn .34s cubic-bezier(.2,.8,.2,1) both}
 @keyframes screenIn{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
 .trayin{animation:trayIn .42s cubic-bezier(.2,.9,.25,1) both}
@@ -559,9 +578,8 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
   .bubble{font-size:16px;padding:6px 10px}
   .tray{padding-block:6px calc(8px + env(safe-area-inset-bottom,0px))}
   .trayIn{gap:6px}
-  .die{--d:clamp(38px,11vw,48px)}
-  .dice{min-height:54px;padding:14px 6px 8px}
-  .die.held{transform:translateY(-11px) scale(1.07)}
+  .dice{--d:clamp(38px,11vw,48px);min-height:54px}
+  .dice.six{--d:clamp(34px,10vw,44px)}
   .glass{min-height:52px}
   .hintbtn{width:52px;min-height:52px}
   .glass small{display:none}
@@ -592,15 +610,15 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=90"></script>
-<script src="ai.js?v=90"></script>
-<script src="i18n.js?v=90"></script>
-<script src="audio.js?v=90"></script>
-<script src="music.js?v=90"></script>
-<script src="fx.js?v=90"></script>
-<script src="scan.js?v=90"></script>
-<script src="vendor/supabase.js?v=90" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=90"></script>
-<script src="app.js?v=90"></script>
+<script src="engine.js?v=91"></script>
+<script src="ai.js?v=91"></script>
+<script src="i18n.js?v=91"></script>
+<script src="audio.js?v=91"></script>
+<script src="music.js?v=91"></script>
+<script src="fx.js?v=91"></script>
+<script src="scan.js?v=91"></script>
+<script src="vendor/supabase.js?v=91" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=91"></script>
+<script src="app.js?v=91"></script>
 </body>
 </html>

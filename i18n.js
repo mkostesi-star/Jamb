@@ -966,6 +966,16 @@ const ACC9={
     boardBest:'Heute vorn: {s} · {name}',boardFirst:'Es zählt dein erstes Ergebnis des Tages: {s}.',boardDays:'{n} {n|Tag|Tage}',playerAnon:'Spieler'}
 };
 for(const l in ACC9)Object.assign(D[l],ACC9[l]);
+/* v9.1: the home screen is a café menu */
+const MENU91={
+  en:{menuSpecial:'Today\'s special',menuSides:'On the side',menuRecordsD:'Your best games and longest streak',menuHowD:'The rules, the columns and a first game',menuBest:'your best: {s}'},
+  hr:{menuSpecial:'Preporuka dana',menuSides:'Prilozi',menuRecordsD:'Najbolje igre i najdulji niz',menuHowD:'Pravila, stupci i prva igra',menuBest:'tvoj najbolji rezultat: {s}'},
+  sr:{menuSpecial:'Preporuka dana',menuSides:'Prilozi',menuRecordsD:'Najbolje igre i najduži niz',menuHowD:'Pravila, kolone i prva igra',menuBest:'tvoj najbolji rezultat: {s}'},
+  bs:{menuSpecial:'Preporuka dana',menuSides:'Prilozi',menuRecordsD:'Najbolje igre i najduži niz',menuHowD:'Pravila, kolone i prva igra',menuBest:'tvoj najbolji rezultat: {s}'},
+  sl:{menuSpecial:'Priporočilo dneva',menuSides:'Priloge',menuRecordsD:'Najboljše igre in najdaljši niz',menuHowD:'Pravila, stolpci in prva igra',menuBest:'tvoj najboljši rezultat: {s}'},
+  de:{menuSpecial:'Tagesempfehlung',menuSides:'Beilagen',menuRecordsD:'Deine besten Spiele und die längste Serie',menuHowD:'Die Regeln, die Spalten und ein erstes Spiel',menuBest:'dein Bestwert: {s}'}
+};
+for(const l in MENU91)Object.assign(D[l],MENU91[l]);
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan
    languages, Yamb in English and German, where Yamb is the spelling people know and search for. */
 const BRAND='Yamb Café';

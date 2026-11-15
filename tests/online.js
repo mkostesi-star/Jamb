@@ -55,6 +55,8 @@ test('same moment: host and guest both tap rematch',async T=>{
   const {pages,host}=await L.table(T,['Ivan','Ana'],{fill:1,phone:[{lag:250},{lag:250}]});
   await playUntil(pages,s=>s.over);await agree(pages);
   for(const p of pages)await p.waitForSelector('[data-act=rematch]',{timeout:8000});
+  // both result panels settled, so the two taps really land at the same moment
+  for(const p of pages)await p.waitForFunction(()=>{const el=document.getElementById('panel');return el&&!el.getAnimations().some(a=>a.playState==='running');},null,{timeout:8000});
   await Promise.all(pages.map(p=>p.click('[data-act=rematch]')));
   for(const p of pages)await p.waitForFunction(()=>!window.__jamb.G.over,null,{timeout:8000});
   const s=await agree(pages,10000);assert(!s.over&&s.filled==='0/0'&&s.cur===1,'rematch state: over '+s.over+' filled '+s.filled+' cur '+s.cur);
