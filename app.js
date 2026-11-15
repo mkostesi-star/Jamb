@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v8.6';
+const VERSION='v9.0';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -607,9 +607,12 @@ function finishDaily(){
   const yest=E.localDay(new Date(Date.now()-864e5));
   stats.daily.streak=prev===yest?(stats.daily.streak||0)+1:(prev===d.day?stats.daily.streak||1:1);
   stats.daily.last=d.day;stats.daily.maxStreak=Math.max(stats.daily.maxStreak||0,stats.daily.streak||0);
-  stats.daily.results[d.day]={done:true,score,n:d.n,grid:qualityGrid(G.rules,G.players[0].sheet),prof:null};
+  /* the moves are kept with the result, checked here first: played again from the list they must give the same score */
+  const moves=dailyMoves(G),again=E.replayMoves(G.rules,G.seed,moves);
+  stats.daily.results[d.day]={done:true,score,n:d.n,grid:qualityGrid(G.rules,G.players[0].sheet),prof:null,moves:again&&again.total===score?moves:null};
   const keys=Object.keys(stats.daily.results).sort();while(keys.length>60)delete stats.daily.results[keys.shift()];
   saveStats();clearSlot('daily');
+  delete boards['d'+d.day];delete boards['w'+d.day];sendDailies().then(acctUI);
   profPlay(G.seed,G.rules,s=>{const r=stats.daily.results[d.day];if(r){r.prof=s;saveStats();}if(ui.modal&&(ui.modal.kind==='result'||ui.modal.kind==='daily'))renderModal();if(screen==='home')renderHome();});
 }
 function profPlay(seed,rules,cb){
@@ -769,6 +772,7 @@ const ICON={
   pause:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg>',
   bulb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1.3 1.7 1.5 2.5h5c.2-.8.7-1.7 1.5-2.5A6 6 0 0 0 12 3z"></path></svg>',
   cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 20.5c1.1-3.7 4.2-5.7 8-5.7s6.9 2 8 5.7"></path></svg>',
   trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"></path><path d="M17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"></path></svg>',
   ask:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .9-1 1.6v.4"></path><path d="M12 17h.01"></path></svg>',
   arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>',
@@ -829,12 +833,15 @@ function renderHome(){
     return `<div class="tagcard"><span class="tt"><span class="tl">${esc(modeLabel(g,it.code))}</span><span class="tm">${esc(ui.endAsk===it.m?t('endQ'):meta)}</span></span>${score&&ui.endAsk!==it.m?`<span class="ts">${esc(score)}</span>`:''}<span class="tb">${btns}</span></div>`;
   }).join('');
   let daily;
+  loadBoard('d',d.day);
+  const bd=boards['d'+d.day]&&boards['d'+d.day].data,btop=bd&&bd.top&&bd.top[0];
+  const bline=btop?`<p class="note left">${esc(t('boardBest',{s:fmt(btop.score),name:btop.name||t('playerAnon')}))} · ${esc(t('boardCount',{n:bd.count}))}${bd.me?' · '+esc(t('boardPlace',{r:bd.me.rank,n:bd.count})):''}</p>`:'';
   const streakTxt=n=>n>=2?esc(t('streak',{n})):'';
   const dkick=`<h2 class="sec">${esc(t('daily'))}</h2>`,ddate=`<span class="date">${esc(dateLabel(d.day))}</span>`;
   if(res&&res.done){
     const bits=[res.prof!=null?esc(t('profScore',{s:fmt(res.prof)})):'',streakTxt(stats.daily.streak||1),esc(t('dailyNext'))].filter(Boolean);
     daily=`${dkick}<div class="drow"><h2>${esc(t('dailyDone',{s:fmt(res.score)}))}</h2>${ddate}</div>
-      <p class="note left">${bits.join(' · ')}</p>
+      <p class="note left">${bits.join(' · ')}</p>${bline}
       <button type="button" class="btnRed" data-act="daily">${esc(t('seeReceipt'))}</button>`;
   }else{
     const inprog=items.find(x=>x.m==='daily');
@@ -844,7 +851,7 @@ function renderHome(){
     daily=`${dkick}<div class="drow"><h2>${esc(t('dailyTitle'))}</h2>${ddate}</div>
       <div class="minidice" role="img" aria-label="${esc(first.join(' '))}">${first.map(mdie).join('')}</div>
       <button type="button" class="btnRed" data-act="daily">${esc(inprog?t('dailyResume'):t('dailyPlay'))}</button>
-      <p class="note">${esc(t('dailyHow'))}${st?' · '+st:''}</p>`;
+      <p class="note">${esc(t('dailyHow'))}${st?' · '+st:''}</p>${bline}`;
   }
   const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
   $('home').innerHTML=`
@@ -852,7 +859,7 @@ function renderHome(){
       <picture><source type="image/webp" srcset="art/home-800.webp 800w, art/home-1280.webp 1280w" sizes="100vw"><img src="art/home-800.jpg" alt="" width="800" height="446" decoding="async"></picture>
       <div class="wrap"><header class="top">
         <div class="mark"><span class="word">Yamb <span class="amp">Café</span></span></div>
-        <div class="icons"><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
+        <div class="icons"><button type="button" class="ibtn${acctOn()?' on':''}" data-act="open" data-k="account" aria-label="${esc(acctOn()?t('acSignedAs',{name:acctName()}):t('account'))}">${ICON.user}</button><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
       </header></div>
     </div>
     <div class="wrap"><main class="homeIn">
@@ -1130,6 +1137,7 @@ function renderModal(){
   const m=ui.modal;if(!m)return;
   const P=$('panel');let h='';
   /* keep whatever was typed when the sheet redraws (picking a character, a timer, a preset) */
+  {const a=$('acName');if(a&&P.contains(a))m.acName=a.value;}
   {const f=$('fName');if(f&&P.contains(f))m.fName=f.value;if((m.kind==='pp'||m.kind==='table')&&m.players&&P.querySelector('#pl0'))syncPlayers(m);}
   const nameVal=esc(m.fName!=null?m.fName:(prefs.name||''));
   switch(m.kind){
@@ -1187,11 +1195,13 @@ function renderModal(){
       h=head(t('rulesFromLink'))+`<p>${esc(rulesBrief(m.rules))}</p><p class="fine">${esc(rulesSummary(m.rules))}</p><button type="button" class="btnRed" data-act="userules">${esc(t('useRules'))}</button><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`;
       break;
     case 'settings':
-      h=head(t('settings'))+`<div class="toggle"><span>${esc(t('language'))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="lang">${esc(I.name(prefs.lang))}</button></div>`+
+      {const av=acctView()||stats;m.line=t('statsLine',{p:av.played||0,w:av.wins||0,b:fmt(av.best||0)});}
+      h=head(t('settings'))+`<div class="toggle"><span>${esc(t('account'))}<small>${esc(acctOn()?t('acSignedAs',{name:acctName()||(cloud.me&&cloud.me.email)||''}):t('acSignedOut'))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="account">${esc(acctOn()?t('change'):t('signIn'))}</button></div>`+
+        `<div class="toggle"><span>${esc(t('language'))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="lang">${esc(I.name(prefs.lang))}</button></div>`+
         `<h3>${esc(t('sSoundG'))}</h3>`+sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+
         `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
-        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION} · ${esc(t('statsLine',{p:stats.played||0,w:stats.wins||0,b:fmt(stats.best||0)}))} · <a href="privacy/" target="_blank" rel="noopener" style="color:inherit">${esc(t('privacy'))}</a></p>`;
+        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION} · ${esc(m.line)} · <a href="privacy/" target="_blank" rel="noopener" style="color:inherit">${esc(t('privacy'))}</a></p>`;
       break;
     case 'lang':
       h=head(t('language'))+`<div class="langlist">${I.list().map(l=>`<button type="button" data-act="setlang" data-v="${l.code}" aria-pressed="${l.code===prefs.lang}"><span>${esc(l.name)}</span><span>${esc(l.short)}</span></button>`).join('')}</div>`;
@@ -1202,6 +1212,7 @@ function renderModal(){
       break;
     case 'result':h=resultHTML();break;
     case 'records':h=recordsHTML();break;
+    case 'account':h=accountHTML(m);break;
     case 'daily':h=dailyModalHTML(m.day);break;
     case 'scan':
       h=head(t('scanTitle')+' ('+t('beta')+')')+`<p class="fine">${esc(t('scanHint'))}</p><div class="scanbox"><video id="scanV" playsinline muted></video><canvas id="scanC" hidden></canvas></div>
@@ -1259,7 +1270,7 @@ function receiptHTML(day){
     <div class="ln"><span>${esc(t('streakShort'))}</span><span>${stats.daily.streak||1}</span></div><div class="hr"></div><div class="c" style="font-size:12px">${esc(t('dailyNext'))}</div></div>`;
 }
 function dailyModalHTML(day){
-  return head(t('daily'))+receiptHTML(day)+`<button type="button" class="btnRed" data-act="sharedaily" data-day="${day}">${esc(t('shareResult'))}</button><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`;
+  return head(t('daily'))+receiptHTML(day)+`<button type="button" class="btnRed" data-act="sharedaily" data-day="${day}">${esc(t('shareResult'))}</button>`+boardHTML(day)+`<button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`;
 }
 function resultHTML(){
   if(!G)return head(t('results'));
@@ -1268,7 +1279,7 @@ function resultHTML(){
   const endTip=ui.guideEnd?`<div class="tipcard inline" role="note"><p>${esc(t('g6end'))}</p></div>`:'';ui.guideEnd=false;
   let h=head(t('results'))+endTip+`<img class="resimg" src="art/${G.mode==='daily'?'daily':'winner'}-800.webp" alt="" decoding="async" onerror="this.remove()">`+`<div class="result"><span class="big">${esc(title)}</span></div>`;
   if(G.players.length>1)h+=`<table class="scores">${st.map(s=>`<tr style="--pc:${PCOL[s.i%6]}"><td>${esc(name(s.i))}</td><td class="n">${fmt(s.score)}</td></tr>`).join('')}</table>`;
-  if(G.mode==='daily'){h+=receiptHTML(G.daily.day)+`<button type="button" class="btnRed" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`;}
+  if(G.mode==='daily'){h+=receiptHTML(G.daily.day)+`<button type="button" class="btnRed" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`+boardHTML(G.daily.day);}
   if(G.mode==='duel'){
     const mine=st[0].score;
     if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost',{name:G.duel.from.n}):t('draw'))}</p></div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
@@ -1349,12 +1360,14 @@ function recordGame(g){
   r.games++;r.sum+=score;if(won)r.wins++;
   if(!r.best||score>r.best.s)r.best={s:score,name:pname(g,seat),day:E.localDay(new Date())};
   saveStats();
+  queueResult(g,seat,score,won,humans);
 }
 function recordsHTML(){
-  const recs=Object.values(stats.records||{});
+  const av=acctView(),recs=av?av.recs:Object.values(stats.records||{});
+  const where=`<p class="fine" style="margin-top:14px">${esc(av?t('recAccount'):t('recPhone'))}</p>`+(acctOn()||!C||!C.available()?'':`<button type="button" class="btnInk" data-act="open" data-k="account">${esc(t('recSignIn'))}</button>`);
   let h=head(t('records'));
   const modes=['cpu','pp','online','duel','table','daily'],mt={cpu:t('playChar'),pp:t('modePP'),online:t('modeOnline'),duel:t('modeDuel'),table:t('modeTable'),daily:t('daily')};
-  if(!recs.length)return h+`<p>${esc(t('recNone'))}</p><p class="fine">${esc(t('recPhone'))}</p>`;
+  if(!recs.length)return h+`<p>${esc(t('recNone'))}</p>`+where;
   modes.forEach(m=>{
     const list=recs.filter(r=>r.mode===m).sort((a,b)=>(b.best?b.best.s:0)-(a.best?a.best.s:0));if(!list.length)return;
     h+=`<h3>${esc(mt[m])}</h3>`;
@@ -1363,9 +1376,9 @@ function recordsHTML(){
       h+=`<div class="rec"><div class="rt"><b>${esc(rulesLabel(r.rules))}</b><span>${r.best?esc(t('recBy',{name:r.best.name||'',date:dateLabel(r.best.day)})):''}</span></div><div class="rs">${r.best?fmt(r.best.s):'–'}</div></div>
         <p class="fine recm">${esc(t('recGames'))}: ${r.games} · ${esc(t('recAvg'))}: ${fmt(Math.round(r.sum/Math.max(1,r.games)))}${many&&m!=='pp'?` · ${esc(t('recWins'))}: ${r.wins}`:''}</p>`;
     });
-    if(m==='daily')h+=`<p class="fine recm">${esc(t('recStreak'))}: ${Math.max(stats.daily.maxStreak||0,stats.daily.streak||0)}</p>`;
+    if(m==='daily')h+=`<p class="fine recm">${esc(t('recStreak'))}: ${Math.max(stats.daily.maxStreak||0,stats.daily.streak||0,av?av.maxStreak:0)}</p>`;
   });
-  return h+`<p class="fine" style="margin-top:14px">${esc(t('recPhone'))}</p>`;
+  return h+where;
 }
 
 /* ---------- table mode ---------- */
@@ -1773,7 +1786,11 @@ function act(el,d){
       if(k==='pp')openModal('pp',{players:[{kind:'human',name:prefs.name||''},{kind:'human',name:''}]});
       else if(k==='table')openModal('table',{players:[{kind:'human',name:prefs.name||''}]});
       else if(k==='rules'){ui.back=null;openModal('rules');}
-      else openModal(k);
+      else{
+        if(k==='account'&&ui.modal&&ui.modal.kind!=='account')ui.back=Object.assign({},ui.modal);
+        openModal(k);
+        if((k==='records'||k==='account')&&cloud.uid&&(!cloud.state||Date.now()-cloud.state.at>60000))syncCloud();
+      }
       break;}
     case 'close':if(ui.back)back();else closeModal();break;
     case 'editrules':{const cur=ui.modal?Object.assign({},ui.modal):null;if(cur&&cur.kind!=='rules'){if(cur.kind==='pp'||cur.kind==='table')syncPlayers(cur);ui.back=cur;}openModal('rules');break;}
@@ -1794,6 +1811,8 @@ function act(el,d){
     case 'acceptduel':{const nm=$('fName').value.trim().slice(0,16)||null;prefs.name=nm;savePrefs();acceptDuel(ui.modal.o);break;}
     case 'shareduel':shareText(G.duel.from?t('duelShareBack',{a:E.total(G.rules,G.players[0].sheet),b:G.duel.from.s}):t('duelShareText',{s:E.total(G.rules,G.players[0].sheet)}),duelLink());break;
     case 'sharedaily':shareDaily(d.day);break;
+    case 'boardtab':ui.boardTab=d.v==='w'?'w':'d';renderModal();break;
+    case 'signin':case 'signout':case 'acsave':case 'acdel':case 'acdelno':case 'acdelyes':accountAct(d.act);break;
     case 'rematch':rematch();break;
     case 'host':hostGame();break;
     case 'join':joinGame($('joinCode').value);break;
@@ -1849,6 +1868,273 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('resize',()=>{const tr=$('tray');if(tr&&!tr.hidden)document.documentElement.style.setProperty('--tray-h',tr.offsetHeight+'px');});
 
+/* ---------- account: Google sign-in, records that follow the player, Daily Yamb high scores ----------
+   None of this is needed to play. Signed out, or with no connection, everything stays on this device as before.
+   Signed in: each finished game goes into an outbox and up to the account; what this device had before its first
+   sign-in goes up once, as it was; and a finished Daily Yamb is sent as a list of moves, which the database plays
+   again with that day's dice. The score on the high scores is the one the database counted. */
+const C=window.JambCloud||null;
+const CKEY='jamb4-cloud';
+let cloud=Object.assign({uid:null,me:null,outbox:[],snap:null,carriedBy:null,state:null},jget(CKEY,{}));
+if(!Array.isArray(cloud.outbox))cloud.outbox=[];
+const boards={};
+let syncing=false,syncAgain=false,sendingDaily=false;
+function saveCloud(){store.set(CKEY,JSON.stringify(cloud));}
+const acctOn=()=>!!cloud.uid;
+const cloudLive=()=>!!(C&&C.user&&C.user.id===cloud.uid);
+const acctState=()=>cloud.uid&&cloud.state&&cloud.state.u===cloud.uid&&cloud.state.d?cloud.state.d:null;
+function acctName(){const d=acctState();return (d&&d.profile&&d.profile.name)||(cloud.me&&cloud.me.name)||'';}
+const rulesOfKey=k=>k==='classic'?E.normRules({}):(E.decodeRules(k)||E.normRules({}));
+function statsSnapshot(){
+  return{played:stats.played||0,wins:stats.wins||0,best:stats.best||0,maxStreak:Math.max(stats.daily.maxStreak||0,stats.daily.streak||0),
+    records:Object.values(stats.records||{}).map(r=>({mode:r.mode,rk:rulesKey(r.rules),games:r.games||0,wins:r.wins||0,sum:r.sum||0,best:r.best?r.best.s:null,name:r.best?r.best.name:null,day:r.best?r.best.day:null}))};
+}
+/* the signed-in player's records: what each device carried over, the games saved since, and the ones still waiting to go up */
+function acctView(){
+  const d=acctState();if(!d)return null;
+  const recs={};let played=0,wins=0,best=0,maxStreak=0;
+  const add=(mode,rk,games,w,sum,b,nm,day)=>{
+    if(!mode||!rk)return;
+    const k=mode+'|'+rk,r=recs[k]||(recs[k]={mode,rk,games:0,wins:0,sum:0,best:null});
+    r.games+=+games||0;r.wins+=+w||0;r.sum+=+sum||0;
+    if(b!=null&&(!r.best||+b>r.best.s))r.best={s:+b,name:nm||acctName()||t('youName'),day:day||null};
+  };
+  (Array.isArray(d.carried)?d.carried:[]).forEach(c=>{
+    if(!c)return;
+    played+=+c.played||0;wins+=+c.wins||0;best=Math.max(best,+c.best||0);maxStreak=Math.max(maxStreak,+c.maxStreak||0);
+    (Array.isArray(c.records)?c.records:[]).forEach(r=>add(r.mode,r.rk,r.games,r.wins,r.sum,r.best,r.name,r.day));
+  });
+  (Array.isArray(d.records)?d.records:[]).forEach(r=>add(r.mode,r.rules,r.games,r.wins,r.sum,r.best,r.best_name,r.best_day));
+  const tt=d.totals||{};played+=+tt.games||0;wins+=+tt.wins||0;best=Math.max(best,+tt.best||0);
+  cloud.outbox.forEach(x=>{
+    if(x.u!==cloud.uid)return;
+    played++;if(x.won&&x.mine&&x.players>1)wins++;if(x.mine)best=Math.max(best,x.score);
+    add(x.mode,x.rules,1,x.won?1:0,x.score,x.score,x.name,x.day);
+  });
+  return{played,wins,best,maxStreak,recs:Object.values(recs).map(r=>({mode:r.mode,rules:rulesOfKey(r.rk),games:r.games,wins:r.wins,sum:r.sum,best:r.best}))};
+}
+function acctUI(){
+  if(ui.modal&&['account','settings','records','daily','result'].includes(ui.modal.kind)){
+    const f=document.activeElement;if(!(ui.modal.kind==='account'&&f&&f.id==='acName'))renderModal();
+  }
+  if(screen==='home')renderHome();
+}
+function queueResult(g,seat,score,won,humans){
+  if(!cloud.uid||!g.id)return;
+  const shared=(g.mode==='pp'||g.mode==='table')&&humans.length>1;      /* several people on one device: a record, but not "mine" */
+  cloud.outbox.push({u:cloud.uid,id:g.id,mode:g.mode,rules:rulesKey(g.rules),score,won:!!won,mine:!shared,players:g.players.length,
+    name:isYou(g,seat)?null:String(pname(g,seat)||'').slice(0,16),at:Date.now(),day:E.localDay(new Date())});
+  while(cloud.outbox.length>400)cloud.outbox.shift();
+  saveCloud();syncCloud();
+}
+async function syncCloud(fresh){
+  if(!cloudLive())return;
+  if(syncing){syncAgain=true;return;}
+  syncing=true;
+  const me=cloud.uid,hello=()=>{if(fresh)toast(t('acHello',{name:acctName()||String(C.user&&C.user.name||'').split(/\s+/)[0]||t('playerAnon')}));};
+  try{
+    const mine=cloud.outbox.filter(x=>x.u===me).slice(0,300);
+    const snap=cloud.snap&&cloud.snap.u===me?cloud.snap.stats:null;
+    const d=await C.rpc('sync_up',{p_device:prefs.cid,p_carried:snap,p_results:mine.map(x=>({id:x.id,mode:x.mode,rules:x.rules,score:x.score,won:x.won,mine:x.mine,players:x.players,name:x.name,at:x.at,day:x.day}))});
+    if(cloud.uid!==me)return;
+    const ids=new Set(mine.map(x=>x.id));
+    cloud.outbox=cloud.outbox.filter(x=>!(x.u===me&&ids.has(x.id)));
+    if(snap)cloud.snap=null;
+    cloud.state={u:me,at:Date.now(),d};
+    if(d&&d.profile&&!d.profile.name){
+      /* first sign-in: the name already used in games, or the first name from Google; it can be changed in Account */
+      const nm=String(prefs.name||String(C.user&&C.user.name||'').split(/\s+/)[0]||'').trim().slice(0,16);
+      if(nm){try{d.profile=await C.rpc('save_profile',{p_name:nm,p_avatar:null});}catch(e){}}
+    }
+    if(cloud.uid!==me)return;
+    if(cloud.me)cloud.me.name=(d&&d.profile&&d.profile.name)||'';
+    saveCloud();
+    importDailies(d&&d.dailies);
+    hello();
+    await sendDailies();
+    acctUI();
+  }catch(e){hello();}
+  finally{syncing=false;if(syncAgain){syncAgain=false;syncCloud();}}
+}
+/* a Daily finished on another device shows as done here too, rebuilt from its moves */
+function importDailies(list){
+  if(!Array.isArray(list))return;
+  const rules=dailyRules(),today=E.localDay(),oldest=E.localDay(new Date(Date.now()-55*864e5));let changed=false;
+  list.forEach(x=>{
+    if(!x||typeof x.day!=='string'||x.day<oldest)return;
+    const have=stats.daily.results[x.day];
+    if(have&&have.done)return;
+    const rp=E.replayMoves(rules,'daily:'+x.day,x.moves);if(!rp)return;
+    stats.daily.results[x.day]={done:true,score:rp.total,n:E.dailyNumber(x.day),grid:qualityGrid(rules,rp.sheet),prof:null,moves:x.moves,sent:cloud.uid};
+    changed=true;
+    if(x.day===today){
+      const g=loadSlot('daily');
+      if(g&&g.daily&&g.daily.day===today&&!(G&&G.mode==='daily'&&screen==='game'))clearSlot('daily');
+      profPlay('daily:'+today,rules,sc=>{const r=stats.daily.results[today];if(r){r.prof=sc;saveStats();}acctUI();});
+    }
+  });
+  if(!changed)return;
+  const days=Object.keys(stats.daily.results).filter(k=>stats.daily.results[k].done).sort(),last=days[days.length-1];
+  let n=1;
+  for(let i=days.length-1;i>0;i--){if(Math.round((new Date(days[i]+'T12:00:00')-new Date(days[i-1]+'T12:00:00'))/864e5)===1)n++;else break;}
+  stats.daily.streak=Math.max(n,last===stats.daily.last?(stats.daily.streak||0):0);stats.daily.last=last;
+  stats.daily.maxStreak=Math.max(stats.daily.maxStreak||0,stats.daily.streak);
+  const all=Object.keys(stats.daily.results).sort();while(all.length>60)delete stats.daily.results[all.shift()];
+  saveStats();
+}
+/* the player's turns in a finished Daily, read from the game's log: [row, kept before the 2nd roll, kept before the 3rd] */
+function dailyMoves(g){
+  const out=[];let kept=[];
+  for(const ev of g.log||[]){
+    if(ev.p!==0)continue;
+    if(ev.k==='roll'){if(ev.turn.roll>=1)kept.push(ev.turn.held.reduce((a,h,i)=>a|(h?1<<i:0),0));else kept=[];}
+    else if(ev.k==='write'){out.push([ROWS.indexOf(ev.r)].concat(kept));kept=[];}
+  }
+  return out;
+}
+async function sendDailies(){
+  if(!cloudLive()||sendingDaily)return;
+  sendingDaily=true;
+  try{
+    const me=cloud.uid;
+    for(const day of [E.localDay(new Date(Date.now()-864e5)),E.localDay()]){
+      const r=stats.daily.results[day];
+      if(!r||!r.done||!Array.isArray(r.moves)||r.sent||r.bad)continue;
+      try{
+        const b=await C.rpc('submit_daily',{p_day:day,p_moves:r.moves});
+        if(cloud.uid!==me)return;
+        r.sent=me;saveStats();boards['d'+day]={at:Date.now(),data:b,err:false};delete boards['w'+day];
+      }catch(e){if(/YC_(MOVES|DAY)/.test(String(e&&e.message))){r.bad=true;saveStats();}}
+    }
+  }finally{sendingDaily=false;}
+}
+async function loadBoard(kind,day,force){
+  if(!C||!C.available())return;
+  const k=kind+day,b=boards[k];
+  if(b&&b.loading)return;
+  if(b&&!force&&Date.now()-b.at<(b.err?20000:90000))return;
+  boards[k]={at:b?b.at:0,data:b?b.data:null,err:false,loading:true};
+  try{const data=await C.rpc(kind==='w'?'week_board':'daily_board',{p_day:day});boards[k]={at:Date.now(),data,err:false};}
+  catch(e){boards[k]={at:Date.now(),data:b?b.data:null,err:true};}
+  if(ui.modal&&(ui.modal.kind==='daily'||ui.modal.kind==='result'))renderModal();
+  else if(screen==='home'&&!ui.modal)renderHome();
+}
+const GLOGO='<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>';
+const gbtn=()=>`<button type="button" class="gbtn" data-act="signin"${C&&C.available()?'':' disabled'}>${GLOGO}<span>${esc(t('acGoogle'))}</span></button>`;
+/* the day's and the week's high scores, shown with the Daily's receipt */
+function boardHTML(day){
+  const tab=ui.boardTab==='w'?'w':'d',r=stats.daily.results[day];
+  let h=`<h3>${esc(t('board'))}</h3>`+seg('boardtab',[['d',t('boardToday')],['w',t('boardWeek')]],tab);
+  if(!C||!C.available())return h+`<p class="fine bnote">${esc(t('boardOff'))}</p>`;
+  loadBoard(tab,day);
+  const b=boards[tab+day],d=b&&b.data;
+  if(!d)h+=`<p class="fine bnote">${esc(b&&b.err?t('boardOff'):t('boardWait'))}</p>`;
+  else if(!d.top||!d.top.length)h+=`<p class="fine bnote">${esc(t('boardNone'))}</p>`;
+  else{
+    const rows=d.top.slice(0,10),mine=d.top.find(x=>x.me);if(mine&&!rows.includes(mine))rows.push(mine);
+    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${esc(x.name||t('playerAnon'))}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
+      <p class="fine bnote">${esc(t('boardCount',{n:d.count}))}${d.me&&!rows.some(x=>x.me)?' · '+esc(t('boardPlace',{r:d.me.rank,n:d.count})):''}</p>`;
+  }
+  if(!acctOn())h+=`<p class="fine bnote">${esc(t('boardSignIn'))}</p>`+gbtn();
+  else if(r&&r.done&&!r.sent&&!r.bad&&Array.isArray(r.moves))h+=`<p class="fine bnote">${esc(t('boardPending'))}</p>`;
+  else if(tab==='d'&&d&&d.me&&r&&r.done&&d.me.score!==r.score)h+=`<p class="fine bnote">${esc(t('boardFirst',{s:fmt(d.me.score)}))}</p>`;
+  return h;
+}
+function accountHTML(m){
+  let h=head(t('account'));
+  if(!acctOn()){
+    h+=`<p>${esc(t('acIntro'))}</p>`+gbtn();
+    if(!C||!C.available())h+=`<p class="fine" style="margin-top:10px">${esc(t('acNoNet'))}</p>`;
+    return h+`<button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button><p class="fine" style="margin-top:14px;text-align:center"><a href="privacy/" target="_blank" rel="noopener" style="color:inherit">${esc(t('privacy'))}</a></p>`;
+  }
+  if(m.del)return h+`<p><b>${esc(t('acDelQ'))}</b></p><p>${esc(t('acDelD'))}</p><button type="button" class="btnRed" data-act="acdelyes"${m.busy?' disabled':''}>${esc(t('acDelYes'))}</button><button type="button" class="btnInk" data-act="acdelno">${esc(t('keep'))}</button>`;
+  const nm=m.acName!=null?m.acName:acctName(),shown=acctName()||t('playerAnon');
+  const waiting=!acctState()||cloud.outbox.some(x=>x.u===cloud.uid)||!!(cloud.snap&&cloud.snap.u===cloud.uid);
+  return h+`<div class="acct"><span class="ava" aria-hidden="true">${esc(shown.slice(0,1).toUpperCase())}</span><span class="who"><b>${esc(shown)}</b><small>${esc(cloud.me&&cloud.me.email||'')}</small></span></div>
+    <label class="field"><span>${esc(t('acName'))}</span><input id="acName" maxlength="16" autocomplete="nickname" autocapitalize="words" value="${esc(nm)}"></label>
+    <button type="button" class="btnRed" data-act="acsave"${m.busy?' disabled':''}>${esc(t('acSave'))}</button>
+    <p class="fine" style="margin-top:12px">${esc(waiting?t('acSyncWait'):t('acSyncOk'))}</p>
+    <button type="button" class="btnInk" data-act="signout">${esc(t('acSignOut'))}</button>
+    <button type="button" class="linkbtn" data-act="acdel">${esc(t('acDelete'))}</button>`;
+}
+function cloudIn(u,fresh){
+  if(cloud.uid!==u.id){
+    cloud.uid=u.id;if(!(cloud.state&&cloud.state.u===u.id))cloud.state=null;
+    /* what this device had before anyone signed in goes to the first account, once */
+    if(!cloud.carriedBy){cloud.carriedBy=u.id;cloud.snap={u:u.id,stats:statsSnapshot()};}
+    cloud.me=null;
+  }
+  cloud.me={id:u.id,email:u.email,name:(cloud.me&&cloud.me.name)||''};
+  saveCloud();
+  if(fresh){
+    const after=store.get('jamb4-after');store.del('jamb4-after');
+    const d=dailyToday(),res=stats.daily.results[d.day];
+    if((after==='daily'||after==='result')&&res&&res.done)openModal('daily',{day:d.day});
+    else if(after==='records')openModal('records');
+    else if(after)openModal('account');
+  }
+  acctUI();syncCloud(fresh);
+}
+function cloudOut(){
+  if(!cloud.uid)return;
+  cloud.uid=null;cloud.me=null;cloud.state=null;saveCloud();
+  Object.keys(boards).forEach(k=>delete boards[k]);
+  acctUI();
+}
+function cloudEvent(why){
+  const u=C.user;
+  if(why==='ready'){
+    if(C.takeError())toast(t('acErr'),true);
+    const fresh=!!u&&C.takeJustIn();
+    if(!fresh)store.del('jamb4-after');
+    if(u)cloudIn(u,fresh);
+    else if(cloud.uid&&!C.remembered())cloudOut();
+    else acctUI();
+  }else if(why==='in'){if(u)cloudIn(u,false);}
+  else if(why==='out')cloudOut();
+}
+async function accountAct(act){
+  const m=ui.modal;
+  if(act==='signin'){
+    if(!C||!C.available()){toast(t('acNoNet'),true);return;}
+    store.set('jamb4-after',m?m.kind:'account');
+    try{await C.signIn();}catch(e){store.del('jamb4-after');toast(t('acNoNet'),true);}
+    return;
+  }
+  if(act==='signout'){if(C)await C.signOut();cloudOut();closeModal();toast(t('acBye'));return;}
+  if(!m||m.kind!=='account')return;
+  if(act==='acdel'){m.del=true;renderModal();return;}
+  if(act==='acdelno'){m.del=false;renderModal();return;}
+  if(m.busy)return;
+  if(act==='acsave'){
+    const nm=String(($('acName')||{}).value||'').trim().slice(0,16);
+    if(!nm){toast(t('acFail'),true);return;}
+    m.busy=true;renderModal();
+    try{
+      const d=acctState(),p=await C.rpc('save_profile',{p_name:nm,p_avatar:d&&d.profile?d.profile.avatar||null:null});
+      if(d)d.profile=p;if(cloud.me)cloud.me.name=p&&p.name||nm;saveCloud();
+      Object.keys(boards).forEach(k=>delete boards[k]);
+      m.acName=null;toast(t('acSaved'));
+    }catch(e){toast(t('acFail'),true);}
+    m.busy=false;acctUI();return;
+  }
+  if(act==='acdelyes'){
+    m.busy=true;renderModal();
+    try{
+      const me=cloud.uid;await C.rpc('delete_my_account',{});
+      cloud.outbox=cloud.outbox.filter(x=>x.u!==me);if(cloud.snap&&cloud.snap.u===me)cloud.snap=null;if(cloud.carriedBy===me)cloud.carriedBy=null;
+      Object.values(stats.daily.results).forEach(r=>{if(r&&r.sent===me)delete r.sent;});saveStats();
+      await C.signOut();cloudOut();closeModal();toast(t('acDeleted'));
+    }catch(e){m.busy=false;renderModal();toast(t('acFail'),true);}
+  }
+}
+if(C){
+  C.on(cloudEvent);
+  if(C.ready)cloudEvent('ready');
+  window.addEventListener('online',()=>{syncCloud();});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&cloud.uid&&(!cloud.state||Date.now()-cloud.state.at>10*60000))syncCloud();});
+}
+
 /* ---------- start ---------- */
 function start(){
   document.documentElement.lang=I.locale(prefs.lang);
@@ -1876,5 +2162,5 @@ if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventLis
   }).catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had||ui.fresh)return;ui.fresh=true;if(screen==='home'&&!ui.modal)location.reload();});
 });
-window.__jamb={get G(){return G;},get online(){return online;},net,ui,prefs,stats};
+window.__jamb={get G(){return G;},get online(){return online;},net,ui,prefs,stats,get cloud(){return cloud;},boards};
 })();

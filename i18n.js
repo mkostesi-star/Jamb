@@ -914,6 +914,58 @@ for(const l in DEV84)Object.assign(D[l],DEV84[l]);
 /* v8.6: link to the privacy page in Settings */
 const PRIV86={en:'Privacy',hr:'Privatnost',sr:'Privatnost',bs:'Privatnost',sl:'Zasebnost',de:'Datenschutz'};
 for(const l in PRIV86)D[l].privacy=PRIV86[l];
+/* v9: account, records that follow the player, Daily Yamb high scores */
+const ACC9={
+  en:{account:'Account',signIn:'Sign in',acIntro:'Sign in to keep your records on every device and to put your Daily Yamb scores on the high scores. You can always play without an account.',acGoogle:'Sign in with Google',
+    acNoNet:'Signing in needs a connection. Try again in a moment.',acSignedOut:'Not signed in',acSignedAs:'Signed in as {name}',acName:'Your name on the high scores',acSave:'Save',acSaved:'Saved.',
+    acSyncOk:'Your records are saved to your account.',acSyncWait:'Your records will be saved once there is a connection.',acSignOut:'Sign out',acDelete:'Delete my account',acDelQ:'Delete your account?',
+    acDelD:'Your profile, saved games and high scores will be removed for good. The records on this device stay.',acDelYes:'Delete for good',acDeleted:'Your account is deleted.',acHello:'Signed in. Welcome, {name}!',acBye:'Signed out.',
+    acErr:'Signing in did not work. Please try again.',acFail:'That did not work. Check the connection and try again.',recAccount:'Saved to your account.',recSignIn:'Sign in to keep them on every device',
+    board:'High scores',boardToday:'Today',boardWeek:'This week',boardNone:'No scores yet. First place is waiting.',boardCount:'{n} {n|player|players}',boardPlace:'your place: {r} of {n}',
+    boardSignIn:'Sign in to put your score on the high scores.',boardPending:'Your score will be added once there is a connection.',boardWait:'Loading…',boardOff:'The high scores need a connection.',
+    boardBest:'Best today: {s} · {name}',boardFirst:'Your first result of the day is the one that counts: {s}.',boardDays:'{n} {n|day|days}',playerAnon:'Player'},
+  hr:{account:'Račun',signIn:'Prijava',acIntro:'Prijavi se da te rekordi prate na svakom uređaju i da tvoji rezultati iz Dnevnog Jamba uđu na ljestvicu. Igrati se uvijek može i bez računa.',acGoogle:'Prijava putem Googlea',
+    acNoNet:'Za prijavu treba veza. Pokušaj ponovno za trenutak.',acSignedOut:'Bez prijave',acSignedAs:'Prijava: {name}',acName:'Tvoje ime na ljestvici',acSave:'Spremi',acSaved:'Spremljeno.',
+    acSyncOk:'Rekordi su spremljeni na tvoj račun.',acSyncWait:'Rekordi će se spremiti čim bude veze.',acSignOut:'Odjava',acDelete:'Izbriši moj račun',acDelQ:'Izbrisati račun?',
+    acDelD:'Profil, spremljene igre i rezultati na ljestvici brišu se zauvijek. Rekordi na ovom uređaju ostaju.',acDelYes:'Izbriši zauvijek',acDeleted:'Račun je izbrisan.',acHello:'Prijava je uspjela. Bok, {name}!',acBye:'Odjava je gotova.',
+    acErr:'Prijava nije uspjela. Pokušaj ponovno.',acFail:'Nije uspjelo. Provjeri vezu i pokušaj ponovno.',recAccount:'Spremljeno na tvoj račun.',recSignIn:'Prijavi se da te prate na svakom uređaju',
+    board:'Ljestvica',boardToday:'Danas',boardWeek:'Ovaj tjedan',boardNone:'Još nema rezultata. Prvo mjesto čeka.',boardCount:'{n} {n|igrač|igrača|igrača}',boardPlace:'tvoje mjesto: {r}. od {n}',
+    boardSignIn:'Prijavi se da tvoj rezultat uđe na ljestvicu.',boardPending:'Rezultat će ući na ljestvicu čim bude veze.',boardWait:'Učitavanje…',boardOff:'Za ljestvicu treba veza.',
+    boardBest:'Najbolje danas: {s} · {name}',boardFirst:'Računa se tvoj prvi rezultat dana: {s}.',boardDays:'{n} {n|dan|dana|dana}',playerAnon:'Igrač'},
+  sr:{account:'Nalog',signIn:'Prijava',acIntro:'Prijavi se da te rekordi prate na svakom uređaju i da tvoji rezultati iz Dnevnog Jamba uđu na rang-listu. Igrati se uvek može i bez naloga.',acGoogle:'Prijava preko Google-a',
+    acNoNet:'Za prijavu je potrebna veza. Pokušaj ponovo za trenutak.',acSignedOut:'Bez prijave',acSignedAs:'Prijava: {name}',acName:'Tvoje ime na rang-listi',acSave:'Sačuvaj',acSaved:'Sačuvano.',
+    acSyncOk:'Rekordi su sačuvani na tvom nalogu.',acSyncWait:'Rekordi će se sačuvati čim bude veze.',acSignOut:'Odjava',acDelete:'Obriši moj nalog',acDelQ:'Obrisati nalog?',
+    acDelD:'Profil, sačuvane igre i rezultati na rang-listi brišu se zauvek. Rekordi na ovom uređaju ostaju.',acDelYes:'Obriši zauvek',acDeleted:'Nalog je obrisan.',acHello:'Prijava je uspela. Zdravo, {name}!',acBye:'Odjava je gotova.',
+    acErr:'Prijava nije uspela. Pokušaj ponovo.',acFail:'Nije uspelo. Proveri vezu i pokušaj ponovo.',recAccount:'Sačuvano na tvom nalogu.',recSignIn:'Prijavi se da te prate na svakom uređaju',
+    board:'Rang-lista',boardToday:'Danas',boardWeek:'Ove nedelje',boardNone:'Još nema rezultata. Prvo mesto čeka.',boardCount:'{n} {n|igrač|igrača|igrača}',boardPlace:'tvoje mesto: {r}. od {n}',
+    boardSignIn:'Prijavi se da tvoj rezultat uđe na rang-listu.',boardPending:'Rezultat će ući na rang-listu čim bude veze.',boardWait:'Učitavanje…',boardOff:'Za rang-listu je potrebna veza.',
+    boardBest:'Najbolje danas: {s} · {name}',boardFirst:'Računa se tvoj prvi rezultat dana: {s}.',boardDays:'{n} {n|dan|dana|dana}',playerAnon:'Igrač'},
+  bs:{account:'Račun',signIn:'Prijava',acIntro:'Prijavi se da te rekordi prate na svakom uređaju i da tvoji rezultati iz Dnevnog Jamba uđu na rang-listu. Igrati se uvijek može i bez računa.',acGoogle:'Prijava putem Googlea',
+    acNoNet:'Za prijavu je potrebna veza. Pokušaj ponovo za trenutak.',acSignedOut:'Bez prijave',acSignedAs:'Prijava: {name}',acName:'Tvoje ime na rang-listi',acSave:'Sačuvaj',acSaved:'Sačuvano.',
+    acSyncOk:'Rekordi su sačuvani na tvom računu.',acSyncWait:'Rekordi će se sačuvati čim bude veze.',acSignOut:'Odjava',acDelete:'Izbriši moj račun',acDelQ:'Izbrisati račun?',
+    acDelD:'Profil, sačuvane igre i rezultati na rang-listi brišu se zauvijek. Rekordi na ovom uređaju ostaju.',acDelYes:'Izbriši zauvijek',acDeleted:'Račun je izbrisan.',acHello:'Prijava je uspjela. Zdravo, {name}!',acBye:'Odjava je gotova.',
+    acErr:'Prijava nije uspjela. Pokušaj ponovo.',acFail:'Nije uspjelo. Provjeri vezu i pokušaj ponovo.',recAccount:'Sačuvano na tvom računu.',recSignIn:'Prijavi se da te prate na svakom uređaju',
+    board:'Rang-lista',boardToday:'Danas',boardWeek:'Ove sedmice',boardNone:'Još nema rezultata. Prvo mjesto čeka.',boardCount:'{n} {n|igrač|igrača|igrača}',boardPlace:'tvoje mjesto: {r}. od {n}',
+    boardSignIn:'Prijavi se da tvoj rezultat uđe na rang-listu.',boardPending:'Rezultat će ući na rang-listu čim bude veze.',boardWait:'Učitavanje…',boardOff:'Za rang-listu je potrebna veza.',
+    boardBest:'Najbolje danas: {s} · {name}',boardFirst:'Računa se tvoj prvi rezultat dana: {s}.',boardDays:'{n} {n|dan|dana|dana}',playerAnon:'Igrač'},
+  sl:{account:'Račun',signIn:'Prijava',acIntro:'Prijavi se, da te rekordi spremljajo na vsaki napravi in da tvoji rezultati iz Dnevnega Jamba pridejo na lestvico. Igraš lahko vedno tudi brez računa.',acGoogle:'Prijava z Googlom',
+    acNoNet:'Za prijavo je potrebna povezava. Poskusi znova čez trenutek.',acSignedOut:'Brez prijave',acSignedAs:'Prijava: {name}',acName:'Tvoje ime na lestvici',acSave:'Shrani',acSaved:'Shranjeno.',
+    acSyncOk:'Rekordi so shranjeni v tvojem računu.',acSyncWait:'Rekordi se bodo shranili, ko bo povezava.',acSignOut:'Odjava',acDelete:'Izbriši moj račun',acDelQ:'Izbrišem račun?',
+    acDelD:'Profil, shranjene igre in rezultati na lestvici se izbrišejo za vedno. Rekordi na tej napravi ostanejo.',acDelYes:'Izbriši za vedno',acDeleted:'Račun je izbrisan.',acHello:'Prijava je uspela. Živjo, {name}!',acBye:'Odjava je končana.',
+    acErr:'Prijava ni uspela. Poskusi znova.',acFail:'Ni uspelo. Preveri povezavo in poskusi znova.',recAccount:'Shranjeno v tvojem računu.',recSignIn:'Prijavi se, da te spremljajo na vsaki napravi',
+    board:'Lestvica',boardToday:'Danes',boardWeek:'Ta teden',boardNone:'Rezultatov še ni. Prvo mesto čaka.',boardCount:'{n} {n|igralec|igralca|igralci|igralcev}',boardPlace:'tvoje mesto: {r}. od {n}',
+    boardSignIn:'Prijavi se, da tvoj rezultat pride na lestvico.',boardPending:'Rezultat pride na lestvico, ko bo povezava.',boardWait:'Nalaganje …',boardOff:'Za lestvico je potrebna povezava.',
+    boardBest:'Najboljše danes: {s} · {name}',boardFirst:'Šteje tvoj prvi rezultat dneva: {s}.',boardDays:'{n} {n|dan|dneva|dnevi|dni}',playerAnon:'Igralec'},
+  de:{account:'Konto',signIn:'Anmelden',acIntro:'Melde dich an, damit deine Rekorde auf jedem Gerät dabei sind und deine Ergebnisse im Tages-Yamb in die Bestenliste kommen. Spielen geht immer auch ohne Konto.',acGoogle:'Über Google anmelden',
+    acNoNet:'Zum Anmelden braucht es eine Verbindung. Versuch es gleich noch einmal.',acSignedOut:'Nicht angemeldet',acSignedAs:'Angemeldet als {name}',acName:'Dein Name in der Bestenliste',acSave:'Speichern',acSaved:'Gespeichert.',
+    acSyncOk:'Deine Rekorde sind in deinem Konto gespeichert.',acSyncWait:'Deine Rekorde werden gespeichert, sobald es eine Verbindung gibt.',acSignOut:'Abmelden',acDelete:'Mein Konto löschen',acDelQ:'Konto löschen?',
+    acDelD:'Profil, gespeicherte Spiele und Einträge in der Bestenliste werden endgültig gelöscht. Die Rekorde auf diesem Gerät bleiben.',acDelYes:'Endgültig löschen',acDeleted:'Dein Konto ist gelöscht.',acHello:'Angemeldet. Willkommen, {name}!',acBye:'Abgemeldet.',
+    acErr:'Die Anmeldung hat nicht geklappt. Bitte versuch es noch einmal.',acFail:'Das hat nicht geklappt. Prüf die Verbindung und versuch es noch einmal.',recAccount:'In deinem Konto gespeichert.',recSignIn:'Anmelden, damit sie auf jedem Gerät dabei sind',
+    board:'Bestenliste',boardToday:'Heute',boardWeek:'Diese Woche',boardNone:'Noch keine Ergebnisse. Der erste Platz ist frei.',boardCount:'{n} Spieler',boardPlace:'dein Platz: {r} von {n}',
+    boardSignIn:'Melde dich an, damit dein Ergebnis in die Bestenliste kommt.',boardPending:'Dein Ergebnis kommt in die Bestenliste, sobald es eine Verbindung gibt.',boardWait:'Lädt …',boardOff:'Die Bestenliste braucht eine Verbindung.',
+    boardBest:'Heute vorn: {s} · {name}',boardFirst:'Es zählt dein erstes Ergebnis des Tages: {s}.',boardDays:'{n} {n|Tag|Tage}',playerAnon:'Spieler'}
+};
+for(const l in ACC9)Object.assign(D[l],ACC9[l]);
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan
    languages, Yamb in English and German, where Yamb is the spelling people know and search for. */
 const BRAND='Yamb Café';

@@ -16,3 +16,13 @@ Every case ends by checking that all phones show exactly the same game.
 
 `ai-bench.js` lets each computer player play whole games alone. The dice are seeded and every turn has its own dice,
 so two versions of `ai.js` meet the same luck and can be compared game by game (`--ai path/to/other/ai.js`).
+
+`sql.js` runs `server/schema.sql` (the script pasted into Supabase) on a local Postgres and checks it: the Daily replay
+in the database gives the same score as the game's own rules engine, the tables are closed, the functions behave.
+
+`cloud.js` is the same from the outside: real game pages and the real Supabase library, signing in, records on two
+devices of one account, no connection, the high scores, deleting an account. Supabase and Google are played by a
+stand-in (`cloud-server.js`) that runs the same script, so nothing touches the live project.
+
+    node sql.js            # about 10 seconds
+    node cloud.js          # about 2 minutes

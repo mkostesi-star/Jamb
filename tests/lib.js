@@ -38,7 +38,8 @@ class Table{
     const lib=fs.readFileSync(path.join(__dirname,'node_modules/peerjs/dist/peerjs.min.js'),'utf8')+LAG;
     await ctx.route(/jsdelivr.*peerjs/,r=>r.fulfill({body:lib,contentType:'application/javascript'}));
     await ctx.addInitScript(a=>{window.JAMB_PEER_OPTS={host:'127.0.0.1',port:a.port,path:'/myapp',secure:false,config:{iceServers:[]}};window.JAMB_NET_DELAY=a.lag;
-      if(a.skew){const D=Date.now.bind(Date);Date.now=()=>D()+a.skew;}},{port:PEERPORT,lag:o.lag||0,skew:o.skew||0});
+      window.JAMB_CLOUD=a.cloud;          // accounts are off in these tests unless a stand-in server is given (see cloud.js)
+      if(a.skew){const D=Date.now.bind(Date);Date.now=()=>D()+a.skew;}},{port:PEERPORT,lag:o.lag||0,skew:o.skew||0,cloud:o.cloud||{url:''}});
     const pg=await ctx.newPage();pg.tag=tag;
     pg.on('pageerror',e=>this.errs.push(tag+' PAGEERR '+e.message));
     pg.on('console',m=>{if(m.type()==='error'&&!/Failed to load resource|WebSocket|ERR_|net::/.test(m.text()))this.errs.push(tag+' '+m.text().slice(0,200));});

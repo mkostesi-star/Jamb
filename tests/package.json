@@ -5,7 +5,8 @@
   "scripts": {
     "online": "node online.js",
     "ai": "node ai-bench.js",
-    "sql": "node sql.js"
+    "sql": "node sql.js",
+    "cloud": "node cloud.js"
   },
   "dependencies": {
     "express": "^4.19.2",
