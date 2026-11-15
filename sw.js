@@ -1,7 +1,7 @@
 /* Keeps Yamb Café working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v9.5';
+const CACHE = 'jamb-v9.6';
 const CORE = [
-  './', 'index.html', 'engine.js?v=95', 'ai.js?v=95', 'i18n.js?v=95', 'audio.js?v=95', 'music.js?v=95', 'fx.js?v=95', 'scan.js?v=95', 'vendor/supabase.js?v=95', 'cloud.js?v=95', 'app.js?v=95', 'manifest.webmanifest',
+  './', 'index.html', 'engine.js?v=96', 'ai.js?v=96', 'i18n.js?v=96', 'audio.js?v=96', 'music.js?v=96', 'fx.js?v=96', 'scan.js?v=96', 'vendor/supabase.js?v=96', 'cloud.js?v=96', 'app.js?v=96', 'manifest.webmanifest',
   'icons/v7/icon-192.png', 'icons/v7/apple-touch-icon.png', 'icons/v7/favicon-64.png',
   'art/cafe-800.webp', 'art/cafe-1280.webp', 'art/cafe-800.jpg', 'art/menucard.webp', 'art/tray.webp', 'art/saucer.webp', 'art/wood-768.webp', 'art/winner-800.webp', 'art/daily-800.webp',
   'art/cast/ema.webp', 'art/cast/nono.webp', 'art/cast/mira.webp', 'art/cast/joza.webp', 'art/cast/profesor.webp',
