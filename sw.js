@@ -1,12 +1,12 @@
 /* Keeps Yamb Café working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v9.1';
+const CACHE = 'jamb-v9.2';
 const CORE = [
-  './', 'index.html', 'engine.js?v=91', 'ai.js?v=91', 'i18n.js?v=91', 'audio.js?v=91', 'music.js?v=91', 'fx.js?v=91', 'scan.js?v=91', 'vendor/supabase.js?v=91', 'cloud.js?v=91', 'app.js?v=91', 'manifest.webmanifest',
+  './', 'index.html', 'engine.js?v=92', 'ai.js?v=92', 'i18n.js?v=92', 'audio.js?v=92', 'music.js?v=92', 'fx.js?v=92', 'scan.js?v=92', 'vendor/supabase.js?v=92', 'cloud.js?v=92', 'app.js?v=92', 'manifest.webmanifest',
   'icons/v7/icon-192.png', 'icons/v7/apple-touch-icon.png', 'icons/v7/favicon-64.png',
   'art/cafe-800.webp', 'art/cafe-1280.webp', 'art/cafe-800.jpg', 'art/menucard.webp', 'art/tray.webp', 'art/saucer.webp', 'art/wood-768.webp', 'art/winner-800.webp', 'art/daily-800.webp',
   'art/cast/ema.webp', 'art/cast/nono.webp', 'art/cast/mira.webp', 'art/cast/joza.webp', 'art/cast/profesor.webp',
   'art/dice/1.webp', 'art/dice/2.webp', 'art/dice/3.webp', 'art/dice/4.webp', 'art/dice/5.webp', 'art/dice/6.webp',
-  'art/cup/1.webp', 'art/cup/2.webp', 'art/cup/3.webp', 'art/cup/4.webp', 'art/cup/5.webp', 'art/cup/6.webp', 'audio/sfx/spin-end.mp3', 'audio/sfx/spin-loop.mp3'
+  'art/cup/1.webp', 'art/cup/2.webp', 'art/cup/3.webp', 'art/cup/4.webp', 'art/cup/5.webp', 'art/cup/6.webp', 'art/cup/spin.webp', 'audio/sfx/spin-end.mp3', 'audio/sfx/clink.mp3', 'audio/sfx/saucer.mp3', 'audio/sfx/write.mp3', 'audio/sfx/tap.mp3', 'audio/sfx/page.mp3', 'audio/sfx/bell.mp3', 'audio/sfx/stir.mp3', 'audio/sfx/dishes.mp3', 'audio/sfx/cheer-short.mp3', 'audio/sfx/drop.mp3', 'audio/sfx/tick.mp3', 'audio/sfx/tock.mp3', 'audio/sfx/spin-loop.mp3'
 ];
 const CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 

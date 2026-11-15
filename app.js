@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.1';
+const VERSION='v9.2';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -327,7 +327,7 @@ function rollChain(){
 /* ---------- shaking the tray ----------
    The dice to be thrown rattle on the silver tray while it shakes. Holding Roll or shaking the phone keeps it
    shaking until you let go; a tap, the computer and other phones get a short shake. Then the cups spin and settle. */
-const CUP_MIN=380;
+const CUP_MIN=340,SPIN_TICKS=7;
 /* the dice the next roll will throw: all of them on the first roll, otherwise the ones not kept */
 function freeIdx(){const t=G&&G.turn;if(!t)return [];const h=t.roll===0?t.held.map(()=>false):t.held;return h.map((x,i)=>x?-1:i).filter(i=>i>=0);}
 function cupStart(idx){
@@ -335,7 +335,7 @@ function cupStart(idx){
   const el=$('dice');if(!el)return false;
   ui.cup={idx:idx.slice(),t0:performance.now()};
   el.classList.add('shaking');
-  el.querySelectorAll('.die').forEach((d,i)=>{if(idx.includes(i))d.classList.add('incup');});
+  el.querySelectorAll('.die').forEach((d,i)=>{if(idx.includes(i)){d.classList.add('incup');if(!d.querySelector('.spin'))d.innerHTML=spinHTML(i);}});
   return true;
 }
 function cupStop(){
@@ -346,7 +346,7 @@ function cupStop(){
 /* the shake is over: the cups are let go */
 function cupPour(){cupStop();}
 /* a hold that ended without a roll, or the game changed underneath */
-function cupCancel(){if(ui.cup)cupStop();}
+function cupCancel(){if(ui.cup){cupStop();if(screen==='game'&&G&&!ui.rolling)renderTray();}}
 /* Dice that were thrown rattle on the shaking tray, spin with their faces changing, then settle one by one. Phones set to reduce motion get a quick face flip instead. */
 function rollFx(idx,done){
   clearInterval(ui.rollT);clearTimeout(ui.cupT);
@@ -362,7 +362,7 @@ function rollFx(idx,done){
   if(!was)cupStart(idx);
   const wait=ui.cup?Math.max(0,CUP_MIN-(performance.now()-ui.cup.t0)):0;
   /* the spin is timed to settle as the cups land */
-  if(!was||wait>80)A.shake(wait+310);else A.spin(wait+310);
+  if(!was||wait>80)A.shake(wait+SPIN_TICKS*62);else A.spin(wait+SPIN_TICKS*62);
   ui.rolling=true;ui.rollIdx=idx;render();
   ui.cupT=setTimeout(()=>{
   if(G!==g){cupCancel();ui.rolling=false;ui.rollIdx=null;return;}
@@ -370,8 +370,8 @@ function rollFx(idx,done){
   let n=0;
   ui.rollT=setInterval(()=>{
     if(G!==g){clearInterval(ui.rollT);ui.rolling=false;ui.rollIdx=null;return;}
-    tickDice();
-    if(++n>=5){
+    tickDice(++n);
+    if(n>=SPIN_TICKS){
       clearInterval(ui.rollT);ui.rolling=false;ui.rollIdx=null;
       A.land(idx.length,LAND_STEP);render();landFx(idx);
       const st=document.querySelector('#tray .status .st');if(st)FX.pulse(st,'bump',460);
@@ -384,7 +384,7 @@ function rollFx(idx,done){
 function toggleHold(i){
   const t=G.turn;
   if(!mayAct()||ui.rolling||G.mode==='table'||t.roll<1||t.roll>=3||!E.canRollAgain(G.rules,cur().sheet,t))return;
-  t.held[i]=!t.held[i];ui.tip=null;ui.tipText='';ui.popDie=t.held[i]?i:-1;A.hold();saveGame();render();ui.popDie=-1;
+  t.held[i]=!t.held[i];ui.tip=null;ui.tipText='';ui.popDie=t.held[i]?i:-1;ui.dropDie=t.held[i]?-1:i;A.hold(t.held[i]);saveGame();render();ui.popDie=-1;ui.dropDie=-1;
 }
 function onCell(c,r){
   if(!canWriteUI(G.current,c,r))return;
@@ -462,7 +462,7 @@ function showHint(){
   let b=null;try{b=AI.best({rules:G.rules,sheet:cur().sheet,turn:G.turn});}catch(e){b=null;}
   if(!b)return;
   const a=b.action;a.roll=G.turn.roll;
-  ui.tip=a;ui.tipText=describe(a,G.turn.dice);A.tap();render();
+  ui.tip=a;ui.tipText=describe(a,G.turn.dice);A.stir();render();
 }
 
 /* ---------- characters ---------- */
@@ -592,7 +592,7 @@ function finishDaily(){
   stats.daily.last=d.day;stats.daily.maxStreak=Math.max(stats.daily.maxStreak||0,stats.daily.streak||0);
   /* the moves are kept with the result, checked here first: played again from the list they must give the same score */
   const moves=dailyMoves(G),again=E.replayMoves(G.rules,G.seed,moves);
-  stats.daily.results[d.day]={done:true,score,n:d.n,grid:qualityGrid(G.rules,G.players[0].sheet),prof:null,moves:again&&again.total===score?moves:null};
+  stats.daily.results[d.day]={done:true,score,n:d.n,grid:qualityGrid(G.rules,G.players[0].sheet),prof:null,moves:again&&again.total===score?moves:null,at:Date.now()};
   const keys=Object.keys(stats.daily.results).sort();while(keys.length>60)delete stats.daily.results[keys.shift()];
   saveStats();clearSlot('daily');
   delete boards['d'+d.day];delete boards['w'+d.day];sendDailies().then(acctUI);
@@ -741,7 +741,7 @@ function rematch(){
 const DICE=[0,1,2,3,4,5,6].map(v=>v?`art/cup/${v}.webp`:'');
 const FACES=[0,1,2,3,4,5,6].map(v=>v?`art/dice/${v}.webp`:'');
 DICE.forEach(s=>{if(s){const im=new Image();im.decoding='async';im.src=s;}});
-['art/tray.webp','art/saucer.webp'].forEach(s=>{const im=new Image();im.decoding='async';im.src=s;});
+['art/tray.webp','art/saucer.webp','art/cup/spin.webp'].forEach(s=>{const im=new Image();im.decoding='async';im.src=s;});
 function pipsHTML(v){
   if(!v)return '';
   return `<img class="dface" src="${DICE[v]}" alt="" width="192" height="169" draggable="false">`;
@@ -920,14 +920,17 @@ function renderGame(){
     <header class="gtop"><button type="button" class="ibtn" data-act="exit" aria-label="${esc(t('exit'))}">${ICON.back}</button><div class="chips${g.players.length>=3?' many n'+g.players.length:''}">${chips}</div>
       <button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></header>
     ${onlineBanner()}
-    <div class="bubbleRow" id="bubbleRow">${bubbleHTML()}</div>
+    ${sideLayout()?'':`<div class="bubbleRow${hasBots()?' fixed':''}" id="bubbleRow">${bubbleHTML()}</div>`}
     <div class="sheetWrap"><div class="paper" aria-label="${esc(t('sheetOf',{name:name(view)}))}">${sheetHTML(view)}</div></div>
   </div>`;
 }
+function hasBots(){return !!(G&&G.players.some((p,i)=>isBot(i)));}
 function bubbleHTML(){
-  if(!G)return '';
-  const botI=ui.bubble&&isBot(ui.bubble.i)?ui.bubble.i:(isBot(G.current)&&!G.over?G.current:-1);
-  if(botI<0)return '';
+  if(!G||!hasBots())return '';
+  /* the computer player who is talking or playing; between turns the last one stays at the table */
+  let botI=ui.bubble&&isBot(ui.bubble.i)?ui.bubble.i:(isBot(G.current)&&!G.over?G.current:-1);
+  if(botI<0)botI=ui.lastBot!=null&&isBot(ui.lastBot)?ui.lastBot:G.players.findIndex((p,i)=>isBot(i));
+  ui.lastBot=botI;
   const ck=CHARS[G.players[botI].char]?G.players[botI].char:'profesor',c=CHARS[ck],b=ui.bubble&&ui.bubble.i===botI?ui.bubble.text:'';
   return `<span class="cmini big" style="--ring:${c.ring}" aria-hidden="true">${avatar(ck)}</span>${b?`<span class="bubble" role="status">${esc(b)}</span>`:''}`;
 }
@@ -935,10 +938,17 @@ function renderBubble(){
   const el=$('bubbleRow');if(!el||!G)return;
   el.innerHTML=bubbleHTML();
 }
+/* A spinning cup: a strip of painted frames (art/cup/spin.webp) of the cup turning on its own axis, the pips a blur.
+   Each cup gets its own speed, start and direction so the five never turn in step. */
+function spinHTML(i){
+  const k=(i*7919+(G&&G.turn?G.turn.roll:0)*104729)%1000/1000;
+  return `<span class="spin" style="--sp:${(0.24+k*0.1).toFixed(3)}s;--sdel:-${(k*0.3).toFixed(3)}s;--sdir:${(i+(G&&G.turn?G.turn.roll:0))%2?'reverse':'normal'}"></span>`;
+}
 function dieHTML(v,i,o){
   const r=((i*37+v*11)%9)-4;
   if(o.unset)return `<button type="button" class="die unset${o.picked?' ghost':''}" data-act="tdie" data-i="${i}" aria-label="${esc(t('setDie',{n:i+1}))}">?</button>`;
-  return `<span class="dslot${o.held?' kept':''}"><button type="button" class="die${o.held?' held':''}${o.held&&ui.popDie===i?' popin':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}${ui.cup&&ui.cup.idx.includes(i)?' incup':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${pipsHTML(o.idle?0:o.tumble?1+Math.floor(Math.random()*6):v)}</button></span>`;
+  const cupping=!!(ui.cup&&ui.cup.idx.includes(i)),spinning=!o.idle&&(o.tumble||cupping);
+  return `<span class="dslot${o.held?' kept':''}${!o.held&&ui.dropDie===i?' unkept':''}"><button type="button" class="die${o.held?' held':''}${o.held&&ui.popDie===i?' popin':''}${!o.held&&ui.dropDie===i?' popout':''}${o.idle?' idle':''}${o.tumble?' tumble':''}${o.ghost?' ghost':''}${cupping?' incup':''}" style="--r:${r}deg" data-act="${o.table?'tdie':'hold'}" data-i="${i}" aria-pressed="${!!o.held}" aria-label="${esc(o.idle?t('dieIdle'):t('die',{v})+(o.held?', '+t('kept'):''))}"${o.can?'':' disabled'}>${spinning?spinHTML(i):pipsHTML(o.idle?0:v)}</button></span>`;
 }
 /* first-game guide: short tips in the first game against the computer, each shown once */
 function guideTip(){
@@ -1041,16 +1051,20 @@ function renderTray(){
   /* The name and the roll number are already in the name chip on top and on the Roll button, so when the status line
      has nothing else to show (no clock, reactions, undo or call) it is left out and the chalkboard gets the room. */
   const emo=emoHTML(),bare=!clockOn&&!emo&&st===who&&g.mode!=='table';
-  $('tray').innerHTML=`<div class="trayIn${bare?' bare':''}">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}${bare?'':`<div class="status">${st}<span class="sright">${clockHTML}${emo}</span></div>`}<div class="dice${g.rules.dice===6?' six':''}${ui.cup?' shaking':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div>${keysHTML(g)}</div>${tipHTML()}`;
+  /* desktop: the computer player sits across the table, at the top of the tray panel */
+  const side=sideLayout()&&hasBots()?`<div class="bubbleRow fixed side" id="bubbleRow">${bubbleHTML()}</div>`:'';
+  $('tray').innerHTML=side+`<div class="trayIn${bare?' bare':''}">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}${bare?'':`<div class="status">${st}<span class="sright">${clockHTML}${emo}</span></div>`}<div class="dice${g.rules.dice===6?' six':''}${ui.cup?' shaking':''}" id="dice">${dice}</div><p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div>${keysHTML(g)}</div>${tipHTML()}`;
+  stabTray();
 }
 /* keyboard keys, shown in the desktop layout during the first games */
 function keysHTML(g){
-  if(!newPlayer()||g.mode==='table'||!mayAct())return '';
-  return `<p class="keys" aria-hidden="true"><kbd>${esc(t('kSpace'))}</kbd> ${esc(t('kRoll'))} · <kbd>1</kbd>–<kbd>${g.rules.dice}</kbd> ${esc(t('kKeep'))} · <kbd>Enter</kbd> ${esc(t('kWrite'))}</p>`;
+  if(!newPlayer()||g.mode==='table')return '';
+  return `<p class="keys" aria-hidden="true"${mayAct()?'':' style="visibility:hidden"'}><kbd>${esc(t('kSpace'))}</kbd> ${esc(t('kRoll'))} · <kbd>1</kbd>–<kbd>${g.rules.dice}</kbd> ${esc(t('kKeep'))} · <kbd>Enter</kbd> ${esc(t('kWrite'))}</p>`;
 }
-function tickDice(){
+/* the spin slows down for its last few frames, then the cups stop and show their faces */
+function tickDice(n){
   const el=$('dice');if(!el||!ui.rollIdx)return;
-  el.querySelectorAll('.die').forEach((d,i)=>{if(!ui.rollIdx.includes(i))return;d.innerHTML=pipsHTML(1+Math.floor(Math.random()*6));d.style.setProperty('--spin',(Math.random()*80-40).toFixed(0)+'deg');});
+  if(n===SPIN_TICKS-3)el.querySelectorAll('.die.tumble').forEach(d=>d.classList.add('slow'));
 }
 function render(){
   if(screen!=='game'||!G)return;
@@ -1058,11 +1072,35 @@ function render(){
   renderGame();renderTray();
   if(key){const el=[...document.querySelectorAll('[data-act]')].find(e=>[e.dataset.act,e.dataset.i||'',e.dataset.c||'',e.dataset.r||'',e.dataset.p||''].join('|')===key);if(el&&!el.disabled){try{el.focus({preventScroll:true});}catch(e){}}}
   const tr=$('tray');if(tr)document.documentElement.style.setProperty('--tray-h',tr.offsetHeight+'px');
-  applyZoom();chipFx();turnFx();
+  applyZoom();sidePanel();chipFx();turnFx();
 }
 /* Sheet size: Fit (the default) shrinks every row so the whole board shows above the tray.
    Large and Huge are steps up from Fit and scroll. */
 const ZOOMS=['fit','large','huge'];
+/* The tray never shrinks during a game: lines that come and go (the status line, a two-line hint, the shake hint)
+   would otherwise move the dice and resize the score sheet on every turn. Its tallest height is kept, and the room
+   for the status line is kept even while it is left out. Desktop: the panel sits beside the sheet, top to bottom. */
+function stabTray(){
+  const tr=$('tray'),ti=tr&&tr.querySelector('.trayIn');if(!ti)return;
+  const key=(G&&G.id)+'|'+window.innerWidth+'x'+window.innerHeight;
+  if(ui.trayKey!==key){ui.trayKey=key;ui.trayMax=0;}
+  let h=ti.offsetHeight;
+  if(ti.classList.contains('bare'))h+=30+(parseFloat(getComputedStyle(ti).rowGap)||8);
+  if(h>ui.trayMax)ui.trayMax=h;
+  ti.style.minHeight=ui.trayMax+'px';
+}
+function sidePanel(){
+  const root=document.documentElement;
+  if(!sideLayout()){['--side-top','--side-h','--colL'].forEach(k=>root.style.removeProperty(k));return;}
+  const pp=document.querySelector('#game .paper');if(!pp)return;
+  /* the sheet's column grows with its rows, so a big screen gets a bigger board rather than empty wood */
+  const z=parseFloat(pp.style.getPropertyValue('--z'))||1,stage=Math.min(1700,window.innerWidth-64);
+  const col=Math.round(Math.max(560,Math.min(450*z,stage*0.6)));
+  if(root.style.getPropertyValue('--colL')!==col+'px')root.style.setProperty('--colL',col+'px');
+  const r=pp.getBoundingClientRect();
+  root.style.setProperty('--side-top',Math.round(r.top+window.scrollY)+'px');
+  root.style.setProperty('--side-h',Math.round(r.height)+'px');
+}
 const sideLayout=()=>!!(window.matchMedia&&matchMedia('(min-width:1000px) and (min-aspect-ratio:4/3)').matches);
 function zoomMode(){return ZOOMS.includes(prefs.zoom)?prefs.zoom:'fit';}
 function applyZoom(){
@@ -1071,11 +1109,11 @@ function applyZoom(){
   const tb=paper.querySelector('table'),tr=$('tray');if(!tb)return;
   const top=paper.getBoundingClientRect().top+window.scrollY,trayH=tr&&!tr.hidden&&!sideLayout()?tr.offsetHeight:0;
   const avail=window.innerHeight-top-trayH-22,h=tb.offsetHeight||1;
-  const fit=Math.max(.6,Math.min(1.25,avail/h)),z=zoomMode();/* below 0.6 the text gets too small to read; the sheet scrolls instead */
+  const fit=Math.max(.6,Math.min(sideLayout()?1.9:1.25,avail/h)),z=zoomMode();/* below 0.6 the text gets too small to read; the sheet scrolls instead */
   const v=z==='huge'?Math.min(2,Math.max(1.3,fit*1.6)):z==='large'?Math.min(1.6,Math.max(1,fit*1.25)):fit;
   paper.style.setProperty('--z',v.toFixed(3));
 }
-window.addEventListener('resize',()=>{if(screen==='game')applyZoom();});
+window.addEventListener('resize',()=>{if(screen!=='game')return;if(ui.side!==sideLayout()){ui.side=sideLayout();render();return;}applyZoom();sidePanel();});
 /* Totals count up and the chip bumps when a player scores. */
 function chipFx(){
   if(!G)return;
@@ -2000,6 +2038,9 @@ async function sendDailies(){
         const b=await C.rpc('submit_daily',{p_day:day,p_moves:r.moves});
         if(cloud.uid!==me)return;
         r.sent=me;saveStats();boards['d'+day]={at:Date.now(),data:b,err:false};delete boards['w'+day];
+        /* a game just finished that takes the day's top place from someone else: the till rings */
+        const top=b&&b.top||[];
+        if(day===E.localDay()&&Date.now()-(r.at||0)<120000&&b.me&&b.me.rank===1&&top.length>1&&r.score>top[1].score)A.cash();
       }catch(e){if(/YC_(MOVES|DAY)/.test(String(e&&e.message))){r.bad=true;saveStats();}}
     }
   }finally{sendingDaily=false;}

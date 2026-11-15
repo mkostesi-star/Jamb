@@ -73,12 +73,24 @@ function rattleBurst(len){
    spin speeds up and settles, plays with every roll and is timed to finish as the dice land. Until the recordings
    have loaded, the synthesized rattle stands in. */
 const SFX={};
+/* Café sounds from Pixabay and CC0 Freesound recordings, cut, levelled and shortened (audio/sfx). Each has its own level;
+   until a file has loaded (or if it cannot), the synthesized sound below stands in. */
+const SFX_GAIN={clink:.5,saucer:.55,write:.26,tap:.2,page:.42,bell:.28,stir:.42,dishes:.26,cheer:.3,'cheer-short':.3,drop:.3,tick:.3,tock:.3,cash:.45};
 function loadSfx(){
   if(SFX.started||!ctx)return;SFX.started=true;
-  ['spin-loop','spin-end'].forEach(n=>{
+  ['spin-loop','spin-end','clink','saucer','write','tap','page','bell','stir','dishes','cheer','cheer-short','drop','tick','tock','cash'].forEach(n=>{
     fetch('audio/sfx/'+n+'.mp3').then(r=>{if(!r.ok)throw 0;return r.arrayBuffer();})
       .then(b=>new Promise((ok,no)=>ctx.decodeAudioData(b,ok,no))).then(buf=>{SFX[n]=buf;}).catch(()=>{});
   });
+}
+/* one recorded sound, played straight away; rate varies the pitch a little so repeats never sound identical */
+function sfx(n,o){
+  if(!ready()||!SFX[n])return false;
+  o=o||{};
+  const src=ctx.createBufferSource();src.buffer=SFX[n];if(o.rate)src.playbackRate.value=o.rate;
+  const g=ctx.createGain();g.gain.value=(SFX_GAIN[n]||.4)*(o.gain==null?1:o.gain);
+  src.connect(g);g.connect(master);src.start(ctx.currentTime+(o.delay||0));
+  return true;
 }
 let loopNode=null;
 function playBuf(buf,o){
@@ -114,7 +126,9 @@ function shake(ms){if(!ready())return;if(!spin(ms))rattleBurst((ms||450)/1000);}
 function land(n,step){
   haptic(18);
   if(!ready())return;
-  const t0=ctx.currentTime+0.015,st=(step||55)/1000;
+  const st=(step||55)/1000;
+  if(SFX.clink){const k=Math.min(n||5,3);for(let i=0;i<k;i++)sfx('clink',{delay:0.01+i*st*1.6+rnd(0,0.012),rate:rnd(0.9,1.14),gain:i?rnd(0.45,0.6):1});return;}
+  const t0=ctx.currentTime+0.015;
   for(let i=0;i<(n||5);i++){
     const t=t0+i*st+rnd(-0.006,0.006);
     knock(t,rnd(380,480),rnd(220,260),0.06,rnd(0.14,0.2));
@@ -127,6 +141,7 @@ function land(n,step){
 function press(){
   haptic(6);
   if(!ready())return;
+  if(sfx('tap',{rate:rnd(0.95,1.08)}))return;
   const t=ctx.currentTime;
   knock(t,rnd(620,700),380,0.06,0.11);
   burst(t,{freq:1800,q:1.4,dur:0.012,gain:0.05});
@@ -134,6 +149,7 @@ function press(){
 /* Paper sliding across the table when a sheet opens or closes. */
 function swish(out){
   if(!ready())return;
+  if(sfx('page',{rate:out?rnd(1.08,1.16):rnd(0.96,1.04),gain:out?0.7:1}))return;
   const t=ctx.currentTime,s=ctx.createBufferSource();s.buffer=white();
   const f=ctx.createBiquadFilter();f.type='bandpass';f.Q.value=0.8;
   f.frequency.setValueAtTime(out?2600:900,t);f.frequency.exponentialRampToValueAtTime(out?900:2600,t+0.2);
@@ -143,19 +159,23 @@ function swish(out){
 /* Two soft marimba notes when the turn comes to you. */
 function turn(){
   if(!ready())return;
+  if(sfx('bell'))return;
   const t=ctx.currentTime;
   [[659.25,0],[987.77,0.11]].forEach(([fq,d])=>{ping(t+d,fq,0.45,0.07);ping(t+d,fq*4,0.08,0.012);});
 }
 /* a soft clock tick for the last seconds of a turn */
-function tick(){if(!ready())return;const t=ctx.currentTime;knock(t,1500,1100,0.03,0.05);}
-function hold(){haptic(8);if(!ready())return;burst(ctx.currentTime,{freq:1900,q:2,dur:0.02,gain:0.22});}
+let tocks=0;
+function tick(){if(!ready())return;if(sfx((tocks++)%2?'tock':'tick'))return;const t=ctx.currentTime;knock(t,1500,1100,0.03,0.05);}
+/* keeping a die sets the cup down on its saucer; letting it go is a lighter clink */
+function hold(on){haptic(8);if(!ready())return;if(on===false?sfx('clink',{rate:rnd(1.18,1.3),gain:0.5}):sfx('saucer',{rate:rnd(0.96,1.06)}))return;burst(ctx.currentTime,{freq:1900,q:2,dur:0.02,gain:0.22});}
 /* A reaction sticker arriving: a soft two-note pop. */
-function pop(){if(!ready())return;const t=ctx.currentTime;knock(t,520,760,0.09,0.11);ping(t+0.07,1040,0.16,0.035);}
-function tap(){if(!ready())return;burst(ctx.currentTime,{freq:2600,q:1.5,dur:0.015,gain:0.12});}
+function pop(){if(!ready())return;if(sfx('drop',{rate:rnd(0.94,1.1)}))return;const t=ctx.currentTime;knock(t,520,760,0.09,0.11);ping(t+0.07,1040,0.16,0.035);}
+function tap(){if(!ready())return;if(sfx('tap',{rate:rnd(1.15,1.28),gain:0.6}))return;burst(ctx.currentTime,{freq:2600,q:1.5,dur:0.015,gain:0.12});}
 /* A ballpoint pen writing a number. */
 function write(){
   haptic(10);
   if(!ready())return;
+  if(sfx('write',{rate:rnd(0.95,1.1)}))return;
   const t0=ctx.currentTime;
   let t=t0;
   for(let i=0;i<6;i++){
@@ -168,14 +188,16 @@ function write(){
 function zero(){
   haptic([20,30,20]);
   if(!ready())return;
+  if(sfx('dishes',{rate:rnd(0.95,1.05)}))return;
   const t0=ctx.currentTime;
   for(let i=0;i<26;i++)burst(t0+rnd(0,0.5),{freq:rnd(1200,6500),q:0.8,dur:0.025,gain:rnd(0.08,0.25)});
 }
-function bonus(){if(!ready())return;const t=ctx.currentTime;[880,1108.73,1318.5,1760].forEach((f,i)=>ping(t+i*0.07,f,0.55,0.09,'triangle'));}
+function bonus(){if(!ready())return;if(sfx('cheer-short',{gain:0.8}))return;const t=ctx.currentTime;[880,1108.73,1318.5,1760].forEach((f,i)=>ping(t+i*0.07,f,0.55,0.09,'triangle'));}
 /* A small fanfare and a café cheer for a Jamb. */
 function jamb(){
   haptic([30,40,30,40,60]);
   if(!ready())return;
+  if(sfx('cheer'))return;
   const t=ctx.currentTime;
   [523.25,659.25,783.99,1046.5].forEach((f,i)=>ping(t+i*0.09,f,0.6,0.11,'triangle'));
   const s=ctx.createBufferSource();s.buffer=white();
@@ -184,7 +206,8 @@ function jamb(){
   s.connect(f);f.connect(g);g.connect(master);s.start(t);s.stop(t+1.7);
 }
 function win(){
-  if(!ready())return;const t=ctx.currentTime;
+  if(!ready())return;
+  if(sfx('cheer'))return;const t=ctx.currentTime;
   [392,523.25,659.25,783.99].forEach((f,i)=>ping(t+i*0.12,f,0.8,0.1,'triangle'));
   [523.25,659.25,783.99,1046.5].forEach(f=>ping(t+0.55,f,1.4,0.05,'triangle'));
   for(let i=0;i<40;i++)burst(t+0.5+rnd(0,1.1),{freq:rnd(1500,4000),q:1.2,dur:0.02,gain:rnd(0.02,0.06)});
@@ -286,6 +309,10 @@ function motionStop(){
   clearTimeout(motion.timer);motion.handler=null;motion.on=false;motion.shaking=false;motion.prev=null;
 }
 
-root.JambAudio={set,unlock,sleep,tick,pop,rattleStart,rattleStop,shake,spin,land,hold,tap,press,swish,turn,write,zero,bonus,jamb,win,haptic,
+/* the hint: a teaspoon stirring; the day's high score beaten: the till */
+function stir(){if(!ready())return;if(!sfx('stir',{rate:rnd(0.97,1.05)}))tap();}
+function cash(){haptic([15,40,25]);if(!ready())return;if(!sfx('cash'))bonus();}
+
+root.JambAudio={set,unlock,sleep,tick,pop,stir,cash,rattleStart,rattleStop,shake,spin,land,hold,tap,press,swish,turn,write,zero,bonus,jamb,win,haptic,
   motion:{supported:motionSupported,request:motionRequest,start:motionStart,stop:motionStop}};
 })(typeof self!=='undefined'?self:this);

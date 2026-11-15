@@ -463,14 +463,7 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 .cell.pressing:not(:disabled){scale:.94}
 .glass.pressing:not(:disabled){scale:.98}
 
-.die.tumble{animation:cupspin .34s ease-in-out infinite alternate}
-.dslot:nth-child(2) .die.tumble{animation-delay:-.12s}.dslot:nth-child(3) .die.tumble{animation-delay:-.21s}.dslot:nth-child(4) .die.tumble{animation-delay:-.05s}.dslot:nth-child(5) .die.tumble{animation-delay:-.17s}.dslot:nth-child(6) .die.tumble{animation-delay:-.26s}
-/* a cup spinning on the tray: it turns on its own axis and hops a little */
-@keyframes cupspin{0%{scale:1 1;rotate:-8deg;translate:0 0}22%{scale:.84 1.03;rotate:6deg;translate:0 calc(var(--d)*-.13)}48%{scale:.72 1;rotate:-3deg;translate:0 calc(var(--d)*-.04)}52%{scale:-.72 1;rotate:3deg;translate:0 calc(var(--d)*-.04)}78%{scale:-.84 1.03;rotate:-6deg;translate:0 calc(var(--d)*-.09)}100%{scale:-1 1;rotate:8deg;translate:0 0}}
 .die.flip{animation:flip .3s ease}
-.die.incup{animation:rattle .1s ease-in-out infinite alternate}
-.dslot:nth-child(2n) .die.incup{animation-delay:-.05s}.dslot:nth-child(3n) .die.incup{animation-duration:.12s}
-@keyframes rattle{from{translate:-1.5px 0;rotate:-7deg}to{translate:1.5px -3px;rotate:6deg}}
 .dslot .die{transition:transform .26s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease,scale .24s cubic-bezier(.34,1.56,.64,1),opacity .16s ease}
 @keyframes flip{0%{opacity:.25;filter:brightness(1.4)}100%{opacity:1;filter:none}}
 .die.landed{animation:landed .34s cubic-bezier(.3,1.5,.5,1) both}
@@ -563,15 +556,6 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 .tipcard.inline{position:static;width:auto;margin:0 0 12px;box-shadow:none;border:1.5px dashed var(--line-strong);animation:none}
 @keyframes tipIn{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
 @media (prefers-reduced-motion:reduce){.tipcard{animation:none}}
-/* desktop and tablet in landscape: the sheet on the left, the dice tray as a panel on the right */
-@media (min-width:1000px) and (min-aspect-ratio:4/3){
-  #game .wrap{max-width:560px;margin-left:max(24px,calc(50% - 540px));margin-right:auto}
-  .sheetWrap{padding-bottom:24px}
-  .tray{left:calc(max(24px,50% - 540px) + 592px);right:auto;width:min(440px,calc(100vw - max(24px,50% - 540px) - 616px));top:50%;bottom:auto;transform:translateY(-50%);
-    border:3px solid rgba(0,0,0,.35);border-radius:18px;padding-block:18px;box-shadow:0 18px 40px -12px var(--shadow)}
-  .trayIn{max-width:none}
-  .keys{display:block}
-}
 @media (max-height:800px){
   .bubbleRow{margin-bottom:4px}
   .bubbleRow .cmini.big{width:42px;height:42px}
@@ -584,6 +568,68 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
   .hintbtn{width:52px;min-height:52px}
   .glass small{display:none}
   .hint{font-size:14px;line-height:1.2}
+}
+/* v9.2 the tray in two rows: cups still in play stand in front, a kept cup slides to the back of the tray onto its saucer */
+.dice{--d:clamp(42px,12.6vw,56px);--back:.5;padding:calc(var(--d)*.30) 6% calc(var(--d)*.40);align-items:flex-end}
+.dice.six{--d:clamp(36px,10.8vw,50px)}
+.dice{width:min(100%,calc(var(--d)*7.4));box-sizing:border-box;margin-inline:auto}.dice.six{width:min(100%,calc(var(--d)*8.7))}
+.dslot{height:calc(var(--d)*(.795 + var(--back)));width:var(--d);display:flex;align-items:flex-end;justify-content:center}
+.dslot .die{z-index:2;height:calc(var(--d)*.883);transform:rotate(calc(var(--r,0deg)*.5))}
+.dslot .die.held{transform:translateY(calc(var(--d)*var(--back)*-1)) scale(.9);transform-origin:38.5% 100%;z-index:1}
+.dslot::after{left:calc(50% - var(--d)*.115);bottom:calc(var(--d)*(var(--back) - .22));width:calc(var(--d)*1.02);height:calc(var(--d)*.455);z-index:0}
+.die.held img.dface{filter:drop-shadow(0 0 4px color-mix(in srgb,var(--pcl,#fff) 70%,transparent)) drop-shadow(0 2px 2px rgba(20,10,4,.4))}
+.dslot .die.held.popin{animation:slideback .34s cubic-bezier(.3,1.25,.5,1) both}
+.dslot .die.popout{animation:slidefront .3s cubic-bezier(.3,1.25,.5,1) both}
+@keyframes slideback{from{transform:translateY(0) scale(1)}to{transform:translateY(calc(var(--d)*var(--back)*-1)) scale(.9)}}
+@keyframes slidefront{from{transform:translateY(calc(var(--d)*var(--back)*-1)) scale(.9)}to{transform:rotate(calc(var(--r,0deg)*.5))}}
+.dslot:has(.die.popin)::after{animation:saucerin .3s ease-out both}
+.dslot.unkept::after{animation:saucerout .26s ease-in both}
+@keyframes saucerin{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes saucerout{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.7)}}
+/* a spinning cup: painted frames of the cup turning on its own axis (art/cup/spin.webp), the pips a blur until it stops */
+.die .spin{position:absolute;left:calc(var(--d)*-.348);bottom:0;width:calc(var(--d)*1.465);height:calc(var(--d)*.883);pointer-events:none;
+  background:url(art/cup/spin.webp) 0 0/1200% 100% no-repeat;filter:drop-shadow(0 3px 2px rgba(20,10,4,.45));
+  animation:cupframes var(--sp,.3s) steps(12,jump-none) var(--sdel,0s) infinite var(--sdir,normal)}
+.die.slow .spin{animation-duration:calc(var(--sp,.3s)*2.4)}
+@keyframes cupframes{to{background-position:100% 0}}
+.dslot .die.tumble,.dslot .die.incup{animation:cupwobble .17s ease-in-out infinite alternate}
+.dslot .die.slow{animation-duration:.28s}
+@keyframes cupwobble{from{rotate:-2.5deg;translate:-1px 0}to{rotate:2.5deg;translate:1px -1px}}
+/* when it stops, the face comes out of the blur */
+.die.landed img.dface{animation:unblur .22s ease-out both}
+@keyframes unblur{from{filter:blur(1.6px) drop-shadow(0 3px 2px rgba(20,10,4,.45))}to{filter:blur(0) drop-shadow(0 3px 2px rgba(20,10,4,.45))}}
+/* lines that come and go stay inside the tray's kept height, so nothing on the screen moves */
+.trayIn{align-content:end}
+.bubbleRow.fixed{height:58px;align-items:flex-end;margin-bottom:6px}
+.bubbleRow.fixed .bubble{max-height:58px;box-sizing:border-box;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;line-height:1.1}
+@media (max-height:800px){.bubbleRow.fixed{height:48px}.bubbleRow.fixed .bubble{max-height:48px}}
+/* desktop and tablet in landscape: one stage in the middle of the screen, the score sheet on the left and the tray beside
+   it as a panel exactly as tall as the sheet */
+@media (min-width:1000px) and (min-aspect-ratio:4/3){
+  :root{--stage:min(1700px,calc(100vw - 64px));--colL:min(640px,calc(var(--stage)*.56));--gapS:clamp(28px,3vw,56px)}
+  #game .wrap{max-width:none;width:var(--stage);margin:0 auto;padding-inline:0;display:grid;grid-template-columns:var(--colL) minmax(0,1fr);column-gap:var(--gapS);align-content:start}
+  #game .wrap>*{grid-column:1;min-width:0}
+  #game .wrap>.gtop{grid-column:1/-1}
+  .sheetWrap{padding-bottom:24px}
+  .tray{left:calc(50vw - var(--stage)/2 + var(--colL) + var(--gapS));right:auto;width:calc(var(--stage) - var(--colL) - var(--gapS));box-sizing:border-box;
+    top:var(--side-top,96px);height:var(--side-h,auto);min-height:300px;bottom:auto;transform:none;display:flex;flex-direction:column;justify-content:center;
+    border:3px solid rgba(0,0,0,.35);border-radius:18px;padding:22px 10px;box-shadow:0 18px 40px -12px var(--shadow)}
+  .trayIn{max-width:none;width:100%}
+  .dice{--d:clamp(50px,min(4.6vw,8.6vh),112px)}
+  .dice.six{--d:clamp(44px,min(3.9vw,7.4vh),96px)}
+  .keys{display:block}
+  .glass small{display:block}
+  .tray .bubbleRow.side{position:absolute;top:18px;left:18px;right:18px;height:auto;min-height:64px;margin:0}
+  .tray .bubbleRow.side .cmini.big{width:clamp(52px,6vh,76px);height:clamp(52px,6vh,76px)}
+  .tray .bubbleRow.side .bubble{max-width:none;max-height:none;font-size:clamp(20px,2.3vh,28px);-webkit-line-clamp:3;line-clamp:3}
+  .gtop .ibtn{min-width:clamp(44px,4.8vh,60px);height:clamp(44px,4.8vh,60px);border-radius:999px}
+  .chip{min-height:clamp(48px,5vh,64px);padding-inline:18px}
+  .chip .cn,.chips.many .chip .cn{font-size:clamp(14px,1.55vh,20px)}
+  .chip .cw,.chips.many .chip .cw{display:block;font-size:clamp(12px,1.25vh,16px)}
+  .chip .cs,.chips.many .chip .cs{font-size:clamp(21px,2.4vh,30px)}
+  .glass{min-height:clamp(60px,6.4vh,84px)}
+  .glass b{font-size:clamp(22px,2.6vh,32px)}
+  .hint{font-size:clamp(15px,1.6vh,20px)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.die.flip{animation:flip .3s ease!important}}
 </style>
@@ -610,15 +656,15 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=91"></script>
-<script src="ai.js?v=91"></script>
-<script src="i18n.js?v=91"></script>
-<script src="audio.js?v=91"></script>
-<script src="music.js?v=91"></script>
-<script src="fx.js?v=91"></script>
-<script src="scan.js?v=91"></script>
-<script src="vendor/supabase.js?v=91" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=91"></script>
-<script src="app.js?v=91"></script>
+<script src="engine.js?v=92"></script>
+<script src="ai.js?v=92"></script>
+<script src="i18n.js?v=92"></script>
+<script src="audio.js?v=92"></script>
+<script src="music.js?v=92"></script>
+<script src="fx.js?v=92"></script>
+<script src="scan.js?v=92"></script>
+<script src="vendor/supabase.js?v=92" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=92"></script>
+<script src="app.js?v=92"></script>
 </body>
 </html>
