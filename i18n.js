@@ -979,6 +979,17 @@ for(const l in MENU91)Object.assign(D[l],MENU91[l]);
 /* v9.3: signed in, the setup sheets show the account's name instead of asking for it */
 const NAME93={en:{playingAs:'Playing as {name}'},hr:{playingAs:'Igraš kao {name}'},sr:{playingAs:'Igraš kao {name}'},bs:{playingAs:'Igraš kao {name}'},sl:{playingAs:'Igraš kot {name}'},de:{playingAs:'Du spielst als {name}'}};
 for(const l in NAME93)if(D[l])Object.assign(D[l],NAME93[l]);
+/* v9.4: pages */
+const PAGES94={
+  en:{profile:'Profile',pickPortrait:'Your portrait',portraitNote:'Pick one of the regulars. Your own photo comes later.',billThanks:'Thank you, come again',freeSeat:'Free seat',backSoon:'Back in five minutes'},
+  hr:{profile:'Profil',pickPortrait:'Tvoj portret',portraitNote:'Odaberi jednog od stalnih gostiju. Vlastita fotografija dolazi kasnije.',billThanks:'Hvala, dođite opet',freeSeat:'Slobodno mjesto',backSoon:'Vraćam se za pet minuta'},
+  sr:{profile:'Profil',pickPortrait:'Tvoj portret',portraitNote:'Izaberi jednog od stalnih gostiju. Sopstvena fotografija dolazi kasnije.',billThanks:'Hvala, dođite ponovo',freeSeat:'Slobodno mesto',backSoon:'Vraćam se za pet minuta'},
+  bs:{profile:'Profil',pickPortrait:'Tvoj portret',portraitNote:'Odaberi jednog od stalnih gostiju. Vlastita fotografija dolazi kasnije.',billThanks:'Hvala, dođite opet',freeSeat:'Slobodno mjesto',backSoon:'Vraćam se za pet minuta'},
+  sl:{profile:'Profil',pickPortrait:'Tvoj portret',portraitNote:'Izberi enega od stalnih gostov. Lastna fotografija pride kasneje.',billThanks:'Hvala, pridite spet',freeSeat:'Prosto mesto',backSoon:'Vrnem se čez pet minut'},
+  de:{profile:'Profil',pickPortrait:'Dein Porträt',portraitNote:'Such dir einen der Stammgäste aus. Ein eigenes Foto kommt später.',billThanks:'Danke, bis bald',freeSeat:'Freier Platz',backSoon:'Bin in fünf Minuten zurück'}
+};
+for(const l in PAGES94)if(D[l])Object.assign(D[l],PAGES94[l]);
+
 
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan
    languages, Yamb in English and German, where Yamb is the spelling people know and search for. */

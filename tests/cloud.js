@@ -100,7 +100,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     ok(res.length===1&&res[0].mode==='cpu'&&res[0].players===2&&res[0].mine===true,'a game finished while signed in is saved to the account');
     await d1.goto(L.URL0);await d1.waitForFunction(()=>{const c=window.__jamb.cloud;return c.state&&c.state.d.totals.games===1;},null,{timeout:15000});
     txt=await openPanel(d1,'records');
-    ok(/Play the computer/.test(txt)&&/Daily Yamb/.test(txt),'the first device now shows the game played on the second',txt);
+    ok(/Play the computer/i.test(txt)&&/Daily Yamb/i.test(txt),'the first device now shows the game played on the second',txt);
     await closePanel(d1);
 
     // ---- 3. no connection: the game waits and sends later
@@ -129,7 +129,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     ok(rows.length===2&&mine3.startsWith(exp+'. Ivo')&&mine3.endsWith(String(r3.score)),'a second player is placed by score, and only their own row is marked: '+JSON.stringify(rows));
     await d3.click('[data-act=boardtab][data-v=w]');
     await d3.waitForFunction(()=>/1 day/.test(document.getElementById('panel').innerText),null,{timeout:10000});
-    ok((await d3.$$('.board tr')).length===2,'the week\'s high scores add up each player\'s days');
+    {const wr=await d3.$$eval('.board tr',els=>els.map(e=>e.innerText.replace(/\s+/g,' ').trim()));ok(wr.length===2,'the week\'s high scores add up each player\'s days',JSON.stringify(wr));}
     await closePanel(d3);
     await d1.goto(L.URL0);await d1.waitForFunction(()=>!!window.__jamb);
     await openPanel(d1,'account');
@@ -188,7 +188,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     ok(await d6.evaluate(()=>window.__jamb.G.over&&window.__jamb.cloud.outbox.length===0&&window.__jamb.stats.played===1),'and a game plays to the end as before, kept on the device');
 
     ok(T.errs.length===0,'no errors on any device'+(T.errs.length?': '+T.errs.slice(0,4).join(' | '):''));
-  }catch(e){bad++;console.log('  FAIL  stopped: '+(e&&e.message||e).split('\n')[0]);for(const x of T.errs.slice(0,6))console.log('        '+x);}
+  }catch(e){bad++;console.log('  FAIL  stopped: '+(e&&e.message||e).split('\n')[0]+' '+(((e&&e.stack)||'').match(/cloud\.js:\d+/)||[''])[0]);for(const x of T.errs.slice(0,6))console.log('        '+x);}
   await T.close();await browser.close();cs.close();srv.close();
   console.log(bad?`\n${bad} problem(s)`:`\nall good (${Math.round((Date.now()-t0)/1000)} s)`);process.exit(bad?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});
