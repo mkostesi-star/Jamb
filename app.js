@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.2';
+const VERSION='v9.3';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
 const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
@@ -573,7 +573,7 @@ function startDaily(){
   if(res&&res.done){openModal('daily',{day:d.day});return;}
   const g=loadSlot('daily');
   if(g&&g.daily&&g.daily.day===d.day&&!g.over){openGame(g);return;}
-  openGame(makeGame('daily',dailyRules(),[{name:prefs.name,kind:'human'}],{seed:'daily:'+d.day,daily:d}));
+  openGame(makeGame('daily',dailyRules(),[{name:myName()||null,kind:'human'}],{seed:'daily:'+d.day,daily:d}));
 }
 function qualityGrid(rules,sheet){
   const par=AI.parsFor(rules).S,out=[];
@@ -668,16 +668,16 @@ async function shareDaily(day){
 function startDuel(quick){
   const id=uid()+uid();
   const rules=quick?E.normRules({cols:['free']}):prefs.rules;
-  openGame(makeGame('duel',rules,[{name:prefs.name,kind:'human'}],{seed:'duel:'+id,duel:{id,quick:!!quick,from:null}}));
+  openGame(makeGame('duel',rules,[{name:myName()||null,kind:'human'}],{seed:'duel:'+id,duel:{id,quick:!!quick,from:null}}));
 }
 function duelLink(){
-  const me=E.total(G.rules,G.players[0].sheet),o={i:G.duel.id,r:E.encodeRules(G.rules),n:prefs.name||t('player',{n:1}),s:me};
+  const me=E.total(G.rules,G.players[0].sheet),o={i:G.duel.id,r:E.encodeRules(G.rules),n:myName()||t('player',{n:1}),s:me};
   if(G.duel.from)o.vs={n:G.duel.from.n||G.duel.from.name,s:G.duel.from.s!=null?G.duel.from.s:G.duel.from.score};
   return baseUrl()+'?duel='+E.encodeObj(o);
 }
 function acceptDuel(o){
   const rules=E.decodeRules(o.r)||prefs.rules;
-  openGame(makeGame('duel',rules,[{name:prefs.name,kind:'human'}],{seed:'duel:'+o.i,duel:{id:o.i,quick:rules.cols.length===1,from:{n:o.n,s:o.s}}}));
+  openGame(makeGame('duel',rules,[{name:myName()||null,kind:'human'}],{seed:'duel:'+o.i,duel:{id:o.i,quick:rules.cols.length===1,from:{n:o.n,s:o.s}}}));
 }
 
 /* ---------- screens ---------- */
@@ -914,7 +914,7 @@ function renderGame(){
     const sc=E.total(g.rules,p.sheet),me=mySeat()===i;
     const w=g.over?(i===winner?t('winner'):''):(i===g.current&&g.status!=='waiting'?t('toPlay'):'');
     return `<button type="button" class="chip${view===i?' view':''}${i===winner?' win':''}${!g.over&&i===g.current&&g.status!=='waiting'?' cur':''}" data-act="view" data-p="${i}" style="--pc:${view===i?PCOL[i%6]:PCOL_LITE[i%6]}" aria-pressed="${view===i}">
-      <span><span class="cn">${esc(name(i))}</span><span class="cw">${esc(w)}</span></span><span class="cs">${fmt(sc)}</span></button>`;
+      <span>${isBot(i)&&CHARS[p.char]?`<span class="cav" aria-hidden="true">${avatar(p.char)}</span>`:''}<span class="cn">${esc(name(i))}</span><span class="cw">${esc(w)}</span></span><span class="cs">${fmt(sc)}</span></button>`;
   }).join('');
   $('game').innerHTML=`<div class="wrap">
     <header class="gtop"><button type="button" class="ibtn" data-act="exit" aria-label="${esc(t('exit'))}">${ICON.back}</button><div class="chips${g.players.length>=3?' many n'+g.players.length:''}">${chips}</div>
@@ -936,7 +936,13 @@ function bubbleHTML(){
 }
 function renderBubble(){
   const el=$('bubbleRow');if(!el||!G)return;
-  el.innerHTML=bubbleHTML();
+  el.innerHTML=bubbleHTML();fitBubble();
+}
+/* a long line gets a smaller hand instead of being cut off */
+function fitBubble(){
+  const b=document.querySelector('#bubbleRow .bubble');if(!b)return;
+  b.classList.remove('s1','s2');
+  if(b.scrollHeight>b.clientHeight+1){b.classList.add('s1');if(b.scrollHeight>b.clientHeight+1){b.classList.remove('s1');b.classList.add('s2');}}
 }
 /* A spinning cup: a strip of painted frames (art/cup/spin.webp) of the cup turning on its own axis, the pips a blur.
    Each cup gets its own speed, start and direction so the five never turn in step. */
@@ -1072,7 +1078,7 @@ function render(){
   renderGame();renderTray();
   if(key){const el=[...document.querySelectorAll('[data-act]')].find(e=>[e.dataset.act,e.dataset.i||'',e.dataset.c||'',e.dataset.r||'',e.dataset.p||''].join('|')===key);if(el&&!el.disabled){try{el.focus({preventScroll:true});}catch(e){}}}
   const tr=$('tray');if(tr)document.documentElement.style.setProperty('--tray-h',tr.offsetHeight+'px');
-  applyZoom();sidePanel();chipFx();turnFx();
+  applyZoom();sidePanel();fitBubble();chipFx();turnFx();
 }
 /* Sheet size: Fit (the default) shrinks every row so the whole board shows above the tray.
    Large and Huge are steps up from Fit and scroll. */
@@ -1097,9 +1103,10 @@ function sidePanel(){
   const z=parseFloat(pp.style.getPropertyValue('--z'))||1,stage=Math.min(1700,window.innerWidth-64);
   const col=Math.round(Math.max(560,Math.min(450*z,stage*0.6)));
   if(root.style.getPropertyValue('--colL')!==col+'px')root.style.setProperty('--colL',col+'px');
-  const r=pp.getBoundingClientRect();
-  root.style.setProperty('--side-top',Math.round(r.top+window.scrollY)+'px');
-  root.style.setProperty('--side-h',Math.round(r.height)+'px');
+  const r=pp.getBoundingClientRect(),top=Math.round(r.top+window.scrollY);
+  root.style.setProperty('--side-top',top+'px');
+  /* a board taller than the screen scrolls; the tray panel stays put and on screen */
+  root.style.setProperty('--side-h',Math.round(Math.min(r.height,window.innerHeight-top-16))+'px');
 }
 const sideLayout=()=>!!(window.matchMedia&&matchMedia('(min-width:1000px) and (min-aspect-ratio:4/3)').matches);
 function zoomMode(){return ZOOMS.includes(prefs.zoom)?prefs.zoom:'fit';}
@@ -1109,8 +1116,11 @@ function applyZoom(){
   const tb=paper.querySelector('table'),tr=$('tray');if(!tb)return;
   const top=paper.getBoundingClientRect().top+window.scrollY,trayH=tr&&!tr.hidden&&!sideLayout()?tr.offsetHeight:0;
   const avail=window.innerHeight-top-trayH-22,h=tb.offsetHeight||1;
-  const fit=Math.max(.6,Math.min(sideLayout()?1.9:1.25,avail/h)),z=zoomMode();/* below 0.6 the text gets too small to read; the sheet scrolls instead */
-  const v=z==='huge'?Math.min(2,Math.max(1.3,fit*1.6)):z==='large'?Math.min(1.6,Math.max(1,fit*1.25)):fit;
+  const side=sideLayout(),fit=Math.max(.6,Math.min(side?1.9:1.25,avail/h)),z=zoomMode();/* below 0.6 the text gets too small to read; the sheet scrolls instead */
+  /* phone: Fit shows the whole board, the other two make it bigger and it scrolls. Desktop: Fit already fills the
+     screen's height, so Larger and Largest grow from there and the page scrolls, with the tray staying in view. */
+  const v=side?(z==='huge'?Math.min(3,fit*1.5):z==='large'?Math.min(2.5,fit*1.22):fit)
+    :z==='huge'?Math.min(2,Math.max(1.3,fit*1.6)):z==='large'?Math.min(1.6,Math.max(1,fit*1.25)):fit;
   paper.style.setProperty('--z',v.toFixed(3));
 }
 window.addEventListener('resize',()=>{if(screen!=='game')return;if(ui.side!==sideLayout()){ui.side=sideLayout();render();return;}applyZoom();sidePanel();});
@@ -1181,7 +1191,7 @@ function renderModal(){
       h=head(t('playChar'))+`<p class="fine">${esc(t('pickOpp'))}</p><div class="charpick">${CHAR_ORDER.map(k=>`<button type="button" data-act="setchar" data-ch="${k}" style="--ring:${CHARS[k].ring}" aria-pressed="${m.chars.includes(k)}" aria-label="${esc(CHARS[k].name)}">${avatar(k)}</button>`).join('')}</div>
         <p class="fine" style="margin:2px 0 8px">${esc(t('oppCount',{n:m.chars.length,names:m.chars.map(k=>CHARS[k].name).join(', ')}))}</p>
         <div class="charcard" style="--ring:${c.ring}"><span class="cdisc">${avatar(ch)}</span><span><b>${esc(c.name)}</b><q>${esc(t('ch.'+ch+'.quote'))}</q><span style="display:block;margin-top:4px">${dots(AI.CHARACTERS[ch].level).replace(/rgba\(246,238,220,.25\)/g,'')}</span></span></div>
-        <label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label>
+        ${nameField(nameVal)}
         ${rulesRow()}
         ${loadSlot('cpu')&&!loadSlot('cpu').over?`<p class="fine" style="margin-top:12px">${esc(t('replaces'))}</p>`:''}
         <button type="button" class="btnRed" data-act="startcpu" data-autofocus>${esc(t('startGame'))}</button>`;
@@ -1202,7 +1212,7 @@ function renderModal(){
     case 'duel':
       h=head(t('modeDuel'))+`<p>${esc(t('duelIntro'))}</p>`+seg('duelfmt',[['quick',t('quick')],['full',t('full')]],m.fmt||'quick')+
         `<p class="fine" style="margin-top:8px">${esc((m.fmt||'quick')==='quick'?t('quickD'):t('fullD',{rules:rulesBrief(prefs.rules)}))}</p>
-        <label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label>
+        ${nameField(nameVal)}
         <button type="button" class="btnRed" data-act="startduel">${esc(t('startDuel'))}</button>
         <h3>${esc(t('duelPaste'))}</h3><div class="pl"><input id="duelCode" class="linkbox" placeholder="${esc(t('duelPasteHint'))}" autocomplete="off"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="pasteduel">${esc(t('open'))}</button></div>`;
       break;
@@ -1216,7 +1226,7 @@ function renderModal(){
         const played=stats.duels[o.i];
         h=head(t('duelFrom',{name:o.n}))+`<p>${esc(t('duelSame'))}</p><p class="fine">${esc(rulesBrief(rules))} · ${esc(t('duelHidden'))}</p>`+
           (played?`<p><b>${esc(t('duelAlready',{s:fmt(played.score)}))}</b></p><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`:
-          `<label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label><button type="button" class="btnRed" data-act="acceptduel" data-autofocus>${esc(t('startDuel'))}</button>`);
+          `${nameField(nameVal)}<button type="button" class="btnRed" data-act="acceptduel" data-autofocus>${esc(t('startDuel'))}</button>`);
       }
       break;}
     case 'online':h=onlineModalHTML(m);break;
@@ -1516,7 +1526,7 @@ function adoptGuest(conn){
 function adoptHost(conn){
   if(net.conn&&net.conn!==conn){const o=net.conn;net.conn=null;try{o.close();}catch(e){}}
   net.conn=conn;
-  const opened=()=>{if(net.conn!==conn)return;clearTimeout(net.retryT);conn._seen=Date.now();setNet('connected');sendTo(conn,{t:'hello',pv:PV,now:Date.now(),cid:prefs.cid,name:prefs.name||null,G:onlineReady()?G:null});};
+  const opened=()=>{if(net.conn!==conn)return;clearTimeout(net.retryT);conn._seen=Date.now();setNet('connected');sendTo(conn,{t:'hello',pv:PV,now:Date.now(),cid:prefs.cid,name:myName()||null,G:onlineReady()?G:null});};
   conn.on('open',opened);
   conn.on('data',d=>{if(net.conn===conn){conn._seen=Date.now();onGuestData(d);}});
   conn.on('close',()=>{if(net.conn!==conn)return;net.conn=null;if(online&&!online.host&&net.state!=='full'){setNet('opening');retryLater(connectGuest,1500);}});
@@ -1636,26 +1646,26 @@ setInterval(()=>{
 },5000);
 function hostGame(){
   if(!hasPeer()){toast(t('onNoLib'),true);return;}
-  const nm=($('fName')&&$('fName').value.trim().slice(0,16))||null;prefs.name=nm;savePrefs();
+  takeName();
   if(G&&G.mode==='online')destroyPeer();
   const code=makeCode();
   online={code,host:true};net.state='idle';
   const sec=prefs.onlineTimer==null?60:prefs.onlineTimer;
-  const g=makeGame('online',prefs.rules,[{name:nm,cid:prefs.cid}],{code,status:'waiting',rev:1,timer:sec?{sec}:null});
+  const g=makeGame('online',prefs.rules,[{name:myName()||null,cid:prefs.cid}],{code,status:'waiting',rev:1,timer:sec?{sec}:null});
   openGame(g);saveOnline();startHost();
 }
 function joinGame(raw){
   const code=cleanCode(raw);
   if(code.length!==5){toast(t('errCode'),true);return;}
   if(!hasPeer()){toast(t('onNoLib'),true);return;}
-  const nm=($('fName')&&$('fName').value.trim().slice(0,16))||prefs.name||null;prefs.name=nm;savePrefs();
+  takeName();
   if(G&&G.mode==='online')destroyPeer();
   online={code,host:false};net.state='idle';
-  openGame(makeGame('online',prefs.rules,[{name:nm,cid:prefs.cid}],{code:'',status:'waiting'}));saveOnline();connectGuest();
+  openGame(makeGame('online',prefs.rules,[{name:myName()||null,cid:prefs.cid}],{code:'',status:'waiting'}));saveOnline();connectGuest();
 }
 function resumeOnline(s){
   online={code:s.code,host:!!s.host};net.state='idle';
-  const g=validG(s.G)&&s.G.code===s.code?s.G:makeGame('online',prefs.rules,[{name:prefs.name,cid:prefs.cid}],{code:'',status:'waiting'});
+  const g=validG(s.G)&&s.G.code===s.code?s.G:makeGame('online',prefs.rules,[{name:myName()||null,cid:prefs.cid}],{code:'',status:'waiting'});
   if(typeof s.seat==='number'&&g.players[s.seat]&&!g.players.some(p=>p.cid===prefs.cid))g.players[s.seat].cid=prefs.cid;
   if(g.code&&!g.pos)stampPos(g);
   openGame(g);
@@ -1694,7 +1704,7 @@ function onlineModalHTML(m){
     return h;
   }
   if(!hasPeer())h+=`<p class="err">${esc(t('onNoLib'))}</p>`;
-  h+=`<p>${esc(t('onlineIntro'))}</p><label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${nameVal}"></label>`;
+  h+=`<p>${esc(t('onlineIntro'))}</p>${nameField(nameVal)}`;
   if(!m.joinOnly)h+=`<h3>${esc(t('tTimer'))}</h3>`+seg('tsecon',[[0,t('tOff')],[30,'30 s'],[60,'60 s'],[90,'90 s']],prefs.onlineTimer==null?60:prefs.onlineTimer)+rulesRow()+`<button type="button" class="btnRed" data-act="host">${esc(t('startOnline'))}</button><h3>${esc(t('orJoin'))}</h3>`;
   h+=`<div class="pl"><input id="joinCode" class="linkbox" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="${esc(t('codeLabel'))}" value="${esc(m.code||'')}" style="font:700 22px var(--f-ui);letter-spacing:.2em;text-transform:uppercase"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="join">${esc(t('joinBtn'))}</button></div>`;
   return h;
@@ -1817,8 +1827,8 @@ function act(el,d){
       m.focus=m.chars.includes(ch)?ch:m.chars[m.chars.length-1];prefs.char=m.chars[0];prefs.chars=m.chars.slice();savePrefs();renderModal();break;}
     case 'open':{
       const k=d.k;
-      if(k==='pp')openModal('pp',{players:[{kind:'human',name:prefs.name||''},{kind:'human',name:''}]});
-      else if(k==='table')openModal('table',{players:[{kind:'human',name:prefs.name||''}]});
+      if(k==='pp')openModal('pp',{players:[{kind:'human',name:myName()},{kind:'human',name:''}]});
+      else if(k==='table')openModal('table',{players:[{kind:'human',name:myName()}]});
       else if(k==='rules'){ui.back=null;openModal('rules');}
       else{
         if(k==='account'&&ui.modal&&ui.modal.kind!=='account')ui.back=Object.assign({},ui.modal);
@@ -1833,16 +1843,16 @@ function act(el,d){
     case 'plchar':{const m=ui.modal;syncPlayers(m);const p=m.players[+d.i];if(p&&p.kind==='cpu')p.char=nextChar(m.players,p.char);renderModal();break;}
     case 'plrm':{const m=ui.modal;syncPlayers(m);m.players.splice(+d.i,1);renderModal();break;}
     case 'startcpu':{
-      const nm=$('fName').value.trim().slice(0,16)||null;prefs.name=nm;savePrefs();
+      takeName();
       const chars=(ui.modal.chars&&ui.modal.chars.length?ui.modal.chars:[prefs.char]).slice(0,5);prefs.char=chars[0];savePrefs();
-      openGame(makeGame('cpu',prefs.rules,[{name:nm,kind:'human'}].concat(chars.map(ch=>({kind:'cpu',char:ch}))),{}));break;}
+      openGame(makeGame('cpu',prefs.rules,[{name:myName()||null,kind:'human'}].concat(chars.map(ch=>({kind:'cpu',char:ch}))),{}));break;}
     case 'startpp':case 'starttable':{const list=syncPlayers(ui.modal),first=list.find(p=>p.kind!=='cpu');if(first&&first.name)prefs.name=first.name;savePrefs();
       {const g=makeGame(d.act==='startpp'?'pp':'table',prefs.rules,list.map(p=>p.kind==='cpu'?{kind:'cpu',char:p.char}:{name:p.name||null}),d.act==='startpp'&&prefs.ppTimer?{timer:{sec:prefs.ppTimer}}:{});startClock(g);openGame(g);}break;}
     case 'startonline':closeModal();startOnlineGame();break;
     case 'duelfmt':ui.modal.fmt=d.v;renderModal();break;
-    case 'startduel':{const nm=$('fName').value.trim().slice(0,16)||null;prefs.name=nm;savePrefs();startDuel((ui.modal.fmt||'quick')==='quick');break;}
+    case 'startduel':{takeName();startDuel((ui.modal.fmt||'quick')==='quick');break;}
     case 'pasteduel':{const v=$('duelCode').value;const mm=v.match(/duel=([A-Za-z0-9_-]+)/)||[null,v.trim()];const o=E.decodeObj(mm[1]);if(o&&o.i&&o.r!=null)openModal('duelIn',{o});else toast(t('badLink'),true);break;}
-    case 'acceptduel':{const nm=$('fName').value.trim().slice(0,16)||null;prefs.name=nm;savePrefs();acceptDuel(ui.modal.o);break;}
+    case 'acceptduel':{takeName();acceptDuel(ui.modal.o);break;}
     case 'shareduel':shareText(G.duel.from?t('duelShareBack',{a:E.total(G.rules,G.players[0].sheet),b:G.duel.from.s}):t('duelShareText',{s:E.total(G.rules,G.players[0].sheet)}),duelLink());break;
     case 'sharedaily':shareDaily(d.day);break;
     case 'boardtab':ui.boardTab=d.v==='w'?'w':'d';renderModal();break;
@@ -1867,7 +1877,7 @@ function act(el,d){
     case 'step':{const k=d.k;ui.draft[k]=Math.max(0,(ui.draft[k]||0)+(+d.d));renderModal();break;}
     case 'saverules':prefs.rules=E.normRules(ui.draft);savePrefs();toast(t('rulesSaved'));if(ui.back)back();else{closeModal();if(screen==='home')renderHome();}break;
     case 'sharerules':shareText(t('rulesShareText',{r:rulesBrief(ui.draft)}),baseUrl()+'?rules='+E.encodeRules(ui.draft));break;
-    case 'saveset':{const nm=($('setName').value||'').trim().slice(0,24);if(!nm){toast(t('setName'),true);break;}prefs.sets=(prefs.sets||[]).filter(s=>s.name!==nm);prefs.sets.unshift({name:nm,rules:E.normRules(ui.draft)});prefs.sets=prefs.sets.slice(0,10);savePrefs();renderModal();break;}
+    case 'saveset':{const nm=($('setName').value||'').trim().slice(0,24);if(!nm){toast(t('setName'),true);break;}prefs.sets=(prefs.sets||[]).filter(s=>s.name!==nm);prefs.sets.unshift({name:myName()||null,rules:E.normRules(ui.draft)});prefs.sets=prefs.sets.slice(0,10);savePrefs();renderModal();break;}
     case 'loadset':{const s=prefs.sets[+d.i];if(s){ui.draft=E.normRules(s.rules);renderModal();}break;}
     case 'delset':prefs.sets.splice(+d.i,1);savePrefs();renderModal();break;
     case 'userules':prefs.rules=E.normRules(ui.modal.rules);savePrefs();toast(t('rulesSaved'));closeModal();renderHome();break;
@@ -1917,6 +1927,14 @@ function saveCloud(){store.set(CKEY,JSON.stringify(cloud));}
 const acctOn=()=>!!cloud.uid;
 const cloudLive=()=>!!(C&&C.user&&C.user.id===cloud.uid);
 const acctState=()=>cloud.uid&&cloud.state&&cloud.state.u===cloud.uid&&cloud.state.d?cloud.state.d:null;
+/* Signed in, the account's name is the player's name everywhere, so the setup sheets don't ask for it.
+   Pass and play still asks for every name, with the first one filled in. */
+function myName(){return (acctOn()&&acctName())||prefs.name||'';}
+function nameField(v){
+  if(acctOn()&&acctName())return `<p class="fine asname">${esc(t('playingAs',{name:acctName()}))}</p>`;
+  return `<label class="field"><span>${esc(t('yourName'))}</span><input id="fName" maxlength="16" autocomplete="off" value="${v}"></label>`;
+}
+function takeName(){const f=$('fName');if(f){prefs.name=f.value.trim().slice(0,16)||null;savePrefs();}}
 function acctName(){const d=acctState();return (d&&d.profile&&d.profile.name)||(cloud.me&&cloud.me.name)||'';}
 const rulesOfKey=k=>k==='classic'?E.normRules({}):(E.decodeRules(k)||E.normRules({}));
 function statsSnapshot(){

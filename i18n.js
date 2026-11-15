@@ -976,6 +976,10 @@ const MENU91={
   de:{menuSpecial:'Tagesempfehlung',menuSides:'Beilagen',menuRecordsD:'Deine besten Spiele und die längste Serie',menuHowD:'Die Regeln, die Spalten und ein erstes Spiel',menuBest:'dein Bestwert: {s}'}
 };
 for(const l in MENU91)Object.assign(D[l],MENU91[l]);
+/* v9.3: signed in, the setup sheets show the account's name instead of asking for it */
+const NAME93={en:{playingAs:'Playing as {name}'},hr:{playingAs:'Igraš kao {name}'},sr:{playingAs:'Igraš kao {name}'},bs:{playingAs:'Igraš kao {name}'},sl:{playingAs:'Igraš kot {name}'},de:{playingAs:'Du spielst als {name}'}};
+for(const l in NAME93)if(D[l])Object.assign(D[l],NAME93[l]);
+
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan
    languages, Yamb in English and German, where Yamb is the spelling people know and search for. */
 const BRAND='Yamb Café';
