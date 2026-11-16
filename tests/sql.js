@@ -134,5 +134,50 @@ function professorMoves(seed){
   ok(r.rows[0].d.data===true&&r.rows[0].d.login===true&&Number(left.rows[0].n)===0,'deleting an account removes the profile, games, scores and the sign-in');
   r=await S.as(null,'select public.daily_board($1::date) as b',[today]);ok(r.rows[0].b.count===2,'and the table no longer shows that player');
 
+  // ---- 7. visitor numbers: no device storage, one-way daily codes, totals only for the admin
+  const hdr=async(ip,ua)=>S.admin(`select set_config('request.headers', $1, false)`,[JSON.stringify({'x-forwarded-for':ip+', 10.0.0.1','user-agent':ua})]);
+  await hdr('1.1.1.1','Phone A');
+  await S.as(null,'select public.count_visit($1, $2, $3, $4)',['game','google.com','hr',false]);
+  await S.as(null,'select public.count_visit($1, $2, $3, $4)',['game','google.com','hr',false]);
+  await hdr('2.2.2.2','Phone B');
+  await S.as(null,'select public.count_visit($1, $2, $3, $4)',['game','link:duel','en',true]);
+  await S.as(null,'select public.count_visit($1, $2, $3, $4)',['rules/de','<script>','german',null]);
+  let v=await S.admin(`select page, src, lang, app, views, people from yamb.visits order by page, src`);
+  const row=(pg,sr)=>v.rows.find(x=>x.page===pg&&x.src===sr);
+  ok(row('game','google.com')&&row('game','google.com').views===2&&row('game','google.com').people===1,'the same visitor twice in a day: two views, one person');
+  ok(row('game','link:duel')&&row('game','link:duel').people===1&&row('game','link:duel').app===true,'another visitor is another person, and the installed app is told apart');
+  ok(row('rules/de','other')&&row('rules/de','other').lang==='xx'&&row('rules/de','other').people===0,'strange values are stored as "other", and a person counts once a day across pages');
+  const seen=await S.admin(`select count(*)::int as n, bool_and(h ~ '^[0-9a-f]{64}$') as hex, bool_and(position('2.2.2.2' in h) = 0) as noip from yamb.seen`);
+  ok(seen.rows[0].n===2&&seen.rows[0].hex&&seen.rows[0].noip,'only one-way codes are kept, never the address');
+  await S.as(null,'select public.count_event($1, $2)',['start','cpu']);await S.as(null,'select public.count_event($1, $2)',['start','cpu']);
+  await S.as(null,'select public.count_event($1, $2)',['finish','nonsense']);await S.as(null,'select public.count_event($1, $2)',['drop table','cpu']);
+  let e=await S.admin(`select ev, mode, n, people from yamb.events order by ev, mode`);
+  await S.as(null,'select public.count_event($1, $2)',['start','pp']);
+  e=await S.admin(`select ev, mode, n, people from yamb.events order by ev, mode`);
+  const evr=(ev,m)=>e.rows.find(x=>x.ev===ev&&x.mode===m);
+  ok(e.rows.length===5&&evr('start','cpu').n===2&&evr('start','cpu').people===1&&evr('finish','-')&&evr('start','pp').people===1,'events are counted per mode, unknown events are ignored');
+  ok(evr('start','all').n===3&&evr('start','all').people===1,'and once more as "all", one player across modes');
+  await denied('visitors cannot read the counts',null,'select * from yamb.visits');
+  await denied('players cannot read the counts',ivo,'select * from yamb.events');
+  await denied('visitors cannot open the Numbers page',null,`select public.numbers(current_date - 7, current_date)`);
+  let err7=null;try{await S.as(ivo,`select public.numbers(current_date - 7, current_date)`);}catch(x){err7=x.message;}
+  ok(err7&&/YC_ADMIN/.test(err7),'a player who is not the admin cannot open the Numbers page');
+  await S.admin(`insert into yamb.admins (user_id) values ($1)`,[ivo]);
+  const wkAgo=(n)=>new Date(Date.now()-n*7*864e5).toISOString();
+  await S.admin(`insert into public.results (user_id, game_id, mode, rules, score, finished_at) values
+    ($1,'wk-001','cpu','e30',500,$3),($1,'wk-002','cpu','e30',500,$4),($2,'wk-003','cpu','e30',500,$3)`,[ivo,mia,wkAgo(2),wkAgo(1)]);
+  r=await S.as(ivo,`select public.numbers(current_date - 30, current_date) as n`);
+  const NB=r.rows[0].n,d0=NB.days[NB.days.length-1];
+  ok(d0&&d0.people===2&&d0.views===4&&d0.app===1,'the Numbers page shows a day: '+JSON.stringify(d0));
+  ok(NB.sources.length===3&&NB.events.length===5&&NB.langs.hr===1,'and its sources, events and languages');
+  const back=NB.weeks.find(w=>w.players===2);
+  ok(back&&back.back===1,'signed-in players who came back the next week: '+JSON.stringify(NB.weeks));
+  await S.admin(`update yamb.day_key set day = day - 1`);await S.admin(`update yamb.seen set day = day - 1`);
+  await hdr('1.1.1.1','Phone A');await S.as(null,'select public.count_visit($1, $2, $3, $4)',['game','google.com','hr',false]);
+  const after=await S.admin(`select (select count(*) from yamb.day_key)::int as keys, (select count(*) from yamb.seen where day < current_date)::int as old,
+                                    (select people from yamb.visits where day = (now() at time zone 'utc')::date and page='game' and src='google.com')::int as p`);
+  ok(after.rows[0].keys===1&&after.rows[0].old===0&&after.rows[0].p===2,'a new day: yesterday\'s key and codes are gone, and the same visitor counts again');
+  await S.admin(`select set_config('request.headers', '', false)`);
+
   console.log(bad?`\n${bad} problem(s)`:`\nall good (${Math.round((Date.now()-t0)/1000)} s)`);process.exit(bad?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

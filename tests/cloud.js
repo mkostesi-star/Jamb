@@ -13,7 +13,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
   const t0=Date.now();
   const srv=await L.servers(),cs=await cloudServer.start(CPORT);
   const browser=await L.chromium.launch(),T=new L.Table(browser);
-  const CLOUD={url:cs.url,key:'sb_publishable_test'};
+  const CLOUD={url:cs.url,key:'sb_publishable_test',count:true};   // count:true turns on the visitor numbers, which only run on yambcafe.com
   const device=tag=>T.phone(tag,{cloud:CLOUD});
   const sql=(q,p)=>cs.S.admin(q,p).then(r=>r.rows);
   const day=today();
@@ -187,6 +187,12 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     await shortCpuGame(d6);
     ok(await d6.evaluate(()=>window.__jamb.G.over&&window.__jamb.cloud.outbox.length===0&&window.__jamb.stats.played===1),'and a game plays to the end as before, kept on the device');
 
+    // ---- 8. visitor numbers: the devices above were counted, without anything about who they are
+    const vis=(await sql(`select coalesce(sum(views),0)::int as v, coalesce(sum(people),0)::int as p from yamb.visits`))[0];
+    const evs=await sql(`select ev, mode, n from yamb.events`);
+    ok(vis.v>=5&&vis.p>=1&&evs.some(x=>x.ev==='start'&&x.mode==='cpu')&&evs.some(x=>x.ev==='finish'&&x.mode==='cpu')&&evs.some(x=>x.ev==='signin'),
+       'visits, games and sign-ins are counted: '+JSON.stringify(vis)+' '+evs.map(x=>x.ev+':'+x.mode+'='+x.n).join(' '));
+    ok(evs.some(x=>x.ev==='start'&&x.mode==='daily')&&(await sql(`select count(*)::int as n from yamb.visits where src = 'link:table'`))[0].n===1,'a Daily game and a visit through a game link are told apart');
     ok(T.errs.length===0,'no errors on any device'+(T.errs.length?': '+T.errs.slice(0,4).join(' | '):''));
   }catch(e){bad++;console.log('  FAIL  stopped: '+(e&&e.message||e).split('\n')[0]+' '+(((e&&e.stack)||'').match(/cloud\.js:\d+/)||[''])[0]);for(const x of T.errs.slice(0,6))console.log('        '+x);}
   await T.close();await browser.close();cs.close();srv.close();

@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.8';
+const VERSION='v9.9';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -513,6 +513,7 @@ function finishGame(){
   cancelBot();
   if(G.mode==='online'&&(stats.recIds||[]).includes(G.id))return;   /* already counted on this phone */
   const st=standings(G),me=mySeat();
+  if(C)C.event('finish',G.mode);
   stats.played=(stats.played||0)+1;
   if(G.mode==='cpu'&&!prefs.guideDone){prefs.guideDone=true;savePrefs();ui.guideEnd=true;}
   if(me>=0){const ms=E.total(G.rules,G.players[me].sheet);if(ms>(stats.best||0))stats.best=ms;if(st[0].i===me&&G.players.length>1&&st[0].score>st[1].score)stats.wins=(stats.wins||0)+1;}
@@ -694,6 +695,7 @@ function showScreen(s){
 function openGame(g){
   cancelBot();
   if(G&&G.mode==='online'&&g.mode!=='online'){destroyPeer();online=null;}
+  if(!g.over&&!(g.log&&g.log.length)&&!(ui.counted||(ui.counted=new Set())).has(g.id)){ui.counted.add(g.id);if(C)C.event('start',g.mode);}
   G=g;ui.sel=null;ui.tip=null;ui.tipText='';ui.botPick=null;ui.just=null;ui.view=null;ui.pick=-1;ui.bubble=null;
   ui.rollNext=null;ui.holdTurn=null;ui.forcing=false;ui.awayShown=false;net.away=null;if(g.mode!=='online')net.skip.clear();
   if(G.mode==='pp'&&timerSec(G)&&!G.paused&&!G.over)startClock(G);
@@ -1270,7 +1272,7 @@ function renderModal(){
         `<h3>${esc(t('sSoundG'))}</h3>`+sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+
         `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
-        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION} · ${esc(m.line)} · <a href="privacy/" target="_blank" rel="noopener" style="color:inherit">${esc(t('privacy'))}</a></p>`;
+        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION} · ${esc(m.line)}<br>${siteLinks()}</p>`;
       break;
     case 'lang':
       h=head(t('language'))+`<div class="langlist">${I.list().map(l=>`<button type="button" data-act="setlang" data-v="${l.code}" aria-pressed="${l.code===prefs.lang}"><span>${esc(l.name)}</span><span>${esc(l.short)}</span></button>`).join('')}</div>`;
@@ -1314,6 +1316,12 @@ function rulesModalHTML(){
     <button type="button" class="btnInk" data-act="sharerules">${esc(t('shareRules'))}</button>
     <h3>${esc(t('savedSets'))}</h3>${sets||`<p class="fine">${esc(t('noSets'))}</p>`}
     <div class="pl"><input id="setName" class="linkbox" maxlength="24" placeholder="${esc(t('setName'))}" autocomplete="off"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="saveset">${esc(t('save'))}</button></div>`;
+}
+/* the site's own pages, in the game's language where they exist */
+function siteLinks(){
+  const l=prefs.lang,a=(href,txt)=>`<a href="${href}" target="_blank" rel="noopener" style="color:inherit">${esc(txt)}</a>`;
+  const ln=l==='hr'?'hr/':'',rl=l==='en'||!['hr','sr','bs','sl','de'].includes(l)?'':l+'/';
+  return a('privacy/'+ln,t('privacy'))+' · '+a('terms/'+ln,t('termsLink'))+' · '+a('rules/'+rl,t('rulesLink'));
 }
 function howtoHTML(r){
   r=E.normRules(r);
@@ -1994,6 +2002,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='Escape')press('#tray [data-act=cancel]');
 });
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;});
+window.addEventListener('appinstalled',()=>{if(window.JambCloud)window.JambCloud.event('install');});
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible'||!G||G.mode!=='online'||!online||!hasPeer())return;
   if(!online.host){if(!(net.conn&&net.conn.open))connectGuest();}
@@ -2227,7 +2236,7 @@ function accountHTML(m){
   if(!acctOn()){
     h+=profileTop(myName()||t('youName'))+portraitPicker()+`<h3>${esc(t('account'))}</h3><p>${esc(t('acIntro'))}</p>`+gbtn();
     if(!C||!C.available())h+=`<p class="fine" style="margin-top:10px">${esc(t('acNoNet'))}</p>`;
-    return h+`<button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button><p class="fine" style="margin-top:14px;text-align:center"><a href="privacy/" target="_blank" rel="noopener" style="color:inherit">${esc(t('privacy'))}</a></p>`;
+    return h+`<button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button><p class="fine" style="margin-top:14px;text-align:center">${siteLinks()}</p>`;
   }
   if(m.del)return h+`<p><b>${esc(t('acDelQ'))}</b></p><p>${esc(t('acDelD'))}</p><button type="button" class="btnRed" data-act="acdelyes"${m.busy?' disabled':''}>${esc(t('acDelYes'))}</button><button type="button" class="btnInk" data-act="acdelno">${esc(t('keep'))}</button>`;
   const nm=m.acName!=null?m.acName:acctName(),shown=acctName()||t('playerAnon');
@@ -2268,6 +2277,7 @@ function cloudEvent(why){
   if(why==='ready'){
     if(C.takeError())toast(t('acErr'),true);
     const fresh=!!u&&C.takeJustIn();
+    if(fresh)C.event('signin');
     if(!fresh)store.del('jamb4-after');
     if(u)cloudIn(u,fresh);
     else if(cloud.uid&&!C.remembered())cloudOut();
@@ -2318,10 +2328,18 @@ if(C){
 }
 
 /* ---------- start ---------- */
+/* where this visit came from, for the visitor numbers: a game link, a ref= tag on a shared link, another site, or none */
+function visitSource(q,gameCode,duel,rules){
+  if(gameCode)return 'link:table';if(duel)return 'link:duel';if(rules)return 'link:rules';
+  const ref=String(q.get&&q.get('ref')||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,40);if(ref)return 'ref:'+ref;
+  try{const r=document.referrer&&new URL(document.referrer);if(r&&r.hostname&&r.hostname!==location.hostname)return r.hostname.replace(/^www\./,'').slice(0,60);}catch(e){}
+  return 'direct';
+}
 function start(){
   document.documentElement.lang=I.locale(prefs.lang);
   let q;try{q=new URLSearchParams(location.search);}catch(e){q=new Map();}
   const gameCode=cleanCode(q.get&&q.get('game')),duel=q.get&&q.get('duel'),rules=q.get&&q.get('rules');
+  if(C)C.count('game',visitSource(q,gameCode,duel,rules),prefs.lang,isStandalone());
   if(location.search){try{history.replaceState(null,'',location.pathname+location.hash);}catch(e){}}
   const sess=loadOnline();
   if(gameCode&&gameCode.length===5&&!(sess&&sess.code===gameCode)){showScreen('home');openModal('online',{joinOnly:true,code:gameCode});return;}

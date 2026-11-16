@@ -5,13 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy · Yamb Café</title>
 <meta name="description" content="What Yamb Café keeps about you, where, and why.">
+<link rel="canonical" href="https://yambcafe.com/privacy/">
+<link rel="alternate" hreflang="en" href="https://yambcafe.com/privacy/">
+<link rel="alternate" hreflang="hr" href="https://yambcafe.com/privacy/hr/">
+<meta property="og:title" content="Privacy · Yamb Café">
+<meta property="og:description" content="What Yamb Café keeps about you, where, and why.">
+<meta property="og:url" content="https://yambcafe.com/privacy/">
+<meta property="og:image" content="https://yambcafe.com/icons/v7/icon-512.png">
 <link rel="icon" href="../favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="../icons/v7/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@700;800&family=Alegreya+Sans:wght@400;500;700&display=swap">
 <style>
-:root{--porcelain:#F0E1C2;--espresso:#2A1A12;--walnut:#4A2F1C;--coffee:#522E16;--brass:#C9A24B;--marble:#E4DED2;--red:#C33426;--paper:#FBF6EC}
+:root{--porcelain:#F0E1C2;--espresso:#2A1A12;--walnut:#4A2F1C;--coffee:#522E16;--brass:#C9A24B;--red:#C33426;--paper:#FBF6EC}
 *{box-sizing:border-box}
 html{background:var(--walnut)}
 body{margin:0;min-height:100vh;background:linear-gradient(180deg,#3B2415,var(--walnut) 40%,#3B2415);color:var(--espresso);font:400 17px/1.6 'Alegreya Sans',system-ui,sans-serif;padding:24px 16px 48px}
@@ -27,6 +34,20 @@ li{margin:4px 0}
 a{color:var(--red);text-underline-offset:2px}
 .short{background:#F3EAD8;border-left:4px solid var(--brass);padding:12px 16px;border-radius:4px;margin:18px 0}
 .short ul{margin:4px 0}
+.lead{font-size:18.5px}
+dl{margin:8px 0;display:grid;grid-template-columns:2.2em 1fr;gap:6px 10px}
+dt{font:800 20px/1.3 Alegreya,Georgia,serif;color:var(--coffee);text-align:center;background:#F3EAD8;border-radius:4px}
+dd{margin:0}
+table{border-collapse:collapse;width:100%;margin:8px 0}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid rgba(42,26,18,.14)}
+th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
+.fine{color:#6B5A45;font-size:15px}
+.go{display:inline-block;margin:26px 0 4px;padding:14px 26px;border-radius:999px;background:linear-gradient(180deg,#E2C574,#C9A24B 55%,#B38A36);color:var(--espresso);text-decoration:none;font-weight:800;font-size:18px;box-shadow:0 2px 0 rgba(42,26,18,.35)}
+.go:hover{filter:brightness(1.05)}
+.langs{margin-top:30px;padding-top:14px;border-top:1px solid rgba(201,162,75,.6);font-size:15px;color:#6B5A45}
+.langs a,.langs b{margin-right:10px;white-space:nowrap}
+.foot{margin-top:10px;font-size:15px;color:#6B5A45}
+.foot a{color:inherit;margin-right:12px}
 .back{display:inline-block;margin-top:30px;padding:12px 22px;border-radius:999px;background:var(--espresso);color:var(--porcelain);text-decoration:none;font-weight:700}
 .back:hover{background:var(--coffee)}
 </style>
@@ -34,15 +55,16 @@ a{color:var(--red);text-underline-offset:2px}
 <body>
 <main class="card">
 <div class="top"><img src="../icons/v7/icon-192.png" alt=""><h1>Privacy</h1></div>
-<p class="date">Yamb Café · updated 15 November 2026</p>
+<p class="date">Yamb Café · updated 16 November 2026</p>
 
 <p>Yamb Café is a dice game made by Ivan Kostešić in Pula, Croatia. This page says what the game keeps about you, where, and why. For questions or requests, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
 <strong>In short</strong>
 <ul>
-<li>You can play without an account. Then everything stays on your device.</li>
+<li>You can play without an account. Then your games stay on your device.</li>
 <li>If you sign in with Google, the game keeps your name, your finished games and your scores, so they follow you to other devices and your best Daily Yamb scores can appear on the high scores.</li>
+<li>Visits are counted without cookies and without knowing who you are.</li>
 <li>No ads, no tracking cookies, and your data is never sold.</li>
 </ul>
 </div>
@@ -60,27 +82,34 @@ a{color:var(--red);text-underline-offset:2px}
 <li>for the Daily Yamb, your moves, so that the server can check your score is possible with that day's dice.</li>
 </ul>
 <p>Other players see only the name you chose and your Daily Yamb scores on the high scores. Your email address is never shown.</p>
-<p>We use this only to run the game you signed in for. The legal basis is providing the service you asked for (Article 6(1)(b) of the GDPR).</p>
+<p>We use this to run the game you signed in for. The legal basis is providing the service you asked for (Article 6(1)(b) of the GDPR).</p>
 
 <h2>Games on several devices</h2>
 <p>Devices in a game connect to each other directly, and the moves pass between them. To find each other they use the free PeerJS server (peerjs.com), which sees the devices' internet addresses while they connect, but not the game.</p>
+
+<h2>Visitor numbers</h2>
+<p>To know how many people play and which parts they use, the website counts visits and a few things done in the game:</p>
+<ul>
+<li>which page was opened, the site you came from (or that you came through a game link), the game's language, and whether it runs installed;</li>
+<li>games started and finished in each mode, installing the game, signing in, and looking at or buying Plus.</li>
+</ul>
+<p>No cookies are set, and nothing is stored on or read from your device for this. To count each visitor only once a day, the counter in our database mixes your internet address and browser name with a random key that changes every day, and keeps only the resulting one-way code. The code cannot be turned back into your address. The next day the codes and the key are deleted, so visits on different days cannot be linked, and only the day's totals stay. The counts are never linked to your account, even when you are signed in.</p>
+<p>For signed-in players we also count, from the finished games their accounts already keep, how many play again the following week. Only the totals are looked at.</p>
+<p>The legal basis is our legitimate interest in knowing how the game is used, so that we can improve it (Article 6(1)(f) of the GDPR).</p>
 
 <h2>Services the website uses</h2>
 <ul>
 <li><strong>GitHub Pages</strong> hosts the website. Like any web host, it sees your internet address when you open it.</li>
 <li><strong>Google Fonts</strong> provides the lettering and <strong>jsDelivr</strong> provides a small program for games on several devices. Both see your internet address when they send these files.</li>
-<li><strong>Supabase</strong> stores accounts and scores, on servers in Frankfurt, Germany. The game also asks it for the day's high scores, signed in or not, so it sees your internet address.</li>
+<li><strong>Supabase</strong> stores accounts, scores and the visitor counts, on servers in Frankfurt, Germany. The game also asks it for the day's high scores, signed in or not, so it sees your internet address.</li>
 <li><strong>Google</strong> handles the sign-in itself, under <a href="https://policies.google.com/privacy" rel="noopener">Google's privacy policy</a>.</li>
 </ul>
 
-<h2>Visitor numbers</h2>
-<p>None are collected yet. If we start counting visits, it will be without cookies and without identifying you, and this page will say so first.</p>
-
 <h2>Payments</h2>
-<p>There is nothing to buy yet. If extras go on sale, a payment company will handle your payment details, and we will never see your card.</p>
+<p>There is nothing to buy yet. Yamb Café Plus and tips go on sale with the public start. They will be sold by Polar (Polar Software, Inc., USA) as the merchant of record, which takes the payment, issues the receipt and handles VAT under its own privacy policy. We never see your card. Before the first sale this page will say exactly what we receive from Polar.</p>
 
 <h2>How long we keep it</h2>
-<p>Account data is kept until you delete your account. Deleting it removes your profile, your saved games and your scores at once. What is stored on your device stays there until you clear it.</p>
+<p>Account data is kept until you delete your account. Deleting it removes your profile, your saved games and your scores at once. Visitor codes are deleted the next day; the daily totals are kept. What is stored on your device stays there until you clear it.</p>
 
 <h2>Your rights</h2>
 <p>You can ask for a copy of your data, ask us to correct or delete it, or object to how it is used, by writing to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>. You can also delete your account yourself in the game: Settings, Account, Delete my account. If you think your data is handled wrongly, you can complain to the Croatian data protection agency, <a href="https://azop.hr" rel="noopener">AZOP</a>, or to the agency in your own country.</p>
@@ -89,9 +118,15 @@ a{color:var(--red);text-underline-offset:2px}
 <p>Signing in is for people aged 16 and over. Anyone can play without an account.</p>
 
 <h2>Changes</h2>
-<p>If anything here changes, we update this page and the date at the top.</p>
-
+<p>If anything here changes, we update this page and the date at the top. The <a href="../terms/">terms and refunds</a> are on their own page.</p>
+<p class="langs"><a href="../privacy/hr/" hreflang="hr">Hrvatski</a></p>
 <a class="back" href="../">Back to the game</a>
 </main>
+<script>
+/* visitor numbers, the same way as in the game: no cookies, nothing kept on this device (see the privacy page) */
+(function(){try{if(!/(^|\.)yambcafe\.com$/.test(location.hostname))return;var r='direct';try{var u=document.referrer&&new URL(document.referrer);if(u&&u.hostname&&u.hostname!==location.hostname)r=u.hostname.replace(/^www\./,'').slice(0,60);}catch(e){}
+fetch('https://ovyoybgtoaahkrcylrkw.supabase.co/rest/v1/rpc/count_visit',{method:'POST',keepalive:true,headers:{apikey:'sb_publishable_KGd1nYui7gP1uP4-RQPcyw_49D9no_F','Content-Type':'application/json'},
+body:JSON.stringify({p_page:"privacy",p_src:r,p_lang:"en",p_app:false})}).catch(function(){});}catch(e){}})();
+</script>
 </body>
 </html>

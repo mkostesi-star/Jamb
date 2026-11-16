@@ -48,8 +48,19 @@ function boot(){
     ready=true;emit('ready');
   })();
 }
+/* Visitor numbers (see the privacy page): only on yambcafe.com, no cookies, nothing kept on the device. The database
+   turns each call into a count for the day; it never learns who this is. Works without the library, and failures are ignored. */
+const COUNT=CFG.count!=null?!!CFG.count:/(^|\.)yambcafe\.com$/.test(String(root.location&&root.location.hostname||''));
+function post(fn,body){
+  if(!COUNT||!CFG.url||!CFG.key||typeof root.fetch!=='function')return;
+  try{root.fetch(CFG.url+'/rest/v1/rpc/'+fn,{method:'POST',keepalive:true,headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify(body)}).catch(()=>{});}catch(e){}
+}
 const API={
   available:()=>!!sb,
+  /* a page opened: which page, where the visitor came from, the game's language, installed or not */
+  count(page,src,lang,app){post('count_visit',{p_page:page,p_src:src||'direct',p_lang:lang||'',p_app:!!app});},
+  /* something done: start or finish (with the mode), install, signin, plus_view, plus_buy, tip_buy */
+  event(ev,mode){post('count_event',{p_ev:ev,p_mode:mode||'-'});},
   boot,
   /* a sign-in is stored on this device, even if it could not be checked just now (no connection) */
   remembered(){try{return !!root.localStorage.getItem('yamb-auth');}catch(e){return false;}},

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yamb Spielregeln · Yamb Café</title>
+<meta name="description" content="Die Regeln von Yamb (Jamb), dem Würfelspiel mit fünf Würfeln und einem Block mit Spalten: ein Zug, die Spalten, die Wertung und wo man es kostenlos spielt.">
+<link rel="canonical" href="https://yambcafe.com/rules/de/">
+<link rel="alternate" hreflang="en" href="https://yambcafe.com/rules/">
+<link rel="alternate" hreflang="hr" href="https://yambcafe.com/rules/hr/">
+<link rel="alternate" hreflang="sr" href="https://yambcafe.com/rules/sr/">
+<link rel="alternate" hreflang="bs" href="https://yambcafe.com/rules/bs/">
+<link rel="alternate" hreflang="sl" href="https://yambcafe.com/rules/sl/">
+<link rel="alternate" hreflang="de" href="https://yambcafe.com/rules/de/">
+<link rel="alternate" hreflang="x-default" href="https://yambcafe.com/rules/">
+<meta property="og:title" content="Yamb Spielregeln · Yamb Café">
+<meta property="og:description" content="Die Regeln von Yamb (Jamb), dem Würfelspiel mit fünf Würfeln und einem Block mit Spalten: ein Zug, die Spalten, die Wertung und wo man es kostenlos spielt.">
+<meta property="og:url" content="https://yambcafe.com/rules/de/">
+<meta property="og:image" content="https://yambcafe.com/icons/v7/icon-512.png">
+<link rel="icon" href="../../favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="../../icons/v7/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@700;800&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+:root{--porcelain:#F0E1C2;--espresso:#2A1A12;--walnut:#4A2F1C;--coffee:#522E16;--brass:#C9A24B;--red:#C33426;--paper:#FBF6EC}
+*{box-sizing:border-box}
+html{background:var(--walnut)}
+body{margin:0;min-height:100vh;background:linear-gradient(180deg,#3B2415,var(--walnut) 40%,#3B2415);color:var(--espresso);font:400 17px/1.6 'Alegreya Sans',system-ui,sans-serif;padding:24px 16px 48px}
+.card{max-width:720px;margin:0 auto;background:var(--paper);border-radius:6px;padding:32px clamp(18px,5vw,48px) 36px;box-shadow:0 0 0 1px rgba(42,26,18,.25),0 0 0 7px var(--paper),0 0 0 8px rgba(42,26,18,.55),0 18px 40px rgba(0,0,0,.45)}
+.top{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.top img{width:56px;height:56px;border-radius:12px;flex:none}
+h1{font:800 clamp(28px,6vw,38px)/1.1 Alegreya,Georgia,serif;margin:0;color:var(--espresso)}
+.date{color:#6B5A45;margin:6px 0 22px;font-size:15px}
+h2{font:700 22px/1.25 Alegreya,Georgia,serif;margin:30px 0 8px;color:var(--coffee);padding-bottom:6px;border-bottom:1px solid rgba(201,162,75,.6)}
+p,li{max-width:62ch}
+ul{padding-left:22px;margin:8px 0}
+li{margin:4px 0}
+a{color:var(--red);text-underline-offset:2px}
+.short{background:#F3EAD8;border-left:4px solid var(--brass);padding:12px 16px;border-radius:4px;margin:18px 0}
+.short ul{margin:4px 0}
+.lead{font-size:18.5px}
+dl{margin:8px 0;display:grid;grid-template-columns:2.2em 1fr;gap:6px 10px}
+dt{font:800 20px/1.3 Alegreya,Georgia,serif;color:var(--coffee);text-align:center;background:#F3EAD8;border-radius:4px}
+dd{margin:0}
+table{border-collapse:collapse;width:100%;margin:8px 0}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid rgba(42,26,18,.14)}
+th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
+.fine{color:#6B5A45;font-size:15px}
+.go{display:inline-block;margin:26px 0 4px;padding:14px 26px;border-radius:999px;background:linear-gradient(180deg,#E2C574,#C9A24B 55%,#B38A36);color:var(--espresso);text-decoration:none;font-weight:800;font-size:18px;box-shadow:0 2px 0 rgba(42,26,18,.35)}
+.go:hover{filter:brightness(1.05)}
+.langs{margin-top:30px;padding-top:14px;border-top:1px solid rgba(201,162,75,.6);font-size:15px;color:#6B5A45}
+.langs a,.langs b{margin-right:10px;white-space:nowrap}
+.foot{margin-top:10px;font-size:15px;color:#6B5A45}
+.foot a{color:inherit;margin-right:12px}
+.back{display:inline-block;margin-top:30px;padding:12px 22px;border-radius:999px;background:var(--espresso);color:var(--porcelain);text-decoration:none;font-weight:700}
+.back:hover{background:var(--coffee)}
+</style>
+</head>
+<body>
+<main class="card">
+<div class="top"><img src="../../icons/v7/icon-192.png" alt=""><h1>So spielt man Yamb</h1></div>
+
+<p class="lead">Yamb, auf dem Balkan Jamb genannt, ist ein Würfelspiel für einen bis sechs Spieler. Es ähnelt Kniffel, mit einem Unterschied, der es tiefer macht: Der Block hat mehrere Spalten, und jede wird in ihrer eigenen Reihenfolge gefüllt.</p>
+<h2>Ein Zug</h2>
+<p>Ihr seid abwechselnd dran. Würfle 5 Würfel bis zu dreimal, halte zwischen den Würfen beliebige Würfel und trage das Ergebnis in ein Feld ein. Passt der Wurf nicht, zählt das Feld 0. Sind alle Blätter voll, gewinnt die höchste Summe.</p>
+<h2>Die Spalten</h2>
+<p>Yamb Café beginnt mit vier Spalten. In jeder stehen dieselben Felder, von den Einsern bis zum Yamb.</p>
+<dl>
+<dt>↓</dt><dd><b>Abwärts.</b> Von oben nach unten, der Reihe nach.</dd>
+<dt>↑</dt><dd><b>Aufwärts.</b> Von unten nach oben, der Reihe nach.</dd>
+<dt>↕</dt><dd><b>Frei.</b> Jedes Feld, in beliebiger Reihenfolge.</dd>
+<dt>N</dt><dd><b>Ansage.</b> Direkt nach dem ersten Wurf sagst du ein Feld in dieser Spalte an. Du musst es in diesem Zug eintragen, spätestens nach dem dritten Wurf.</dd>
+</dl>
+<h2>Wertung</h2>
+<table>
+<tr><th>1 – 6</th><td>Summe der Würfel mit dieser Zahl</td></tr>
+<tr><th>Bonus für 1–6</th><td>+30, wenn 1–6 in einer Spalte 60 erreichen</td></tr>
+<tr><th>Max, Min</th><td>Summe der Würfel. Max möglichst hoch, Min möglichst niedrig.</td></tr>
+<tr><th>(Max−Min)×1</th><td>Max minus Min, mal die Anzahl der Einser in dieser Spalte</td></tr>
+<tr><th>Straße</th><td>1-2-3-4-5 oder 2-3-4-5-6: 66 im ersten, 56 im zweiten, 46 im dritten Wurf</td></tr>
+<tr><th>3er-Pasch</th><td>Drei gleiche: 3 × Augenzahl + 10</td></tr>
+<tr><th>Full House</th><td>Drei gleiche und ein Paar: deren Summe + 30</td></tr>
+<tr><th>4er-Pasch</th><td>Vier gleiche: 4 × Augenzahl + 40</td></tr>
+<tr><th>Yamb</th><td>Fünf gleiche: 5 × Augenzahl + 50</td></tr>
+</table>
+<p class="fine">Fünf gleiche zählen auch als Full House, 4er-Pasch oder 3er-Pasch. Alles davon lässt sich in den Hausregeln ändern.</p>
+<h2>Weitere Spalten für Hausregeln</h2>
+<p>Diese Spalten lassen sich unter „Hausregeln“ hinzufügen:</p>
+<dl>
+<dt>⇅</dt><dd><b>Von der Mitte.</b> Beginne bei Max oder Min und arbeite nach außen: hoch zu den Einsern, runter zum Yamb.</dd>
+<dt>⇵</dt><dd><b>Zur Mitte.</b> Beginne bei den Einsern oder beim Yamb und arbeite zur Mitte, zu Max und Min.</dd>
+<dt>R</dt><dd><b>Erster Wurf.</b> Nur aus dem ersten Wurf.</dd>
+</dl>
+<h2>So spielt man in Yamb Café</h2>
+<ul>
+<li><b>Gegen den Computer.</b> Bis zu fünf Gegner, vom Anfänger bis zum Professor.</li>
+<li><b>Tages-Yamb.</b> Dieselben Würfel für alle. Eine Spalte, etwa fünf Minuten.</li>
+<li><b>Hot Seat.</b> Ein Gerät wandert um den Tisch. Bis zu sechs Spieler, Computergegner willkommen.</li>
+<li><b>Multiplayer.</b> Jeder am eigenen Gerät, live, wo auch immer. Bis zu sechs.</li>
+<li><b>Freundesduell.</b> Nicht live: du spielst jetzt, dein Freund antwortet, wann es ihm passt. Gleiche Würfel für beide, nur Können zählt.</li>
+<li><b>Echte Würfel.</b> Bringt echte Würfel zur Party mit. Das Spiel ist euer Notizblock: es führt den Zettel und rechnet alles zusammen.</li>
+</ul>
+<a class="go" href="../../?ref=rules-de">Yamb Café kostenlos spielen</a>
+<p class="fine">Im Browser auf jedem Gerät, ohne Anmeldung.</p>
+<p class="langs">Diese Seite auf: <a href="../../rules/" hreflang="en">English</a> <a href="../../rules/hr/" hreflang="hr">Hrvatski</a> <a href="../../rules/sr/" hreflang="sr">Srpski</a> <a href="../../rules/bs/" hreflang="bs">Bosanski</a> <a href="../../rules/sl/" hreflang="sl">Slovenščina</a> <b>Deutsch</b></p>
+<p class="foot"><a href="../../privacy/">Datenschutz</a><a href="../../terms/">Bedingungen</a></p>
+</main>
+<script>
+/* visitor numbers, the same way as in the game: no cookies, nothing kept on this device (see the privacy page) */
+(function(){try{if(!/(^|\.)yambcafe\.com$/.test(location.hostname))return;var r='direct';try{var u=document.referrer&&new URL(document.referrer);if(u&&u.hostname&&u.hostname!==location.hostname)r=u.hostname.replace(/^www\./,'').slice(0,60);}catch(e){}
+fetch('https://ovyoybgtoaahkrcylrkw.supabase.co/rest/v1/rpc/count_visit',{method:'POST',keepalive:true,headers:{apikey:'sb_publishable_KGd1nYui7gP1uP4-RQPcyw_49D9no_F','Content-Type':'application/json'},
+body:JSON.stringify({p_page:"rules/de",p_src:r,p_lang:"de",p_app:false})}).catch(function(){});}catch(e){}})();
+</script>
+</body>
+</html>

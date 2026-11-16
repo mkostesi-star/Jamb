@@ -1,4 +1,4 @@
--- Yamb Café: accounts, records and Daily Yamb high scores.
+-- Yamb Café: accounts, records, Daily Yamb high scores and visitor numbers.
 -- Paste the whole file into the Supabase SQL editor and press Run. It is safe to run again whenever the file changes.
 --
 -- How it is locked: the four tables cannot be read or written from outside at all. The game only calls the
@@ -341,6 +341,145 @@ revoke all on function public.daily_board(date), public.week_board(date), public
 grant execute on function public.daily_board(date), public.week_board(date) to anon, authenticated;
 grant execute on function public.my_state(), public.sync_up(text, jsonb, jsonb), public.save_profile(text, text),
   public.submit_daily(date, jsonb), public.delete_my_account() to authenticated;
+
+-- ---------------------------------------------------------------- visitor numbers: no cookies, nothing kept on the device
+-- Each day (UTC) has its own random key. A visitor's internet address and browser, mixed with that key, give a
+-- one-way code that only tells whether this visitor was already counted today. When the next day begins, the codes
+-- and the old key are deleted and only the day's totals stay. These tables live in the yamb schema, which the API
+-- does not show at all; the game reaches them only through count_visit and count_event below.
+create table if not exists yamb.day_key (day date primary key, k text not null);
+create table if not exists yamb.seen (day date not null, what text not null, h text not null, primary key (day, what, h));
+create table if not exists yamb.visits (
+  day     date not null,
+  page    text not null,
+  src     text not null,
+  lang    text not null,
+  app     boolean not null,
+  views   integer not null default 0,
+  people  integer not null default 0,
+  primary key (day, page, src, lang, app)
+);
+create table if not exists yamb.events (
+  day     date not null,
+  ev      text not null,
+  mode    text not null,
+  n       integer not null default 0,
+  people  integer not null default 0,
+  primary key (day, ev, mode)
+);
+-- who may open the Numbers page (yambcafe.com/numbers/). Add yourself once in the SQL editor, after signing in to the
+-- game at least once, with the Google address you sign in with:
+--   insert into yamb.admins (user_id) select id from auth.users where email = 'your.address@gmail.com';
+create table if not exists yamb.admins (user_id uuid primary key references auth.users (id) on delete cascade);
+revoke all on yamb.day_key, yamb.seen, yamb.visits, yamb.events, yamb.admins from public, anon, authenticated;
+
+-- today's one-way code for this visitor; also clears out the days before
+create or replace function yamb.visitor() returns text
+language plpgsql security definer set search_path = '' as $$
+declare d date := (now() at time zone 'utc')::date; k text; hd jsonb; ip text; ua text;
+begin
+  select x.k into k from yamb.day_key x where x.day = d;
+  if k is null then
+    delete from yamb.seen where day < d;
+    delete from yamb.day_key where day < d;
+    insert into yamb.day_key (day, k)
+      values (d, encode(sha256(convert_to(gen_random_uuid()::text || gen_random_uuid()::text || clock_timestamp()::text, 'UTF8')), 'hex'))
+      on conflict (day) do nothing;
+    select x.k into k from yamb.day_key x where x.day = d;
+  end if;
+  begin hd := nullif(current_setting('request.headers', true), '')::jsonb; exception when others then hd := null; end;
+  hd := coalesce(hd, '{}'::jsonb);
+  ip := coalesce(nullif(hd ->> 'cf-connecting-ip', ''), nullif(btrim(split_part(coalesce(hd ->> 'x-forwarded-for', ''), ',', 1)), ''),
+                 nullif(hd ->> 'x-real-ip', ''), '');
+  ua := left(coalesce(hd ->> 'user-agent', ''), 400);
+  return encode(sha256(convert_to(k || '|' || ip || '|' || ua, 'UTF8')), 'hex');
+end $$;
+
+-- one page opened: which page, where the visitor came from, the game's language, and whether it runs installed
+create or replace function public.count_visit(p_page text, p_src text, p_lang text, p_app boolean) returns void
+language plpgsql security definer set search_path = '' as $$
+declare d date := (now() at time zone 'utc')::date; h text := yamb.visitor(); fresh integer := 0;
+        pg text := lower(coalesce(p_page, '')); sr text := lower(coalesce(p_src, '')); lg text := lower(coalesce(p_lang, ''));
+begin
+  if pg !~ '^[a-z0-9/_-]{1,40}$' then pg := 'other'; end if;
+  if sr !~ '^[a-z0-9.:_-]{1,60}$' then sr := 'other'; end if;
+  if lg !~ '^[a-z]{2}$' then lg := 'xx'; end if;
+  -- a flood of made-up sources cannot grow the table without end
+  if (select count(*) from yamb.visits v where v.day = d) > 800
+     and not exists (select 1 from yamb.visits v where v.day = d and v.page = pg and v.src = sr and v.lang = lg and v.app = coalesce(p_app, false)) then
+    pg := 'other'; sr := 'other';
+  end if;
+  insert into yamb.seen (day, what, h) values (d, 'visit', h) on conflict do nothing;
+  get diagnostics fresh = row_count;
+  insert into yamb.visits as v (day, page, src, lang, app, views, people) values (d, pg, sr, lg, coalesce(p_app, false), 1, fresh)
+    on conflict (day, page, src, lang, app) do update set views = v.views + 1, people = v.people + excluded.people;
+end $$;
+
+-- one thing done in the game: a game started or finished (with its mode), installed, Plus looked at or bought
+create or replace function public.count_event(p_ev text, p_mode text) returns void
+language plpgsql security definer set search_path = '' as $$
+declare d date := (now() at time zone 'utc')::date; h text; fresh integer := 0; m text := lower(coalesce(p_mode, ''));
+begin
+  if p_ev is null or p_ev not in ('start', 'finish', 'install', 'signin', 'plus_view', 'plus_buy', 'tip_buy') then return; end if;
+  if m not in ('cpu', 'pp', 'online', 'duel', 'table', 'daily', '-') then m := '-'; end if;
+  h := yamb.visitor();
+  insert into yamb.seen (day, what, h) values (d, p_ev || ':' || m, h) on conflict do nothing;
+  get diagnostics fresh = row_count;
+  insert into yamb.events as e (day, ev, mode, n, people) values (d, p_ev, m, 1, fresh)
+    on conflict (day, ev, mode) do update set n = e.n + 1, people = e.people + excluded.people;
+  -- games also count once more under 'all', so a player who starts two kinds of game is still one player that day
+  if p_ev in ('start', 'finish') then
+    insert into yamb.seen (day, what, h) values (d, p_ev || ':all', h) on conflict do nothing;
+    get diagnostics fresh = row_count;
+    insert into yamb.events as e (day, ev, mode, n, people) values (d, p_ev, 'all', 1, fresh)
+      on conflict (day, ev, mode) do update set n = e.n + 1, people = e.people + excluded.people;
+  end if;
+end $$;
+
+-- the Numbers page: totals only, never a single visitor; only for an account listed in yamb.admins
+create or replace function public.numbers(p_from date, p_to date) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare me uuid := auth.uid(); a date := least(p_from, p_to); b date := greatest(p_from, p_to);
+begin
+  if me is null or not exists (select 1 from yamb.admins x where x.user_id = me) then raise exception 'YC_ADMIN'; end if;
+  if b - a > 400 then a := b - 400; end if;
+  return jsonb_build_object(
+    'from', a, 'to', b,
+    'days', coalesce((select jsonb_agg(jsonb_build_object('day', v.day, 'views', v.views, 'people', v.people, 'app', v.app_people) order by v.day)
+                      from (select day, sum(views)::int as views, sum(people)::int as people,
+                                   (sum(people) filter (where app))::int as app_people
+                            from yamb.visits where day between a and b group by day) v), '[]'::jsonb),
+    'sources', coalesce((select jsonb_agg(jsonb_build_object('src', s.src, 'people', s.people, 'views', s.views) order by s.people desc)
+                         from (select src, sum(people)::int as people, sum(views)::int as views from yamb.visits
+                               where day between a and b group by src order by sum(people) desc limit 30) s), '[]'::jsonb),
+    'pages', coalesce((select jsonb_agg(jsonb_build_object('page', s.page, 'people', s.people, 'views', s.views) order by s.people desc)
+                       from (select page, sum(people)::int as people, sum(views)::int as views from yamb.visits
+                             where day between a and b group by page order by sum(people) desc limit 30) s), '[]'::jsonb),
+    'langs', coalesce((select jsonb_object_agg(s.lang, s.people)
+                       from (select lang, sum(people)::int as people from yamb.visits where day between a and b group by lang) s), '{}'::jsonb),
+    'events', coalesce((select jsonb_agg(jsonb_build_object('day', e.day, 'ev', e.ev, 'mode', e.mode, 'n', e.n, 'people', e.people) order by e.day, e.ev, e.mode)
+                        from yamb.events e where e.day between a and b), '[]'::jsonb),
+    'accounts', jsonb_build_object('all', (select count(*) from public.profiles),
+                                   'new', (select count(*) from public.profiles p where p.created_at::date between a and b)),
+    'daily', coalesce((select jsonb_agg(jsonb_build_object('day', s.day, 'players', s.n) order by s.day)
+                       from (select day, count(*)::int as n from public.daily_scores where day between a and b group by day) s), '[]'::jsonb),
+    -- signed-in players who finished a game in a week, and how many of them finished one the week after
+    'weeks', coalesce((select jsonb_agg(jsonb_build_object('week', w.wk, 'players', w.players, 'back', w.back) order by w.wk)
+                       from (select x.wk, count(*)::int as players, count(y.user_id)::int as back
+                             from (select distinct r.user_id, date_trunc('week', r.finished_at)::date as wk from public.results r
+                                   where r.finished_at >= a - 7 and r.finished_at < b + 8) x
+                             left join (select distinct r.user_id, date_trunc('week', r.finished_at)::date as wk from public.results r
+                                        where r.finished_at >= a and r.finished_at < b + 15) y
+                               on y.user_id = x.user_id and y.wk = x.wk + 7
+                             where x.wk between date_trunc('week', a::timestamp)::date and b
+                             group by x.wk) w), '[]'::jsonb));
+end $$;
+
+revoke all on function yamb.visitor() from public, anon, authenticated;
+revoke all on function public.count_visit(text, text, text, boolean), public.count_event(text, text), public.numbers(date, date)
+  from public, anon, authenticated;
+grant execute on function public.count_visit(text, text, text, boolean), public.count_event(text, text) to anon, authenticated;
+grant execute on function public.numbers(date, date) to authenticated;
 
 notify pgrst, 'reload schema';
 select 'Yamb Café database is ready' as result;

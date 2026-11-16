@@ -1039,6 +1039,11 @@ const MODES98={
       acSignShort:'Anmelden',homeSignIn:'Melde dich an, damit dein Ergebnis in die Bestenliste kommt'}
 };
 for(const l in MODES98)if(D[l])Object.assign(D[l],MODES98[l]);
+/* v9.9: links to the terms and the rules pages */
+const LINKS99={en:{termsLink:'Terms',rulesLink:'Rules'},hr:{termsLink:'Uvjeti',rulesLink:'Pravila'},sr:{termsLink:'Uslovi',rulesLink:'Pravila'},
+  bs:{termsLink:'Uslovi',rulesLink:'Pravila'},sl:{termsLink:'Pogoji',rulesLink:'Pravila'},de:{termsLink:'Bedingungen',rulesLink:'Regeln'}};
+for(const l in LINKS99)if(D[l])Object.assign(D[l],LINKS99[l]);
+
 
 
 
