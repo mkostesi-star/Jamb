@@ -999,6 +999,47 @@ const PHOTO97={
   de:{usePhoto:'Dein eigenes Foto',removePhoto:'Foto entfernen',photoNote:'Der letzte Kreis nimmt dein eigenes Foto. Es bleibt auf diesem Gerät; andere sehen das gemalte Porträt, das du gewählt hast.',photoFail:'Dieses Bild lässt sich nicht öffnen.'}
 };
 for(const l in PHOTO97)if(D[l])Object.assign(D[l],PHOTO97[l]);
+/* v9.8: the four ways to play with friends get names and descriptions that say what is special about each */
+const MODES98={
+  en:{modePP:'Hot seat',modePPD:'One device goes round the table. Up to six players, computer opponents welcome.',modeOnline:'Multiplayer',modeOnlineD:'Everyone on their own device, live, wherever they are. Up to six.',
+      modeDuel:'Friend duel',modeDuelD:'Not live: you play now, your friend answers when it suits them. The same dice for both, so only skill decides.',
+      modeTable:'Real dice',modeTableD:'Bring real dice to the party. The game is your notebook: it keeps the sheet and adds it all up.',
+      friendsD:'Hot seat, multiplayer, a friend duel or real dice',
+      duelIntro:'A duel is not played live. You play your game now and send the link; your friend plays the same dice whenever it suits them, and then you both see who won. Only skill decides.',
+      acSignShort:'Sign in',homeSignIn:'Sign in to put your score on the high scores'},
+  hr:{modePP:'Hot seat',modePPD:'Jedan uređaj kruži stolom. Do šest igrača, mogu i računalni protivnici.',modeOnline:'Multiplayer',modeOnlineD:'Svatko na svom uređaju, uživo, gdje god bio. Do šest igrača.',
+      modeDuel:'Dvoboj',modeDuelD:'Nije uživo: ti igraš sada, prijatelj odgovori kad stigne. Iste kocke za oboje, pa odlučuje samo znanje.',
+      modeTable:'Prave kocke',modeTableD:'Ponesite prave kocke na druženje. Igra vam je bilježnica: vodi listić i sve zbroji.',
+      friendsD:'Hot seat, multiplayer, dvoboj ili prave kocke',
+      duelIntro:'Dvoboj se ne igra uživo. Odigraš svoju igru sada i pošalješ poveznicu; prijatelj igra iste kocke kad mu odgovara, a onda oboje vidite tko je pobijedio. Odlučuje samo znanje.',
+      fullD:'Tvoja kućna pravila, cijeli popis: {rules}',acSignShort:'Prijava',homeSignIn:'Prijavi se i tvoj rezultat ulazi na ljestvicu'},
+  sr:{modePP:'Hot seat',modePPD:'Jedan uređaj kruži oko stola. Do šest igrača, mogu i kompjuterski protivnici.',modeOnline:'Multiplayer',modeOnlineD:'Svako na svom uređaju, uživo, gde god bio. Do šest igrača.',
+      modeDuel:'Duel',modeDuelD:'Nije uživo: ti igraš sada, prijatelj odgovori kad stigne. Iste kockice za oboje, pa odlučuje samo znanje.',
+      modeTable:'Prave kockice',modeTableD:'Ponesite prave kockice na druženje. Igra vam je beležnica: vodi listić i sve sabere.',
+      friendsD:'Hot seat, multiplayer, duel ili prave kockice',
+      duelIntro:'Duel se ne igra uživo. Odigraš svoju igru sada i pošalješ link; prijatelj igra iste kockice kad mu odgovara, a onda oboje vidite ko je pobedio. Odlučuje samo znanje.',
+      acSignShort:'Prijava',homeSignIn:'Prijavi se i tvoj rezultat ulazi na listu'},
+  bs:{modePP:'Hot seat',modePPD:'Jedan uređaj kruži oko stola. Do šest igrača, mogu i kompjuterski protivnici.',modeOnline:'Multiplayer',modeOnlineD:'Svako na svom uređaju, uživo, gdje god bio. Do šest igrača.',
+      modeDuel:'Duel',modeDuelD:'Nije uživo: ti igraš sada, prijatelj odgovori kad stigne. Iste kockice za oboje, pa odlučuje samo znanje.',
+      modeTable:'Prave kockice',modeTableD:'Ponesite prave kockice na druženje. Igra vam je bilježnica: vodi listić i sve sabere.',
+      friendsD:'Hot seat, multiplayer, duel ili prave kockice',
+      duelIntro:'Duel se ne igra uživo. Odigraš svoju igru sada i pošalješ link; prijatelj igra iste kockice kad mu odgovara, a onda oboje vidite ko je pobijedio. Odlučuje samo znanje.',
+      fullD:'Tvoja kućna pravila, cijeli popis: {rules}',acSignShort:'Prijava',homeSignIn:'Prijavi se i tvoj rezultat ulazi na listu'},
+  sl:{modePP:'Hot seat',modePPD:'Ena naprava kroži okoli mize. Do šest igralcev, lahko tudi računalniški nasprotniki.',modeOnline:'Multiplayer',modeOnlineD:'Vsak na svoji napravi, v živo, kjerkoli je. Do šest igralcev.',
+      modeDuel:'Dvoboj',modeDuelD:'Ni v živo: ti igraš zdaj, prijatelj odgovori, ko mu ustreza. Iste kocke za oba, zato odloča samo znanje.',
+      modeTable:'Prave kocke',modeTableD:'Prinesite prave kocke na druženje. Igra vam je beležnica: vodi list in vse sešteje.',
+      friendsD:'Hot seat, multiplayer, dvoboj ali prave kocke',
+      duelIntro:'Dvoboj ne poteka v živo. Svojo igro odigraš zdaj in pošlješ povezavo; prijatelj igra iste kocke, ko mu ustreza, nato oba vidita, kdo je zmagal. Odloča samo znanje.',
+      acSignShort:'Prijava',homeSignIn:'Prijavi se in tvoj rezultat pride na lestvico'},
+  de:{modePP:'Hot Seat',modePPD:'Ein Gerät wandert um den Tisch. Bis zu sechs Spieler, Computergegner willkommen.',modeOnline:'Multiplayer',modeOnlineD:'Jeder am eigenen Gerät, live, wo auch immer. Bis zu sechs.',
+      modeDuel:'Freundesduell',modeDuelD:'Nicht live: du spielst jetzt, dein Freund antwortet, wann es ihm passt. Gleiche Würfel für beide, nur Können zählt.',
+      modeTable:'Echte Würfel',modeTableD:'Bringt echte Würfel zur Party mit. Das Spiel ist euer Notizblock: es führt den Zettel und rechnet alles zusammen.',
+      friendsD:'Hot Seat, Multiplayer, Freundesduell oder echte Würfel',
+      duelIntro:'Ein Duell wird nicht live gespielt. Du spielst jetzt und schickst den Link; dein Freund spielt dieselben Würfel, wann es ihm passt, und dann seht ihr beide, wer gewonnen hat. Nur Können zählt.',
+      acSignShort:'Anmelden',homeSignIn:'Melde dich an, damit dein Ergebnis in die Bestenliste kommt'}
+};
+for(const l in MODES98)if(D[l])Object.assign(D[l],MODES98[l]);
+
 
 
 

@@ -793,6 +793,29 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 .ppick .phototile svg{width:46%;height:46%}
 .ppick .phototile:has(img){border-style:solid}
 @media (min-width:381px){.ppick{grid-template-columns:repeat(7,1fr)}}
+/* ===== v9.8 from Ivan's review ===== */
+/* the oval frame shows the whole painted portrait */
+.oval .ptr{inset:16.5% 21.5% 16.5% 21.5%}
+.oval .ptr img{object-position:50% 30%}
+.rmphoto{margin-top:8px!important;text-align:right}
+/* signed out: the profile button says "Sign in", and the Daily invites you onto the high scores */
+.icons .ibtn.signin:has(.si){width:auto;min-width:44px;padding:0 12px 0 5px;gap:6px;border-radius:22px;display:inline-flex;align-items:center}
+.icons .ibtn.signin:has(.si):not(:has(.ptr)){padding-left:10px}
+.icons .ibtn.signin .si{font:700 14px var(--f-ui);color:var(--cream);white-space:nowrap}
+@media (max-width:439px){.icons .ibtn.signin .si{display:none}.icons .ibtn.signin:has(.si){padding:0}}
+.icons .ibtn.signin .si{text-transform:none;letter-spacing:0}
+.lnk.dsign{display:block;margin:6px auto 0;font:600 15px var(--f-ui);color:var(--coffee-deep);text-decoration:underline;text-underline-offset:3px}
+/* a speech bubble's last letter has room for the hand's tail */
+.bubble{padding-right:18px}
+/* results: the menu button on the wood, a duel's message on the wood */
+.resA .btnInk{color:var(--cream);border-color:var(--cream-line)}
+.onwoodp{color:var(--cream);text-align:center;margin:12px 0 0}
+@media (min-width:1000px){
+  .modal.page .panel.k-result{width:min(1180px,100%)}
+  .resgrid{display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);gap:40px;align-items:start}
+  .resA{position:sticky;top:84px}
+  .resB>.slip:first-child{margin-top:0}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.die.flip{animation:flip .3s ease!important}}
 </style>
 </head>
@@ -818,15 +841,15 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=97"></script>
-<script src="ai.js?v=97"></script>
-<script src="i18n.js?v=97"></script>
-<script src="audio.js?v=97"></script>
-<script src="music.js?v=97"></script>
-<script src="fx.js?v=97"></script>
-<script src="scan.js?v=97"></script>
-<script src="vendor/supabase.js?v=97" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=97"></script>
-<script src="app.js?v=97"></script>
+<script src="engine.js?v=98"></script>
+<script src="ai.js?v=98"></script>
+<script src="i18n.js?v=98"></script>
+<script src="audio.js?v=98"></script>
+<script src="music.js?v=98"></script>
+<script src="fx.js?v=98"></script>
+<script src="scan.js?v=98"></script>
+<script src="vendor/supabase.js?v=98" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=98"></script>
+<script src="app.js?v=98"></script>
 </body>
 </html>

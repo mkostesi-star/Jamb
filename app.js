@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.7';
+const VERSION='v9.8';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -847,7 +847,7 @@ function renderHome(){
     daily=`${dkick}<div class="drow"><h2>${esc(t('daily'))}</h2>${ddate}</div>
       <div class="minidice" role="img" aria-label="${esc(first.join(' '))}">${first.map(mdie).join('')}</div>
       <button type="button" class="btnRed" data-act="daily">${esc(inprog?t('dailyResume'):t('dailyPlay'))}</button>
-      <p class="note">${esc(t('dailyHow'))}${st?' · '+st:''}</p>${bline}`;
+      <p class="note">${esc(t('dailyHow'))}${st?' · '+st:''}</p>${bline}${!acctOn()&&C&&C.available()?`<button type="button" class="lnk dsign" data-act="open" data-k="account">${esc(t('homeSignIn'))}</button>`:''}`;
   }
   const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
   $('home').innerHTML=`
@@ -855,7 +855,7 @@ function renderHome(){
       <picture><source type="image/webp" srcset="art/cafe-800.webp 800w, art/cafe-1280.webp 1280w" sizes="100vw"><img src="art/cafe-800.jpg" alt="" width="800" height="447" decoding="async"></picture>
       <div class="wrap"><header class="top">
         <div class="mark"><span class="word">Yamb <span class="amp">Café</span></span></div>
-        <div class="icons"><button type="button" class="ibtn${acctOn()?' on':''}" data-act="open" data-k="account" aria-label="${esc(acctOn()?t('acSignedAs',{name:acctName()}):t('profile'))}">${myPortrait()?portraitHTML(myPortrait(),'','hdr'):ICON.user}</button><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
+        <div class="icons"><button type="button" class="ibtn${acctOn()?' on':''}${!acctOn()&&C&&C.available()?' signin':''}" data-act="open" data-k="account" aria-label="${esc(acctOn()?t('acSignedAs',{name:acctName()}):t('profile'))}">${myPortrait()?portraitHTML(myPortrait(),'','hdr'):ICON.user}${!acctOn()&&C&&C.available()?`<span class="si">${esc(t('acSignShort'))}</span>`:''}</button><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
       </header></div>
     </div>
     <div class="wrap"><main class="homeIn">
@@ -1164,7 +1164,10 @@ function turnFx(){
 const SHEETS=['install','scan','rulesIn'];
 const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account'];
 const isPage=k=>!!k&&!SHEETS.includes(k);
-window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.back)back();else closeModal();}});
+window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.backs.length)back();else closeModal();}});
+ui.backs=[];
+/* opening a page from another page remembers the one underneath, so back returns there, one step at a time */
+function pushBack(){const m=ui.modal;if(!m||!isPage(m.kind))return;if(m.kind==='pp'||m.kind==='table')syncPlayers(m);ui.backs.push(Object.assign({},m));}
 function openModal(kind,o){
   const M=$('modal'),wasOpen=!M.hidden&&!M.classList.contains('closing');
   clearTimeout(ui.closeT);M.classList.remove('closing');
@@ -1181,7 +1184,7 @@ function openModal(kind,o){
 }
 function closeModal(){
   if(ui.modal&&ui.modal.kind==='scan')SC.close();
-  ui.back=null;
+  ui.backs=[];
   const M=$('modal'),was=!!ui.modal&&!M.hidden;
   ui.modal=null;
   clearTimeout(ui.closeT);
@@ -1192,7 +1195,7 @@ function closeModal(){
   }
   if(ui.lastFocus&&ui.lastFocus.isConnected){try{ui.lastFocus.focus();}catch(e){}}
 }
-function back(){const b=ui.back;ui.back=null;if(b){if(ui.modal&&ui.modal.kind==='scan')SC.close();ui.modal=null;openModal(b.kind,b);}else closeModal();}
+function back(){const b=ui.backs.pop();if(b){if(ui.modal&&ui.modal.kind==='scan')SC.close();ui.modal=null;openModal(b.kind,b);}else closeModal();}
 const head=title=>ui.modal&&isPage(ui.modal.kind)
   ?`<div class="phead pg"><button type="button" class="x back" data-act="close" aria-label="${esc(t('close'))}">${ICON.back}</button><h2>${esc(title)}</h2></div>`
   :`<div class="phead"><h2>${esc(title)}</h2><button type="button" class="x" data-act="close" aria-label="${esc(t('close'))}">×</button></div>`;
@@ -1370,19 +1373,19 @@ function resultHTML(){
   const st=standings(G),me=mySeat(),win=st.length>1&&st[0].score>st[1].score?st[0].i:-1;
   const title=G.players.length===1?t('finalScore',{s:fmt(st[0].score)}):win<0?t('draw'):win===me?t('youWin'):t('wins',{name:name(win)});
   const endTip=ui.guideEnd?`<div class="tipcard inline" role="note"><p>${esc(t('g6end'))}</p></div>`:'';ui.guideEnd=false;
-  let h=head(t('results'))+endTip+`<div class="billTitle"><span class="big">${esc(title)}</span></div>`+billHTML(G,st,win);
-  if(G.mode==='daily'){h+=`<button type="button" class="btnRed onwood" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`+`<div class="slip">${boardHTML(G.daily.day)}</div>`;}
+  let a=`<div class="billTitle"><span class="big">${esc(title)}</span></div>`+billHTML(G,st,win),h='';
+  if(G.mode==='daily'){a+=`<button type="button" class="btnRed onwood" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`;h+=`<div class="slip">${boardHTML(G.daily.day)}</div>`;}
   if(G.mode==='duel'){
     const mine=st[0].score;
-    if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost',{name:G.duel.from.n}):t('draw'))}</p></div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
-    else h+=`<p style="margin-top:10px">${esc(t('duelSendD'))}</p><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSend'))}</button>`;
+    if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result slip"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost',{name:G.duel.from.n}):t('draw'))}</p></div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
+    else a+=`<p class="onwoodp">${esc(t('duelSendD'))}</p><button type="button" class="btnRed onwood" data-act="shareduel">${esc(t('duelSend'))}</button>`;
   }
   let more=gameStatsHTML(G);
   G.players.forEach((p,i)=>{if(p.kind==='human'&&G.log.some(ev=>ev.p===i))more+=reviewHTML(i);});
   h+=`<div class="slip">${more}</div>`;
   const canRematch=!['daily','duel'].includes(G.mode);
-  h+=`<div class="btnRow" style="margin-top:16px">${canRematch?`<button type="button" class="btnRed" data-act="rematch">${esc(t('rematch'))}</button>`:''}<button type="button" class="btnInk" style="margin-top:0" data-act="exit">${esc(t('menu'))}</button></div>`;
-  return h;
+  a+=`<div class="btnRow" style="margin-top:16px">${canRematch?`<button type="button" class="btnRed" data-act="rematch">${esc(t('rematch'))}</button>`:''}<button type="button" class="btnInk" style="margin-top:0" data-act="exit">${esc(t('menu'))}</button></div>`;
+  return head(t('results'))+endTip+`<div class="resgrid"><div class="resA">${a}</div><div class="resB">${h}</div></div>`;
 }
 
 /* The result is the café bill on a small silver tray, written by hand: everyone's score, or for one player the
@@ -1480,7 +1483,7 @@ function recordsHTML(){
   const where=`<p class="fine" style="margin-top:14px">${esc(av?t('recAccount'):t('recPhone'))}</p>`+(acctOn()||!C||!C.available()?'':`<button type="button" class="btnInk" data-act="open" data-k="account">${esc(t('recSignIn'))}</button>`);
   /* the wall of regulars: your portrait in the gilded oval, every best game on a brass plaque */
   const me=acctName()||myName()||t('youName'),games=recs.reduce((a,r)=>a+(r.games||0),0),best=recs.reduce((m,r)=>r.best&&r.best.s>m?r.best.s:m,0);
-  let h=head(t('records'))+`<div class="wall"><div class="wallme"><button type="button" class="oval" data-act="open" data-k="account" aria-label="${esc(t('profile'))}">${portraitHTML(myPortrait(),me)}</button>
+  let h=head(t('records'))+`<div class="wall"><div class="wallme"><button type="button" class="oval" data-act="open" data-k="account" aria-label="${esc(t('profile'))}">${portraitHTML(myPortrait(),me,'full')}</button>
     <div><b>${esc(me)}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
   const modes=['cpu','pp','online','duel','table','daily'],mt={cpu:t('playChar'),pp:t('modePP'),online:t('modeOnline'),duel:t('modeDuel'),table:t('modeTable'),daily:t('daily')};
   if(!recs.length)return h+`<p class="wallnone">${esc(t('recNone'))}</p></div>`+`<div class="slip">${where}</div>`;
@@ -1900,17 +1903,17 @@ function act(el,d){
       m.focus=m.chars.includes(ch)?ch:m.chars[m.chars.length-1];prefs.char=m.chars[0];prefs.chars=m.chars.slice();savePrefs();renderModal();break;}
     case 'open':{
       const k=d.k;
+      if(ui.modal&&ui.modal.kind!==k)pushBack();
       if(k==='pp')openModal('pp',{players:[{kind:'human',name:myName()},{kind:'human',name:''}]});
       else if(k==='table')openModal('table',{players:[{kind:'human',name:myName()}]});
-      else if(k==='rules'){ui.back=null;openModal('rules');}
+      else if(k==='rules')openModal('rules');
       else{
-        if(k==='account'&&ui.modal&&ui.modal.kind!=='account')ui.back=Object.assign({},ui.modal);
         openModal(k);
         if((k==='records'||k==='account')&&cloud.uid&&(!cloud.state||Date.now()-cloud.state.at>60000))syncCloud();
       }
       break;}
-    case 'close':if(ui.back)back();else closeModal();break;
-    case 'editrules':{const cur=ui.modal?Object.assign({},ui.modal):null;if(cur&&cur.kind!=='rules'){if(cur.kind==='pp'||cur.kind==='table')syncPlayers(cur);ui.back=cur;}openModal('rules');break;}
+    case 'close':if(ui.backs.length)back();else closeModal();break;
+    case 'editrules':{if(ui.modal&&ui.modal.kind!=='rules')pushBack();openModal('rules');break;}
     case 'pladd':{const m=ui.modal;syncPlayers(m);if(m.players.length<6)m.players.push({kind:'human',name:''});renderModal();break;}
     case 'pladdbot':{const m=ui.modal;syncPlayers(m);if(m.players.length<6)m.players.push({kind:'cpu',char:nextChar(m.players)});renderModal();break;}
     case 'plchar':{const m=ui.modal;syncPlayers(m);const p=m.players[+d.i];if(p&&p.kind==='cpu')p.char=nextChar(m.players,p.char);renderModal();break;}
@@ -1962,7 +1965,7 @@ function act(el,d){
     case 'rkenta':ui.draft.kenta=d.v;renderModal();break;
     case 'rmid':ui.draft.mid=d.v;renderModal();break;
     case 'step':{const k=d.k;ui.draft[k]=Math.max(0,(ui.draft[k]||0)+(+d.d));renderModal();break;}
-    case 'saverules':prefs.rules=E.normRules(ui.draft);savePrefs();toast(t('rulesSaved'));if(ui.back)back();else{closeModal();if(screen==='home')renderHome();}break;
+    case 'saverules':prefs.rules=E.normRules(ui.draft);savePrefs();toast(t('rulesSaved'));if(ui.backs.length)back();else{closeModal();if(screen==='home')renderHome();}break;
     case 'sharerules':shareText(t('rulesShareText',{r:rulesBrief(ui.draft)}),baseUrl()+'?rules='+E.encodeRules(ui.draft));break;
     case 'saveset':{const nm=($('setName').value||'').trim().slice(0,24);if(!nm){toast(t('setName'),true);break;}prefs.sets=(prefs.sets||[]).filter(s=>s.name!==nm);prefs.sets.unshift({name:myName()||null,rules:E.normRules(ui.draft)});prefs.sets=prefs.sets.slice(0,10);savePrefs();renderModal();break;}
     case 'loadset':{const s=prefs.sets[+d.i];if(s){ui.draft=E.normRules(s.rules);renderModal();}break;}
@@ -1982,7 +1985,7 @@ function act(el,d){
   }
 }
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'&&ui.modal){if(ui.back)back();else closeModal();return;}
+  if(e.key==='Escape'&&ui.modal){if(ui.backs.length)back();else closeModal();return;}
   if(screen!=='game'||ui.modal||e.ctrlKey||e.metaKey||e.altKey||/INPUT|TEXTAREA|SELECT/.test((e.target&&e.target.tagName)||''))return;
   const press=sel=>{const b=document.querySelector(sel);if(b&&!b.disabled){e.preventDefault();b.click();return true;}return false;};
   if(e.key===' '||e.key==='r'||e.key==='R')press('#tray [data-act=roll]');
@@ -2046,7 +2049,8 @@ async function takePhoto(f){
 }
 document.addEventListener('change',e=>{const el=e.target;if(el&&el.id==='photoIn'){takePhoto(el.files&&el.files[0]);el.value='';}});
 function portraitHTML(id,name,cls){
-  const src=portraitSrc(id);
+  /* in the oval frame a painted regular is shown whole, head to shoulders (art/regulars/full) */
+  const src=cls&&/\bfull\b/.test(cls)&&PORTRAITS.includes(id)?`art/regulars/full/${id.slice(1)}.webp`:portraitSrc(id);
   return `<span class="ptr${cls?' '+cls:''}" aria-hidden="true">${src?`<img src="${src}" alt="" decoding="async">`:`<b>${esc(String(name||'?').slice(0,1).toUpperCase())}</b>`}</span>`;
 }
 function acctName(){const d=acctState();return (d&&d.profile&&d.profile.name)||(cloud.me&&cloud.me.name)||'';}
@@ -2214,10 +2218,10 @@ function portraitPicker(){
   return `<h3>${esc(t('pickPortrait'))}</h3><div class="ppick">${PORTRAITS.map(id=>`<button type="button" data-act="pickava" data-v="${id}" aria-pressed="${cur===id}" aria-label="${esc(t('pickPortrait'))} ${+id.slice(1)}"><img src="${portraitSrc(id)}" alt="" decoding="async"></button>`).join('')}
     <button type="button" class="phototile" data-act="photo" aria-pressed="${cur==='photo'}" aria-label="${esc(t('usePhoto'))}">${ph?`<img src="${ph}" alt="">`:CAMERA}</button></div>
     <input type="file" id="photoIn" accept="image/*" hidden>
-    <p class="fine">${esc(t('photoNote'))}${ph?` <button type="button" class="lnk" data-act="rmphoto">${esc(t('removePhoto'))}</button>`:''}</p>`;
+    ${ph?`<p class="fine rmphoto"><button type="button" class="lnk" data-act="rmphoto">${esc(t('removePhoto'))}</button></p>`:''}`;
 }
 const CAMERA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>';
-function profileTop(name){return `<div class="proftop"><span class="oval big">${portraitHTML(myPortrait(),name)}</span><b>${esc(name)}</b></div>`;}
+function profileTop(name){return `<div class="proftop"><span class="oval big">${portraitHTML(myPortrait(),name,'full')}</span><b>${esc(name)}</b></div>`;}
 function accountHTML(m){
   let h=head(t('profile'));
   if(!acctOn()){
