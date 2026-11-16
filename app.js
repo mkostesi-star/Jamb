@@ -4,12 +4,12 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.6';
+const VERSION='v9.7';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
-const PCOL=['#1F3FA6','#C8322B','#2E7D4F','#6B3FA0','#B5651D','#1A7F8C'];
-const PCOL_LITE=['#9FB4FF','#FF9A8E','#8FD9AE','#C9A8F0','#F2B27A','#86D6E0'];
+const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
+const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
 const CHAR_ORDER=['ema','nono','mira','joza','profesor'];
-const CHARS={ema:{ring:'#2E7D4F'},nono:{ring:'#1F3FA6'},mira:{ring:'#C8322B'},joza:{ring:'#B5651D'},profesor:{ring:'#2A1D12'}};
+const CHARS={ema:{ring:'#5E8A5A'},nono:{ring:'#4A6E86'},mira:{ring:'#A8505A'},joza:{ring:'#A5532E'},profesor:{ring:'#4A3A2E'}};
 /* Character names and initials follow the interface language. */
 /* A character's painted portrait inside its coloured ring; the initials show if the picture can't load. */
 const avatar=k=>`<span class="mono">${esc(CHARS[k].mono)}</span><img class="face" src="art/cast/${k}.webp" alt="" decoding="async" onerror="this.remove()">`;
@@ -528,7 +528,7 @@ function finishGame(){
   startReview(g);
 }
 function grade(loss){return loss<0.5?'best':loss<3?'good':loss<8?'inacc':loss<20?'mistake':'blunder';}
-const GRADE_COL={best:'#2E7D4F',good:'#5A8F3A',inacc:'#B5851D',mistake:'#C8622B',blunder:'#C8322B'};
+const GRADE_COL={best:'#4E7A55',good:'#6E8F4A',inacc:'#A07A1E',mistake:'#A5532E',blunder:'#8E2A22'};
 function startReview(g){
   const seats=g.players.map((p,i)=>i).filter(i=>g.players[i].kind==='human'&&g.log.some(ev=>ev.p===i));
   g.review=g.review||{};
@@ -1162,6 +1162,7 @@ function turnFx(){
 /* ---------- pages and sheets ----------
    Everything but a few small sheets opens as a full page with a back arrow; the phone's own back gesture closes it. */
 const SHEETS=['install','scan','rulesIn'];
+const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account'];
 const isPage=k=>!!k&&!SHEETS.includes(k);
 window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.back)back();else closeModal();}});
 function openModal(kind,o){
@@ -1252,8 +1253,8 @@ function renderModal(){
       break;}
     case 'online':h=onlineModalHTML(m);break;
     case 'friends':
-      h=head(t('friends'))+`<nav class="modes" aria-label="${esc(t('friends'))}">${[['pp','modePP','modePPD'],['online','modeOnline','modeOnlineD'],['duel','modeDuel','modeDuelD'],['table','modeTable','modeTableD']]
-        .map(([k,a,b])=>`<button type="button" class="mode" data-act="open" data-k="${k}"><span><span class="mt">${esc(t(a))}</span><span class="md">${esc(t(b))}</span></span>${ICON.chev}</button>`).join('')}</nav>`;
+      h=head(t('friends'))+`<nav class="mlines" aria-label="${esc(t('friends'))}">${[['pp','modePP','modePPD'],['online','modeOnline','modeOnlineD'],['duel','modeDuel','modeDuelD'],['table','modeTable','modeTableD']]
+        .map(([k,a,b])=>mline(k,t(a),t(b),0)).join('')}</nav>`;
       break;
     case 'rules':h=rulesModalHTML();break;
     case 'rulesIn':
@@ -1285,6 +1286,8 @@ function renderModal(){
         <div class="btnRow"><button type="button" class="btnRed" data-act="scannow">${esc(t('scanBtn'))}</button>${m.found&&m.found.length?`<button type="button" class="btnRed" style="background:var(--ink);box-shadow:none" data-act="scanuse">${esc(t('scanUse'))}</button>`:''}</div>`;
       break;
   }
+  /* most pages are a menu card on the café table: the back arrow stays on the wood, the rest is on the card */
+  if(MENUCARD.includes(m.kind)&&h.startsWith('<div class="phead pg">')){const k=h.indexOf('</div>')+6;h=h.slice(0,k)+`<div class="menu mcard"><div class="menuIn">`+h.slice(k)+`</div></div>`;}
   P.innerHTML=h;
   if(m.kind==='scan'&&!m.started){m.started=true;const v=$('scanV');SC.open(v).catch(()=>{m.msg=t('scanNoCam');const el=$('scanMsg');if(el)el.textContent=m.msg;});}
   else if(m.kind==='scan'&&SC){const v=$('scanV');if(v&&m.started){SC.open(v).catch(()=>{});}}
@@ -1929,10 +1932,18 @@ function act(el,d){
     case 'signin':case 'signout':case 'acsave':case 'acdel':case 'acdelno':case 'acdelyes':accountAct(d.act);break;
     case 'pickava':{
       const v=d.v;if(!PORTRAITS.includes(v))break;
-      prefs.avatar=v;savePrefs();A.hold(true);
+      prefs.avatar=v;prefs.painted=v;savePrefs();A.hold(true);
       const st=acctOn()&&acctState();if(st&&st.profile)st.profile.avatar=v;
       if(st&&cloudLive())C.rpc('save_profile',{p_name:acctName()||myName()||'',p_avatar:v}).then(p=>{const s2=acctState();if(s2&&p)s2.profile=p;saveCloud();acctUI();}).catch(()=>{});
       renderModal();if(screen==='home')renderHome();break;}
+    case 'photo':
+      if(myPhoto()&&prefs.avatar!=='photo'){prefs.avatar='photo';savePrefs();A.hold(true);renderModal();if(screen==='home')renderHome();}
+      else{const fi=$('photoIn');if(fi)fi.click();}
+      break;
+    case 'rmphoto':
+      try{localStorage.removeItem(PHOTO_KEY);}catch(e){}
+      if(prefs.avatar==='photo'){prefs.avatar=PORTRAITS.includes(prefs.painted)?prefs.painted:'';savePrefs();}
+      renderModal();if(screen==='home')renderHome();break;
     case 'rematch':rematch();break;
     case 'host':hostGame();break;
     case 'join':joinGame($('joinCode').value);break;
@@ -2013,8 +2024,27 @@ function nameField(v){
 function takeName(){const f=$('fName');if(f){prefs.name=f.value.trim().slice(0,16)||null;savePrefs();}}
 /* Your portrait: one of the twelve painted regulars (art/regulars), kept on the device and, signed in, on the account. */
 const PORTRAITS=['r01','r02','r03','r04','r05','r06','r07','r08','r09','r10','r11','r12'];
-const portraitSrc=id=>PORTRAITS.includes(id)?`art/regulars/${id.slice(1)}.webp`:'';
-function myPortrait(){const d=acctOn()&&acctState(),a=d&&d.profile&&d.profile.avatar;return PORTRAITS.includes(a)?a:(PORTRAITS.includes(prefs.avatar)?prefs.avatar:'');}
+/* Your own photo stays on this device (a 256px square in localStorage): you see it wherever you appear, while other
+   players see the painted portrait you picked, so nobody's picture reaches the public high scores unchecked. */
+const PHOTO_KEY='jamb4-photo';
+function myPhoto(){try{return localStorage.getItem(PHOTO_KEY)||'';}catch(e){return '';}}
+const portraitSrc=id=>id==='photo'?myPhoto():PORTRAITS.includes(id)?`art/regulars/${id.slice(1)}.webp`:'';
+function publicPortrait(){const d=acctOn()&&acctState(),a=d&&d.profile&&d.profile.avatar;return PORTRAITS.includes(a)?a:(PORTRAITS.includes(prefs.painted)?prefs.painted:(PORTRAITS.includes(prefs.avatar)?prefs.avatar:''));}
+function myPortrait(){return prefs.avatar==='photo'&&myPhoto()?'photo':publicPortrait();}
+function loadImg(f){return new Promise((res,rej)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);res(im);};im.onerror=e=>{URL.revokeObjectURL(u);rej(e);};im.src=u;});}
+async function takePhoto(f){
+  if(!f)return;
+  try{
+    const im=await loadImg(f),w=im.naturalWidth,h=im.naturalHeight,s=Math.min(w,h);
+    const c=document.createElement('canvas');c.width=c.height=256;
+    /* the middle square, a little above centre on a tall picture, where faces usually are */
+    c.getContext('2d').drawImage(im,(w-s)/2,Math.max(0,(h-s)*0.35),s,s,0,0,256,256);
+    localStorage.setItem(PHOTO_KEY,c.toDataURL('image/jpeg',0.86));
+    prefs.avatar='photo';savePrefs();A.hold(true);
+    renderModal();if(screen==='home')renderHome();
+  }catch(e){toast(t('photoFail'),true);}
+}
+document.addEventListener('change',e=>{const el=e.target;if(el&&el.id==='photoIn'){takePhoto(el.files&&el.files[0]);el.value='';}});
 function portraitHTML(id,name,cls){
   const src=portraitSrc(id);
   return `<span class="ptr${cls?' '+cls:''}" aria-hidden="true">${src?`<img src="${src}" alt="" decoding="async">`:`<b>${esc(String(name||'?').slice(0,1).toUpperCase())}</b>`}</span>`;
@@ -2080,7 +2110,7 @@ async function syncCloud(fresh){
     if(d&&d.profile&&!d.profile.name){
       /* first sign-in: the name already used in games, or the first name from Google; it can be changed in Account */
       const nm=String(prefs.name||String(C.user&&C.user.name||'').split(/\s+/)[0]||'').trim().slice(0,16);
-      if(nm){try{d.profile=await C.rpc('save_profile',{p_name:nm,p_avatar:PORTRAITS.includes(prefs.avatar)?prefs.avatar:null});}catch(e){}}
+      if(nm){try{d.profile=await C.rpc('save_profile',{p_name:nm,p_avatar:publicPortrait()||null});}catch(e){}}
     }
     if(cloud.uid!==me)return;
     if(cloud.me)cloud.me.name=(d&&d.profile&&d.profile.name)||'';
@@ -2171,7 +2201,7 @@ function boardHTML(day){
   else if(!d.top||!d.top.length)h+=`<p class="fine bnote">${esc(t('boardNone'))}</p>`;
   else{
     const rows=d.top.slice(0,10),mine=d.top.find(x=>x.me);if(mine&&!rows.includes(mine))rows.push(mine);
-    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${portraitSrc(x.avatar)?portraitHTML(x.avatar,x.name,'sm'):''}${esc(x.name||t('playerAnon'))}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
+    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${(av=>portraitSrc(av)?portraitHTML(av,x.name,'sm'):'')(x.me&&myPortrait()==='photo'?'photo':x.avatar)}${esc(x.name||t('playerAnon'))}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
       <p class="fine bnote">${esc(t('boardCount',{n:d.count}))}${d.me&&!rows.some(x=>x.me)?' · '+esc(t('boardPlace',{r:d.me.rank,n:d.count})):''}</p>`;
   }
   if(!acctOn())h+=`<p class="fine bnote">${esc(t('boardSignIn'))}</p>`+gbtn();
@@ -2180,9 +2210,13 @@ function boardHTML(day){
   return h;
 }
 function portraitPicker(){
-  const cur=myPortrait();
-  return `<h3>${esc(t('pickPortrait'))}</h3><div class="ppick">${PORTRAITS.map(id=>`<button type="button" data-act="pickava" data-v="${id}" aria-pressed="${cur===id}" aria-label="${esc(t('pickPortrait'))} ${+id.slice(1)}"><img src="${portraitSrc(id)}" alt="" decoding="async"></button>`).join('')}</div><p class="fine">${esc(t('portraitNote'))}</p>`;
+  const cur=myPortrait(),ph=myPhoto();
+  return `<h3>${esc(t('pickPortrait'))}</h3><div class="ppick">${PORTRAITS.map(id=>`<button type="button" data-act="pickava" data-v="${id}" aria-pressed="${cur===id}" aria-label="${esc(t('pickPortrait'))} ${+id.slice(1)}"><img src="${portraitSrc(id)}" alt="" decoding="async"></button>`).join('')}
+    <button type="button" class="phototile" data-act="photo" aria-pressed="${cur==='photo'}" aria-label="${esc(t('usePhoto'))}">${ph?`<img src="${ph}" alt="">`:CAMERA}</button></div>
+    <input type="file" id="photoIn" accept="image/*" hidden>
+    <p class="fine">${esc(t('photoNote'))}${ph?` <button type="button" class="lnk" data-act="rmphoto">${esc(t('removePhoto'))}</button>`:''}</p>`;
 }
+const CAMERA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>';
 function profileTop(name){return `<div class="proftop"><span class="oval big">${portraitHTML(myPortrait(),name)}</span><b>${esc(name)}</b></div>`;}
 function accountHTML(m){
   let h=head(t('profile'));
@@ -2255,7 +2289,7 @@ async function accountAct(act){
     if(!nm){toast(t('acFail'),true);return;}
     m.busy=true;renderModal();
     try{
-      const d=acctState(),p=await C.rpc('save_profile',{p_name:nm,p_avatar:myPortrait()||null});
+      const d=acctState(),p=await C.rpc('save_profile',{p_name:nm,p_avatar:publicPortrait()||null});
       if(d)d.profile=p;if(cloud.me)cloud.me.name=p&&p.name||nm;saveCloud();
       Object.keys(boards).forEach(k=>delete boards[k]);
       m.acName=null;toast(t('acSaved'));

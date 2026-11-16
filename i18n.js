@@ -989,6 +989,17 @@ const PAGES94={
   de:{profile:'Profil',pickPortrait:'Dein Porträt',portraitNote:'Such dir einen der Stammgäste aus. Ein eigenes Foto kommt später.',billThanks:'Danke, bis bald',freeSeat:'Freier Platz',backSoon:'Bin in fünf Minuten zurück'}
 };
 for(const l in PAGES94)if(D[l])Object.assign(D[l],PAGES94[l]);
+/* v9.7: your own photo on the profile */
+const PHOTO97={
+  en:{usePhoto:'Your own photo',removePhoto:'Remove photo',photoNote:'The last circle takes your own photo. It stays on this device; other players see the painted portrait you picked.',photoFail:'That picture could not be opened.'},
+  hr:{usePhoto:'Tvoja fotografija',removePhoto:'Ukloni fotografiju',photoNote:'Zadnji krug je za tvoju fotografiju. Ostaje na ovom uređaju; drugi igrači vide naslikani portret koji si odabrao.',photoFail:'Tu sliku nije moguće otvoriti.'},
+  sr:{usePhoto:'Tvoja fotografija',removePhoto:'Ukloni fotografiju',photoNote:'Poslednji krug je za tvoju fotografiju. Ostaje na ovom uređaju; drugi igrači vide naslikani portret koji si izabrao.',photoFail:'Tu sliku nije moguće otvoriti.'},
+  bs:{usePhoto:'Tvoja fotografija',removePhoto:'Ukloni fotografiju',photoNote:'Zadnji krug je za tvoju fotografiju. Ostaje na ovom uređaju; drugi igrači vide naslikani portret koji si odabrao.',photoFail:'Tu sliku nije moguće otvoriti.'},
+  sl:{usePhoto:'Tvoja fotografija',removePhoto:'Odstrani fotografijo',photoNote:'Zadnji krog je za tvojo fotografijo. Ostane na tej napravi; drugi igralci vidijo naslikani portret, ki si ga izbral.',photoFail:'Te slike ni mogoče odpreti.'},
+  de:{usePhoto:'Dein eigenes Foto',removePhoto:'Foto entfernen',photoNote:'Der letzte Kreis nimmt dein eigenes Foto. Es bleibt auf diesem Gerät; andere sehen das gemalte Porträt, das du gewählt hast.',photoFail:'Dieses Bild lässt sich nicht öffnen.'}
+};
+for(const l in PHOTO97)if(D[l])Object.assign(D[l],PHOTO97[l]);
+
 
 
 /* v8: the app is called Yamb Café. The game inside it keeps each language's own word: Jamb in the Balkan

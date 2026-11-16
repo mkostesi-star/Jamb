@@ -762,6 +762,37 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 .seat .cmini b{font:800 20px var(--f-serif);color:var(--ring)}
 .seat.free img{height:72px;width:auto;opacity:.92;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
 .seat .sn{font:600 12px/1.15 var(--f-ui);color:var(--cream-dim);text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ===== v9.7 the rest of the café look ===== */
+/* pages on a menu card: friends, settings, how to play, language, rules, the setups and the profile */
+.modal.page .panel:is(.k-friends,.k-settings,.k-howto,.k-lang,.k-rules,.k-cpu,.k-pp,.k-table,.k-duel,.k-duelIn,.k-online,.k-account){background:transparent;box-shadow:none}
+.mcard{margin:0 -4px 24px}
+.mcard .menuIn{display:block;padding:4px 10px 6px}
+.modal.page .mcard .menuIn>.btnInk[data-act=close]{display:none}
+@media (max-width:400px){.mcard .menuIn{padding:2px 8px 4px}}
+.mcard>.menuIn>:first-child{margin-top:0}
+.mcard h3{display:flex;align-items:center;gap:10px;margin:18px 0 8px;font:700 14px/1.2 var(--f-sc);letter-spacing:.16em;color:var(--coffee-deep);text-transform:none}
+.mcard h3::before,.mcard h3::after{content:"";flex:1;min-width:12px;height:1px;background:linear-gradient(90deg,transparent,var(--brass) 30%,var(--brass) 70%,transparent)}
+.mcard .toggle{border-bottom:1px dotted rgba(82,46,22,.35)}
+.mcard .mlines{display:grid;gap:4px}
+.mcard .langlist button{border-color:rgba(82,46,22,.35)}
+.mcard .seg{background:rgba(82,46,22,.1)}
+.mcard input,.mcard select{background:#FFFBF1}
+/* buttons: the main action is a brass plate; red is kept for rolling and for whose turn it is */
+.btnRed{background:linear-gradient(180deg,#E2C574 0%,#C9A24B 55%,#B38A36 100%);color:#2A1A12;text-shadow:0 1px 0 rgba(255,244,205,.55);
+  box-shadow:0 3px 0 #7A5A20,inset 0 1px 0 rgba(255,248,215,.75),inset 0 -2px 0 rgba(90,62,18,.25)}
+.btnRed:active{box-shadow:0 1px 0 #7A5A20,inset 0 1px 0 rgba(255,248,215,.75)}
+.menu .btnRed{box-shadow:0 4px 0 #7A5A20,inset 0 1px 0 rgba(255,248,215,.75),inset 0 -2px 0 rgba(90,62,18,.25)}
+.btnRed[disabled]{filter:saturate(.3) brightness(1.05);opacity:.7}
+.btnInk{border-color:rgba(82,46,22,.45);color:var(--coffee-deep)}
+.mode svg{color:var(--coffee-deep)}
+.pillbtn svg{color:var(--coffee-deep)}
+/* writing a score is the main action of a turn: the same brass plate */
+.bigbtn.go{background:linear-gradient(180deg,#E2C574 0%,#C9A24B 55%,#B38A36 100%);color:#2A1A12;box-shadow:0 3px 0 #7A5A20,inset 0 1px 0 rgba(255,248,215,.75)}
+/* your own photo: the thirteenth circle */
+.ppick .phototile{display:grid;place-items:center;border:1.5px dashed rgba(82,46,22,.5);background:rgba(255,251,241,.7);color:var(--coffee-deep);box-shadow:none}
+.ppick .phototile svg{width:46%;height:46%}
+.ppick .phototile:has(img){border-style:solid}
+@media (min-width:381px){.ppick{grid-template-columns:repeat(7,1fr)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.die.flip{animation:flip .3s ease!important}}
 </style>
 </head>
@@ -787,15 +818,15 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=96"></script>
-<script src="ai.js?v=96"></script>
-<script src="i18n.js?v=96"></script>
-<script src="audio.js?v=96"></script>
-<script src="music.js?v=96"></script>
-<script src="fx.js?v=96"></script>
-<script src="scan.js?v=96"></script>
-<script src="vendor/supabase.js?v=96" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=96"></script>
-<script src="app.js?v=96"></script>
+<script src="engine.js?v=97"></script>
+<script src="ai.js?v=97"></script>
+<script src="i18n.js?v=97"></script>
+<script src="audio.js?v=97"></script>
+<script src="music.js?v=97"></script>
+<script src="fx.js?v=97"></script>
+<script src="scan.js?v=97"></script>
+<script src="vendor/supabase.js?v=97" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=97"></script>
+<script src="app.js?v=97"></script>
 </body>
 </html>
