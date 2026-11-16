@@ -367,6 +367,22 @@ create table if not exists yamb.events (
   people  integer not null default 0,
   primary key (day, ev, mode)
 );
+-- other counts, each a plain number for the day: visitors by country, device and hour; and what is chosen in games
+create table if not exists yamb.stats (
+  day  date not null,
+  k    text not null,
+  v    text not null,
+  n    integer not null default 0,
+  sum  bigint not null default 0,
+  primary key (day, k, v)
+);
+revoke all on yamb.stats from public, anon, authenticated;
+create or replace function yamb.bump(p_k text, p_v text, p_sum integer) returns void
+language sql security definer set search_path = '' as $$
+  insert into yamb.stats as s (day, k, v, n, sum) values ((now() at time zone 'utc')::date, p_k, p_v, 1, coalesce(p_sum, 0))
+    on conflict (day, k, v) do update set n = s.n + 1, sum = s.sum + excluded.sum;
+$$;
+
 -- who may open the Numbers page (yambcafe.com/numbers/). Add yourself once in the SQL editor, after signing in to the
 -- game at least once, with the Google address you sign in with:
 --   insert into yamb.admins (user_id) select id from auth.users where email = 'your.address@gmail.com';
@@ -396,10 +412,12 @@ begin
 end $$;
 
 -- one page opened: which page, where the visitor came from, the game's language, and whether it runs installed
-create or replace function public.count_visit(p_page text, p_src text, p_lang text, p_app boolean) returns void
+drop function if exists public.count_visit(text, text, text, boolean);
+create or replace function public.count_visit(p_page text, p_src text, p_lang text, p_app boolean, p_dev text default null, p_hour integer default null) returns void
 language plpgsql security definer set search_path = '' as $$
 declare d date := (now() at time zone 'utc')::date; h text := yamb.visitor(); fresh integer := 0;
         pg text := lower(coalesce(p_page, '')); sr text := lower(coalesce(p_src, '')); lg text := lower(coalesce(p_lang, ''));
+        hd jsonb; cc text;
 begin
   if pg !~ '^[a-z0-9/_-]{1,40}$' then pg := 'other'; end if;
   if sr !~ '^[a-z0-9.:_-]{1,60}$' then sr := 'other'; end if;
@@ -413,6 +431,33 @@ begin
   get diagnostics fresh = row_count;
   insert into yamb.visits as v (day, page, src, lang, app, views, people) values (d, pg, sr, lg, coalesce(p_app, false), 1, fresh)
     on conflict (day, page, src, lang, app) do update set views = v.views + 1, people = v.people + excluded.people;
+  -- once a day for each visitor: the country (only its two letters, as the network in front of the database names it),
+  -- the kind of device and the visitor's hour of day
+  if fresh = 1 then
+    begin hd := nullif(current_setting('request.headers', true), '')::jsonb; exception when others then hd := null; end;
+    cc := lower(coalesce(hd ->> 'cf-ipcountry', ''));
+    perform yamb.bump('country', case when cc ~ '^[a-z]{2}$' then cc else 'xx' end, 0);
+    perform yamb.bump('device', case when p_dev in ('phone', 'tablet', 'desktop') then p_dev else 'other' end, 0);
+    if p_hour between 0 and 23 then perform yamb.bump('hour', lpad(p_hour::text, 2, '0'), 0); end if;
+  end if;
+end $$;
+
+-- what was chosen or used in a game, sent as a short list of [what, which, number]:
+-- opp (a computer opponent), rules (a preset or custom), players (1 to 6), len (minutes a game took, by mode),
+-- hint, emo (how many in a finished game), share (what was shared)
+create or replace function public.count_stats(p_items jsonb) returns void
+language plpgsql security definer set search_path = '' as $$
+declare it jsonb; k text; v text; x integer; i integer := 0;
+begin
+  if p_items is null or jsonb_typeof(p_items) <> 'array' then return; end if;
+  for it in select * from jsonb_array_elements(p_items) loop
+    i := i + 1; exit when i > 12;
+    if jsonb_typeof(it) <> 'array' then continue; end if;
+    k := it ->> 0; v := lower(coalesce(it ->> 1, ''));
+    begin x := least(greatest(coalesce((it ->> 2)::numeric, 0), 0), 600)::integer; exception when others then x := 0; end;
+    if k is null or k not in ('opp', 'rules', 'players', 'len', 'hint', 'emo', 'share') or v !~ '^[a-z0-9_-]{1,16}$' then continue; end if;
+    perform yamb.bump(k, v, x);
+  end loop;
 end $$;
 
 -- one thing done in the game: a game started or finished (with its mode), installed, Plus looked at or bought
@@ -459,6 +504,8 @@ begin
                        from (select lang, sum(people)::int as people from yamb.visits where day between a and b group by lang) s), '{}'::jsonb),
     'events', coalesce((select jsonb_agg(jsonb_build_object('day', e.day, 'ev', e.ev, 'mode', e.mode, 'n', e.n, 'people', e.people) order by e.day, e.ev, e.mode)
                         from yamb.events e where e.day between a and b), '[]'::jsonb),
+    'stats', coalesce((select jsonb_agg(jsonb_build_object('k', x.k, 'v', x.v, 'n', x.n, 'sum', x.sum) order by x.k, x.n desc)
+                       from (select k, v, sum(n)::int as n, sum(sum)::bigint as sum from yamb.stats where day between a and b group by k, v) x), '[]'::jsonb),
     'accounts', jsonb_build_object('all', (select count(*) from public.profiles),
                                    'new', (select count(*) from public.profiles p where p.created_at::date between a and b)),
     'daily', coalesce((select jsonb_agg(jsonb_build_object('day', s.day, 'players', s.n) order by s.day)
@@ -476,9 +523,11 @@ begin
 end $$;
 
 revoke all on function yamb.visitor() from public, anon, authenticated;
-revoke all on function public.count_visit(text, text, text, boolean), public.count_event(text, text), public.numbers(date, date)
-  from public, anon, authenticated;
-grant execute on function public.count_visit(text, text, text, boolean), public.count_event(text, text) to anon, authenticated;
+revoke all on function yamb.bump(text, text, integer) from public, anon, authenticated;
+revoke all on function public.count_visit(text, text, text, boolean, text, integer), public.count_event(text, text), public.count_stats(jsonb),
+  public.numbers(date, date) from public, anon, authenticated;
+grant execute on function public.count_visit(text, text, text, boolean, text, integer), public.count_event(text, text), public.count_stats(jsonb)
+  to anon, authenticated;
 grant execute on function public.numbers(date, date) to authenticated;
 
 notify pgrst, 'reload schema';

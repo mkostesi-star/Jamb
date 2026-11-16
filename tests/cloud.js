@@ -92,7 +92,12 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     await closePanel(d2);
     await d2.waitForFunction(s=>document.getElementById('home').innerText.includes(String(s)),r1.score,{timeout:10000});
     txt=await d2.$eval('#home',e=>e.innerText);
-    ok(/your place: 1 of 1/.test(txt),'the home screen shows the day\'s best and the player\'s place',txt);
+    ok(!/your place|Professor:/.test(txt),'the home screen keeps the Daily short: the score, no ranking or Profesor',txt);
+    await openPanel(d2,'daily','[data-act=daily]');
+    await d2.waitForFunction(()=>/1 of 1|#1|1\./.test(document.getElementById('panel').innerText),null,{timeout:10000});
+    txt=await d2.$eval('#panel',e=>e.innerText);
+    ok(txt.includes(String(r1.score)),'the newspaper has the day\'s high scores',txt.slice(0,300));
+    await closePanel(d2);
     ok((await sql('select count(*)::int as n from public.daily_scores'))[0].n===1&&(await sql('select count(*)::int as n from public.carried'))[0].n===2,'no second score; the second device\'s (empty) records are kept beside the first');
     const gid=await shortCpuGame(d2);
     await d2.waitForFunction(()=>window.__jamb.cloud.outbox.length===0,null,{timeout:15000});
@@ -136,7 +141,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     await d1.fill('#acName','  Ana   B.  ');await d1.click('[data-act=acsave]');
     await d1.waitForFunction(()=>window.__jamb.cloud.me&&window.__jamb.cloud.me.name==='Ana B.',null,{timeout:10000});
     ok((await sql(`select name from public.profiles where name like 'Ana%'`))[0].name==='Ana B.','a new name is saved, tidied');
-    await d3.goto(L.URL0);await d3.waitForFunction(()=>/Ana B\.|Ivo/.test(document.getElementById('home').innerText),null,{timeout:10000});
+    await d3.goto(L.URL0);await d3.waitForFunction(()=>!!window.__jamb&&!!window.__jamb.cloud.me,null,{timeout:10000});
     await openPanel(d3,'daily','[data-act=daily]');
     await d3.waitForFunction(()=>/Ana B\./.test(document.getElementById('panel').innerText),null,{timeout:10000});
     ok(true,'the other player sees the new name on the high scores');
@@ -193,6 +198,8 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     ok(vis.v>=5&&vis.p>=1&&evs.some(x=>x.ev==='start'&&x.mode==='cpu')&&evs.some(x=>x.ev==='finish'&&x.mode==='cpu')&&evs.some(x=>x.ev==='signin'),
        'visits, games and sign-ins are counted: '+JSON.stringify(vis)+' '+evs.map(x=>x.ev+':'+x.mode+'='+x.n).join(' '));
     ok(evs.some(x=>x.ev==='start'&&x.mode==='daily')&&(await sql(`select count(*)::int as n from yamb.visits where src = 'link:table'`))[0].n===1,'a Daily game and a visit through a game link are told apart');
+    const sts=await sql(`select k, v, n from yamb.stats`);
+    ok(sts.some(x=>x.k==='device')&&sts.some(x=>x.k==='hour')&&sts.some(x=>x.k==='rules'&&x.v==='daily')&&sts.some(x=>x.k==='players')&&sts.some(x=>x.k==='opp'),'device, hour and game choices are counted: '+sts.map(x=>x.k+':'+x.v+'='+x.n).join(' '));
     ok(T.errs.length===0,'no errors on any device'+(T.errs.length?': '+T.errs.slice(0,4).join(' | '):''));
   }catch(e){bad++;console.log('  FAIL  stopped: '+(e&&e.message||e).split('\n')[0]+' '+(((e&&e.stack)||'').match(/cloud\.js:\d+/)||[''])[0]);for(const x of T.errs.slice(0,6))console.log('        '+x);}
   await T.close();await browser.close();cs.close();srv.close();

@@ -110,7 +110,7 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 /* visitor numbers, the same way as in the game: no cookies, nothing kept on this device (see the privacy page) */
 (function(){try{if(!/(^|\.)yambcafe\.com$/.test(location.hostname))return;var r='direct';try{var u=document.referrer&&new URL(document.referrer);if(u&&u.hostname&&u.hostname!==location.hostname)r=u.hostname.replace(/^www\./,'').slice(0,60);}catch(e){}
 fetch('https://ovyoybgtoaahkrcylrkw.supabase.co/rest/v1/rpc/count_visit',{method:'POST',keepalive:true,headers:{apikey:'sb_publishable_KGd1nYui7gP1uP4-RQPcyw_49D9no_F','Content-Type':'application/json'},
-body:JSON.stringify({p_page:"rules/sl",p_src:r,p_lang:"sl",p_app:false})}).catch(function(){});}catch(e){}})();
+body:JSON.stringify({p_page:"rules/sl",p_src:r,p_lang:"sl",p_app:false,p_dev:(navigator.maxTouchPoints||0)>0?(Math.min(screen.width,screen.height)<600?'phone':'tablet'):'desktop',p_hour:new Date().getHours()})}).catch(function(){});}catch(e){}})();
 </script>
 </body>
 </html>

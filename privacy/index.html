@@ -57,7 +57,7 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 <div class="top"><img src="../icons/v7/icon-192.png" alt=""><h1>Privacy</h1></div>
 <p class="date">Yamb Café · updated 16 November 2026</p>
 
-<p>Yamb Café is a dice game made by Ivan Kostešić in Pula, Croatia. This page says what the game keeps about you, where, and why. For questions or requests, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
+<p>Yamb Café is a dice game made by Ivan Kostešić, Croatia. This page says what the game keeps about you, where, and why. For questions or requests, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
 <strong>In short</strong>
@@ -91,7 +91,9 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 <p>To know how many people play and which parts they use, the website counts visits and a few things done in the game:</p>
 <ul>
 <li>which page was opened, the site you came from (or that you came through a game link), the game's language, and whether it runs installed;</li>
-<li>games started and finished in each mode, installing the game, signing in, and looking at or buying Plus.</li>
+<li>your country (only the country, taken from your internet address), whether the device is a phone, a tablet or a desktop, and the hour of the day;</li>
+<li>games started and finished in each mode, and for a game: the rule set, the number of players, the computer opponents, how long it took, and how many hints and reactions were used;</li>
+<li>installing the game, signing in, sharing a link, and looking at or buying Plus.</li>
 </ul>
 <p>No cookies are set, and nothing is stored on or read from your device for this. To count each visitor only once a day, the counter in our database mixes your internet address and browser name with a random key that changes every day, and keeps only the resulting one-way code. The code cannot be turned back into your address. The next day the codes and the key are deleted, so visits on different days cannot be linked, and only the day's totals stay. The counts are never linked to your account, even when you are signed in.</p>
 <p>For signed-in players we also count, from the finished games their accounts already keep, how many play again the following week. Only the totals are looked at.</p>
@@ -106,7 +108,7 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 </ul>
 
 <h2>Payments</h2>
-<p>There is nothing to buy yet. Yamb Café Plus and tips go on sale with the public start. They will be sold by Polar (Polar Software, Inc., USA) as the merchant of record, which takes the payment, issues the receipt and handles VAT under its own privacy policy. We never see your card. Before the first sale this page will say exactly what we receive from Polar.</p>
+<p>There is nothing to buy yet. Yamb Café Plus and “A coffee for the café” go on sale with the public start. They will be sold by Polar (Polar Software, Inc., USA) as the merchant of record, which takes the payment, issues the receipt and handles VAT under its own privacy policy. We never see your card. Before the first sale this page will say exactly what we receive from Polar.</p>
 
 <h2>How long we keep it</h2>
 <p>Account data is kept until you delete your account. Deleting it removes your profile, your saved games and your scores at once. Visitor codes are deleted the next day; the daily totals are kept. What is stored on your device stays there until you clear it.</p>
@@ -126,7 +128,7 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 /* visitor numbers, the same way as in the game: no cookies, nothing kept on this device (see the privacy page) */
 (function(){try{if(!/(^|\.)yambcafe\.com$/.test(location.hostname))return;var r='direct';try{var u=document.referrer&&new URL(document.referrer);if(u&&u.hostname&&u.hostname!==location.hostname)r=u.hostname.replace(/^www\./,'').slice(0,60);}catch(e){}
 fetch('https://ovyoybgtoaahkrcylrkw.supabase.co/rest/v1/rpc/count_visit',{method:'POST',keepalive:true,headers:{apikey:'sb_publishable_KGd1nYui7gP1uP4-RQPcyw_49D9no_F','Content-Type':'application/json'},
-body:JSON.stringify({p_page:"privacy",p_src:r,p_lang:"en",p_app:false})}).catch(function(){});}catch(e){}})();
+body:JSON.stringify({p_page:"privacy",p_src:r,p_lang:"en",p_app:false,p_dev:(navigator.maxTouchPoints||0)>0?(Math.min(screen.width,screen.height)<600?'phone':'tablet'):'desktop',p_hour:new Date().getHours()})}).catch(function(){});}catch(e){}})();
 </script>
 </body>
 </html>

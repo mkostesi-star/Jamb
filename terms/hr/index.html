@@ -57,14 +57,14 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 <div class="top"><img src="../../icons/v7/icon-192.png" alt=""><h1>Uvjeti i povrat novca</h1></div>
 <p class="date">Yamb Café · 16. studenoga 2026.</p>
 
-<p>Yamb Café je igra s kockama koju je napravio Ivan Kostešić, privatna osoba iz Pule („mi“ na ovoj stranici). Za sve ovdje piši na <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
+<p>Yamb Café je igra s kockama koju je napravio Ivan Kostešić, Hrvatska („mi“ na ovoj stranici). Za sve ovdje piši na <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
 <strong>Ukratko</strong>
 <ul>
 <li>Igra je besplatna i možeš je igrati bez računa.</li>
 <li>Yamb Café Plus plaća se jednom, nije pretplata. Ostaje uz tvoj račun na svakom uređaju.</li>
-<li>Predomislio si se? Javi se u roku od 14 dana i dobivaš sav novac natrag.</li>
+<li>Predomislio si se? Javi se u roku od 7 dana i dobivaš sav novac natrag.</li>
 </ul>
 </div>
 
@@ -78,16 +78,16 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 <p>Rezultati Dnevnog Jamba provjeravaju se tako da se tvoji potezi odigraju ponovno s kockama tog dana. Rezultati ili računi koji to zaobilaze mogu se ukloniti s ljestvice.</p>
 
 <h2>Yamb Café Plus</h2>
-<p>Plus je jednokratna kupnja, od 4,99 €. Možeš odlučiti platiti i više. Otključava dijelove igre označene kao Plus, kako je opisano u igri, za tvoj račun na svim tvojim uređajima, dok god Yamb Café radi. Nema obnavljanja i nema se što otkazivati. Plus može rasti novim stvarima, ali nikad neće postati pretplata. Plus dodaje samo igrama bez drugih stvarnih ljudi, pa nikome ne daje prednost pred drugim igračem.</p>
+<p>Plus je jednokratna kupnja od 4,99 €. Otključava dijelove igre označene kao Plus, kako je opisano u igri, za tvoj račun na svim tvojim uređajima, dok god Yamb Café radi. Nema obnavljanja i nema se što otkazivati. Plus može rasti novim stvarima, ali nikad neće postati pretplata. Plus dodaje samo igrama bez drugih stvarnih ljudi, pa nikome ne daje prednost pred drugim igračem.</p>
 
-<h2>Napojnice</h2>
-<p>Napojnica, „Kava za kafić“, dobrovoljna je zahvala u bilo kojem iznosu od 3 €. Ne otključava ništa osim male oznake zahvale na tvom profilu.</p>
+<h2>Kava za kafić</h2>
+<p>Pri kupnji Plusa možeš dodati „Kavu za kafić“: dobrovoljnu zahvalu povrh cijene, u koracima od 2 €. Ako već imaš Plus, kavu možeš kupiti i zasebno. Ne otključava ništa osim male značke zahvale na tvom profilu.</p>
 
 <h2>Tko prodaje</h2>
-<p>Plus i napojnice prodaje naš preprodavač Polar (Polar Software, Inc., SAD), koji je trgovac u prodaji. Polar naplaćuje, izdaje račun i obračunava PDV, a na samo plaćanje primjenjuju se njegovi uvjeti za kupce. Cijene uključuju PDV.</p>
+<p>Plus i kavu prodaje naš preprodavač Polar (Polar Software, Inc., SAD), koji je trgovac u prodaji. Polar naplaćuje, izdaje račun i obračunava PDV, a na samo plaćanje primjenjuju se njegovi uvjeti za kupce. Cijene uključuju PDV.</p>
 
 <h2>Povrat novca</h2>
-<p>Ako se predomisliš, javi nam se u roku od 14 dana od kupnje i vraćamo ti cijeli iznos, bez pitanja. Po zakonu pravo na odustanak od digitalnog sadržaja koji počinje odmah može prestati kad ga počneš koristiti; mi ti svejedno dajemo 14 dana. Ako ti Plus kasnije ne radi, a mi to ne možemo popraviti, također vraćamo novac. Napojnica dana greškom vraća se u roku od 14 dana. Vraćena kupnja uklanja Plus ili oznaku zahvale s računa.</p>
+<p>Ako se predomisliš, javi nam se u roku od 7 dana od kupnje i vraćamo ti cijeli iznos. Plus je digitalni sadržaj koji dobivaš odmah: kupnjom tražiš da isporuka počne odmah i prihvaćaš da zakonsko pravo na odustanak u roku od 14 dana time prestaje. Ovih 7 dana naše je vlastito obećanje povrh toga. Ako ti Plus kasnije ne radi, a mi to ne možemo popraviti, također vraćamo novac. Povrat uklanja Plus i značku zahvale s računa.</p>
 
 <h2>Ako se igra zatvori</h2>
 <p>Ako ikad odlučimo zatvoriti Yamb Café, javit ćemo to u igri najmanje 30 dana prije.</p>
@@ -107,7 +107,7 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 /* visitor numbers, the same way as in the game: no cookies, nothing kept on this device (see the privacy page) */
 (function(){try{if(!/(^|\.)yambcafe\.com$/.test(location.hostname))return;var r='direct';try{var u=document.referrer&&new URL(document.referrer);if(u&&u.hostname&&u.hostname!==location.hostname)r=u.hostname.replace(/^www\./,'').slice(0,60);}catch(e){}
 fetch('https://ovyoybgtoaahkrcylrkw.supabase.co/rest/v1/rpc/count_visit',{method:'POST',keepalive:true,headers:{apikey:'sb_publishable_KGd1nYui7gP1uP4-RQPcyw_49D9no_F','Content-Type':'application/json'},
-body:JSON.stringify({p_page:"terms/hr",p_src:r,p_lang:"hr",p_app:false})}).catch(function(){});}catch(e){}})();
+body:JSON.stringify({p_page:"terms/hr",p_src:r,p_lang:"hr",p_app:false,p_dev:(navigator.maxTouchPoints||0)>0?(Math.min(screen.width,screen.height)<600?'phone':'tablet'):'desktop',p_hour:new Date().getHours()})}).catch(function(){});}catch(e){}})();
 </script>
 </body>
 </html>

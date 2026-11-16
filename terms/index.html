@@ -57,14 +57,14 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 <div class="top"><img src="../icons/v7/icon-192.png" alt=""><h1>Terms and refunds</h1></div>
 <p class="date">Yamb Café · 16 November 2026</p>
 
-<p>Yamb Café is a dice game made by Ivan Kostešić, a private person in Pula, Croatia (“we” on this page). For anything here, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
+<p>Yamb Café is a dice game made by Ivan Kostešić, Croatia (“we” on this page). For anything here, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
 <strong>In short</strong>
 <ul>
 <li>The game is free, and you can play without an account.</li>
 <li>Yamb Café Plus is one payment, not a subscription. It stays with your account on every device.</li>
-<li>Changed your mind? Write within 14 days and you get all your money back.</li>
+<li>Changed your mind? Write within 7 days and you get all your money back.</li>
 </ul>
 </div>
 
@@ -78,16 +78,16 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 <p>Daily Yamb scores are checked by playing your moves again with that day's dice. Scores or accounts that get around this may be removed from the high scores.</p>
 
 <h2>Yamb Café Plus</h2>
-<p>Plus is a one-time purchase, from €4.99. You may choose to pay more. It unlocks the Plus parts of the game, as described in the game, for your account on all your devices, for as long as Yamb Café runs. There are no renewals and nothing to cancel. Plus may grow with new things; it will never become a subscription. Plus only adds to games without other real people, so it never gives anyone an advantage over another player.</p>
+<p>Plus is a one-time purchase of €4.99. It unlocks the Plus parts of the game, as described in the game, for your account on all your devices, for as long as Yamb Café runs. There are no renewals and nothing to cancel. Plus may grow with new things; it will never become a subscription. Plus only adds to games without other real people, so it never gives anyone an advantage over another player.</p>
 
-<h2>Tips</h2>
-<p>A tip, “A coffee for the café”, is a voluntary thank-you of any amount from €3. It unlocks nothing beyond a small thank-you mark on your profile.</p>
+<h2>A coffee for the café</h2>
+<p>When you buy Plus you can add “A coffee for the café”: a voluntary thank-you on top of the price, in steps of €2. If you already have Plus, you can buy a coffee on its own. It unlocks nothing beyond a small thank-you pin on your profile.</p>
 
 <h2>Who sells it</h2>
-<p>Plus and tips are sold by our reseller Polar (Polar Software, Inc., USA), which is the merchant of record. Polar takes the payment, issues the receipt and handles VAT, and its buyer terms apply to the payment itself. Prices include VAT.</p>
+<p>Plus and the coffee are sold by our reseller Polar (Polar Software, Inc., USA), which is the merchant of record. Polar takes the payment, issues the receipt and handles VAT, and its buyer terms apply to the payment itself. Prices include VAT.</p>
 
 <h2>Refunds</h2>
-<p>If you change your mind, write to us within 14 days of buying and we refund you in full, no questions asked. By law, the right to withdraw from digital content that starts at once can end when you start using it; we give you the 14 days anyway. If Plus does not work for you later and we cannot fix it, we refund you too. A tip given by mistake is refunded within 14 days. A refunded purchase removes Plus or the thank-you mark from the account.</p>
+<p>If you change your mind, write to us within 7 days of buying and we refund you in full. Plus is digital content that you get at once: by buying it you ask for it to start immediately and accept that the legal 14-day right to withdraw ends at that moment. The 7 days are our own promise on top. If Plus does not work for you later and we cannot fix it, we refund you too. A refund removes Plus and the thank-you pin from the account.</p>
 
 <h2>If the game closes</h2>
 <p>If we ever decide to close Yamb Café, we will say so in the game at least 30 days before.</p>
@@ -107,7 +107,7 @@ th{font-weight:700;white-space:nowrap;color:var(--coffee);width:34%}
 /* visitor numbers, the same way as in the game: no cookies, nothing kept on this device (see the privacy page) */
 (function(){try{if(!/(^|\.)yambcafe\.com$/.test(location.hostname))return;var r='direct';try{var u=document.referrer&&new URL(document.referrer);if(u&&u.hostname&&u.hostname!==location.hostname)r=u.hostname.replace(/^www\./,'').slice(0,60);}catch(e){}
 fetch('https://ovyoybgtoaahkrcylrkw.supabase.co/rest/v1/rpc/count_visit',{method:'POST',keepalive:true,headers:{apikey:'sb_publishable_KGd1nYui7gP1uP4-RQPcyw_49D9no_F','Content-Type':'application/json'},
-body:JSON.stringify({p_page:"terms",p_src:r,p_lang:"en",p_app:false})}).catch(function(){});}catch(e){}})();
+body:JSON.stringify({p_page:"terms",p_src:r,p_lang:"en",p_app:false,p_dev:(navigator.maxTouchPoints||0)>0?(Math.min(screen.width,screen.height)<600?'phone':'tablet'):'desktop',p_hour:new Date().getHours()})}).catch(function(){});}catch(e){}})();
 </script>
 </body>
 </html>

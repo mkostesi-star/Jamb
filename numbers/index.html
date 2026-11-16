@@ -34,6 +34,14 @@ th{color:var(--coffee);font-weight:700}
 .wrap{overflow-x:auto}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 28px}
 .cols th,.cols td{padding:6px 5px}
+.chart{width:100%;height:auto;display:block;background:#F3EAD8;border-radius:6px}
+.legend{font-size:14px;color:#6B5A45;margin:6px 0 0}.legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin:0 5px 0 12px}
+.funnel div{display:grid;grid-template-columns:150px 1fr 110px;gap:10px;align-items:center;margin:5px 0}
+.funnel span.bar{height:20px;border-radius:4px;background:var(--brass);min-width:2px;display:block}
+.funnel b{text-align:right;font-variant-numeric:tabular-nums}
+.hours{display:flex;align-items:flex-end;gap:3px;height:90px;background:#F3EAD8;border-radius:6px;padding:8px 8px 0}
+.hours i{flex:1;background:var(--coffee);border-radius:2px 2px 0 0;min-height:1px}
+.hl{display:flex;justify-content:space-between;font-size:13px;color:#6B5A45;padding:2px 8px}
 .msg{background:#F3EAD8;border-left:4px solid var(--brass);padding:12px 16px;border-radius:4px}
 a{color:var(--red)}
 </style>
@@ -99,6 +107,17 @@ function render(N){
     tile('Games with other people',started?others/started:null,pct(started?others/started:null),0.2,'20% or more','hot seat, multiplayer, duel, real dice')+
     tile('Plus buyers, last 30 days',plus30,fmt(plus30),20,'20 or more','')+
     `</div>`;
+  // trend: visitors and players a day
+  const asc=rows.slice().reverse();
+  if(asc.length>1){
+    const W=900,H=200,P=28,mx=Math.max(1,...asc.map(r=>Math.max(r.visitors,r.players)));
+    const pt=f=>asc.map((r,i)=>(P+i*(W-2*P)/(asc.length-1)).toFixed(1)+','+(H-P-f(r)*(H-2*P)/mx).toFixed(1)).join(' ');
+    h+=`<h2>Trend</h2><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Visitors and players a day"><text x="6" y="${P+4}" font-size="12" fill="#6B5A45">${mx}</text><text x="6" y="${H-P+4}" font-size="12" fill="#6B5A45">0</text><text x="${P}" y="${H-8}" font-size="12" fill="#6B5A45">${asc[0].day}</text><text x="${W-P}" y="${H-8}" font-size="12" fill="#6B5A45" text-anchor="end">${asc[asc.length-1].day}</text><polyline fill="none" stroke="#C9A24B" stroke-width="2.5" points="${pt(r=>r.visitors)}"/><polyline fill="none" stroke="#522E16" stroke-width="2.5" points="${pt(r=>r.players)}"/></svg><p class="legend"><i style="background:#C9A24B;margin-left:0"></i>Visitors<i style="background:#522E16"></i>Players</p>`;
+  }
+  // funnel: of the visitors, how many go on (visitor-days: one person on two days counts twice)
+  const ppl=k=>(evs[k]||{}).people||0;
+  const fun=[['Visited',visitors],['Started a game',ppl('start:all')],['Finished a game',ppl('finish:all')],['Signed in',ppl('signin:-')],['Looked at Plus',ppl('plus_view:-')],['Bought Plus',ppl('plus_buy:-')]];
+  h+=`<h2>From visit to Plus</h2><div class="funnel">${fun.map(([l,n])=>`<div><span>${l}</span><span class="bar" style="width:${visitors?Math.max(0.3,100*n/visitors):0}%"></span><b>${n} · ${pct(visitors?n/visitors:null)}</b></div>`).join('')}</div>`;
   h+=`<h2>Day by day</h2><div class="wrap"><table><tr><th>Day</th><th>Visitors</th><th>Page views</th><th>Players</th><th>Games started</th><th>Finished</th><th>In the app</th><th>Daily Yamb</th></tr>`+
     (rows.length?rows.map(r=>`<tr><td>${r.day}</td><td>${r.visitors}</td><td>${r.views}</td><td>${r.players}</td><td>${r.started}</td><td>${r.finished}</td><td>${r.app}</td><td>${r.daily}</td></tr>`).join(''):`<tr><td colspan="8">No visits counted yet.</td></tr>`)+`</table></div>`;
   const list=(title,arr,key)=>`<div><h2>${title}</h2><table><tr><th></th><th>Visitors</th><th>Views</th></tr>${arr.length?arr.map(x=>`<tr><td>${esc(x[key])}</td><td>${x.people}</td><td>${x.views}</td></tr>`).join(''):'<tr><td colspan="3">None yet.</td></tr>'}</table></div>`;
@@ -109,7 +128,20 @@ function render(N){
   const otherT=`<div><h2>Other things done</h2><table><tr><th></th><th>Times</th></tr>${other.map(([k,l])=>`<tr><td>${l}</td><td>${(evs[k+':-']||{}).n||0}</td></tr>`).join('')}<tr><td>Accounts, all / new</td><td>${N.accounts.all} / ${N.accounts.new}</td></tr></table>
     <h2>Languages</h2><table><tr><th></th><th>Visitors</th></tr>${langs.length?langs.map(([l,n])=>`<tr><td>${esc(l)}</td><td>${n}</td></tr>`).join(''):'<tr><td colspan="2">None yet.</td></tr>'}</table></div>`;
   const weekT=`<div><h2>Signed-in players, week by week</h2><table><tr><th>Week of</th><th>Played</th><th>Back next week</th></tr>${(N.weeks||[]).length?N.weeks.slice().reverse().map(w=>`<tr><td>${w.week}</td><td>${w.players}</td><td>${w.back} (${pct(w.players?w.back/w.players:null)})</td></tr>`).join(''):'<tr><td colspan="3">None yet.</td></tr>'}</table></div>`;
-  h+=`<div class="cols">${list('Where visitors came from',N.sources,'src')}${list('Pages',N.pages,'page')}${modeT}${otherT}${weekT}</div>`;
+  const st={};(N.stats||[]).forEach(x=>{(st[x.k]=st[x.k]||[]).push(x);});
+  const simple=(title,k,head,name)=>{const a=(st[k]||[]).slice().sort((x,y)=>y.n-x.n),tot=a.reduce((q,x)=>q+x.n,0);return `<div><h2>${title}</h2><table><tr><th></th><th>${head}</th><th>Share</th></tr>${a.length?a.map(x=>`<tr><td>${esc(name?name(x.v):x.v)}</td><td>${x.n}</td><td>${pct(tot?x.n/tot:null)}</td></tr>`).join(''):'<tr><td colspan="3">None yet.</td></tr>'}</table></div>`;};
+  const modeName=m=>(modes.find(x=>x[0]===m)||[0,m])[1];
+  const CH={ema:'Mala Ema',nono:'Nono Bepi',mira:'Teta Mira',joza:'Kum Joza',profesor:'Profesor'};
+  let cn=null;try{cn=new Intl.DisplayNames(['en'],{type:'region'});}catch(e){}
+  const country=c=>{if(c==='xx')return 'Unknown';try{return cn?cn.of(c.toUpperCase()):c;}catch(e){return c;}};
+  const lenT=`<div><h2>How long a game takes</h2><table><tr><th></th><th>Games</th><th>Average</th></tr>${(st.len||[]).length?st.len.map(x=>`<tr><td>${esc(modeName(x.v))}</td><td>${x.n}</td><td>${fmt(x.sum/x.n)} min</td></tr>`).join(''):'<tr><td colspan="3">None yet.</td></tr>'}</table></div>`;
+  const used=(k,l)=>{const a=st[k]||[];return `<tr><td>${l}</td><td>${a.reduce((q,x)=>q+x.n,0)}</td><td>${a.reduce((q,x)=>q+Number(x.sum),0)}</td></tr>`;};
+  const sh=(st.share||[]);
+  const useT=`<div><h2>Used in games</h2><table><tr><th></th><th>Games</th><th>Times</th></tr>${used('hint','Hints')}${used('emo','Reactions')}</table>
+    <h2>Links shared</h2><table><tr><th></th><th>Times</th></tr>${[['table','A game on several devices'],['duel','A duel'],['daily','A Daily result'],['rules','House rules']].map(([k,l])=>`<tr><td>${l}</td><td>${(sh.find(x=>x.v===k)||{}).n||0}</td></tr>`).join('')}</table></div>`;
+  const hrs=Array.from({length:24},(_,i)=>((st.hour||[]).find(x=>+x.v===i)||{}).n||0),hmx=Math.max(1,...hrs);
+  h+=`<h2>Hour of the day (visitors' own time)</h2><div class="hours">${hrs.map((n,i)=>`<i style="height:${100*n/hmx}%" title="${i}:00 · ${n}"></i>`).join('')}</div><div class="hl"><span>0</span><span>6</span><span>12</span><span>18</span><span>23</span></div>`;
+  h+=`<div class="cols">${list('Where visitors came from',N.sources,'src')}${simple('Countries','country','Visitors',country)}${simple('Devices','device','Visitors')}${list('Pages',N.pages,'page')}${modeT}${simple('Rules chosen','rules','Games')}${simple('Players in a game','players','Games')}${simple('Computer opponents','opp','Games',v=>CH[v]||v)}${lenT}${useT}${otherT}${weekT}</div>`;
   out.innerHTML=h;
 }
 async function load(){

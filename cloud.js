@@ -55,10 +55,16 @@ function post(fn,body){
   if(!COUNT||!CFG.url||!CFG.key||typeof root.fetch!=='function')return;
   try{root.fetch(CFG.url+'/rest/v1/rpc/'+fn,{method:'POST',keepalive:true,headers:{apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify(body)}).catch(()=>{});}catch(e){}
 }
+/* phone, tablet or desktop: from touch and the shorter side of the screen, nothing more exact */
+function device(){
+  try{const sc=root.screen||{},m=Math.min(sc.width||0,sc.height||0),touch=(root.navigator.maxTouchPoints||0)>0;return !touch?'desktop':m&&m<600?'phone':'tablet';}catch(e){return 'other';}
+}
 const API={
   available:()=>!!sb,
   /* a page opened: which page, where the visitor came from, the game's language, installed or not */
-  count(page,src,lang,app){post('count_visit',{p_page:page,p_src:src||'direct',p_lang:lang||'',p_app:!!app});},
+  count(page,src,lang,app){post('count_visit',{p_page:page,p_src:src||'direct',p_lang:lang||'',p_app:!!app,p_dev:device(),p_hour:new Date().getHours()});},
+  /* choices and uses in a game, as a short list of [what, which, number] (see count_stats in server/schema.sql) */
+  stats(items){if(items&&items.length)post('count_stats',{p_items:items});},
   /* something done: start or finish (with the mode), install, signin, plus_view, plus_buy, tip_buy */
   event(ev,mode){post('count_event',{p_ev:ev,p_mode:mode||'-'});},
   boot,

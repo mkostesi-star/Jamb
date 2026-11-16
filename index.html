@@ -78,6 +78,8 @@ button{cursor:pointer}
 .hero::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
   background:linear-gradient(180deg,rgba(30,17,8,.78) 0%,rgba(30,17,8,.35) 32%,rgba(30,17,8,0) 52%)}
 .hero .wrap{position:absolute;inset:0 0 auto;z-index:2}
+/* the logo: the cup-die, standing in the café between the name and the menu card */
+.hero .crest{position:absolute;z-index:2;left:50%;bottom:clamp(30px,9.5vw,46px);width:clamp(66px,19vw,104px);height:auto;transform:translateX(-50%);filter:drop-shadow(0 8px 8px rgba(0,0,0,.55));pointer-events:none}
 .hero .word{text-shadow:0 .08em 0 #140B05,0 4px 14px rgba(0,0,0,.35)}
 .hero .tag{color:var(--cream);text-shadow:0 1px 6px rgba(0,0,0,.6)}
 .hero .ibtn{background:rgba(30,17,8,.35);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
@@ -841,15 +843,15 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=910"></script>
-<script src="ai.js?v=910"></script>
-<script src="i18n.js?v=910"></script>
-<script src="audio.js?v=910"></script>
-<script src="music.js?v=910"></script>
-<script src="fx.js?v=910"></script>
-<script src="scan.js?v=910"></script>
-<script src="vendor/supabase.js?v=910" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=910"></script>
-<script src="app.js?v=910"></script>
+<script src="engine.js?v=911"></script>
+<script src="ai.js?v=911"></script>
+<script src="i18n.js?v=911"></script>
+<script src="audio.js?v=911"></script>
+<script src="music.js?v=911"></script>
+<script src="fx.js?v=911"></script>
+<script src="scan.js?v=911"></script>
+<script src="vendor/supabase.js?v=911" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=911"></script>
+<script src="app.js?v=911"></script>
 </body>
 </html>

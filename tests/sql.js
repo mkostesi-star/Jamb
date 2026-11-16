@@ -157,6 +157,14 @@ function professorMoves(seed){
   const evr=(ev,m)=>e.rows.find(x=>x.ev===ev&&x.mode===m);
   ok(e.rows.length===5&&evr('start','cpu').n===2&&evr('start','cpu').people===1&&evr('finish','-')&&evr('start','pp').people===1,'events are counted per mode, unknown events are ignored');
   ok(evr('start','all').n===3&&evr('start','all').people===1,'and once more as "all", one player across modes');
+  await S.admin(`select set_config('request.headers', $1, false)`,[JSON.stringify({'x-forwarded-for':'3.3.3.3','user-agent':'Tab C','cf-ipcountry':'HR'})]);
+  await S.as(null,'select public.count_visit($1, $2, $3, $4, $5, $6)',['game','direct','hr',false,'tablet',21]);
+  await S.as(null,'select public.count_visit($1, $2, $3, $4, $5, $6)',['game','direct','hr',false,'tablet',22]);
+  await S.as(null,'select public.count_stats($1::jsonb)',[JSON.stringify([['opp','mira',1],['opp','mira',1],['rules','classic',1],['players','3',1],['len','cpu',25],['len','cpu',99999],['hack','x',1],['opp','<b>',1],'junk'])]);
+  const stt=await S.admin(`select k, v, n, sum::int as sum from yamb.stats`);const sv=(k,v)=>stt.rows.find(x=>x.k===k&&x.v===v);
+  ok(sv('country','hr').n===1&&sv('device','tablet').n===1&&sv('hour','21').n===1&&!sv('hour','22')&&sv('country','xx').n===2,'country, device and hour are counted once a day for each visitor');
+  ok(sv('opp','mira').n===2&&sv('players','3').n===1&&sv('len','cpu').n===2&&sv('len','cpu').sum===625&&!sv('hack','x')&&stt.rows.every(x=>!/[<>]/.test(x.v)),'game choices are counted, unknown or strange ones are dropped, lengths are capped');
+  await denied('visitors cannot read these either',null,'select * from yamb.stats');
   await denied('visitors cannot read the counts',null,'select * from yamb.visits');
   await denied('players cannot read the counts',ivo,'select * from yamb.events');
   await denied('visitors cannot open the Numbers page',null,`select public.numbers(current_date - 7, current_date)`);
@@ -168,8 +176,8 @@ function professorMoves(seed){
     ($1,'wk-001','cpu','e30',500,$3),($1,'wk-002','cpu','e30',500,$4),($2,'wk-003','cpu','e30',500,$3)`,[ivo,mia,wkAgo(2),wkAgo(1)]);
   r=await S.as(ivo,`select public.numbers(current_date - 30, current_date) as n`);
   const NB=r.rows[0].n,d0=NB.days[NB.days.length-1];
-  ok(d0&&d0.people===2&&d0.views===4&&d0.app===1,'the Numbers page shows a day: '+JSON.stringify(d0));
-  ok(NB.sources.length===3&&NB.events.length===5&&NB.langs.hr===1,'and its sources, events and languages');
+  ok(d0&&d0.people===3&&d0.views===6&&d0.app===1,'the Numbers page shows a day: '+JSON.stringify(d0));
+  ok(NB.sources.length===4&&NB.events.length===5&&NB.langs.hr===2&&NB.stats.some(x=>x.k==='opp'&&x.v==='mira'&&x.n===2),'and its sources, events and languages');
   const back=NB.weeks.find(w=>w.players===2);
   ok(back&&back.back===1,'signed-in players who came back the next week: '+JSON.stringify(NB.weeks));
   await S.admin(`update yamb.day_key set day = day - 1`);await S.admin(`update yamb.seen set day = day - 1`);

@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.10';
+const VERSION='v9.11';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -461,6 +461,7 @@ function showHint(){
   if(!hintsAllowed())return;
   let b=null;try{b=AI.best({rules:G.rules,sheet:cur().sheet,turn:G.turn});}catch(e){b=null;}
   if(!b)return;
+  tally('hint');
   const a=b.action;a.roll=G.turn.roll;
   ui.tip=a;ui.tipText=describe(a,G.turn.dice);A.stir();render();
 }
@@ -513,7 +514,7 @@ function finishGame(){
   cancelBot();
   if(G.mode==='online'&&(stats.recIds||[]).includes(G.id))return;   /* already counted on this phone */
   const st=standings(G),me=mySeat();
-  if(C)C.event('finish',G.mode);
+  if(C){C.event('finish',G.mode);finishStats(G);}
   stats.played=(stats.played||0)+1;
   if(G.mode==='cpu'&&!prefs.guideDone){prefs.guideDone=true;savePrefs();ui.guideEnd=true;}
   if(me>=0){const ms=E.total(G.rules,G.players[me].sheet);if(ms>(stats.best||0))stats.best=ms;if(st[0].i===me&&G.players.length>1&&st[0].score>st[1].score)stats.wins=(stats.wins||0)+1;}
@@ -692,10 +693,26 @@ function showScreen(s){
   if(s==='home'){A.motion.stop();renderHome();FX.enter($('home'));}else{render();setupMotion();FX.enter($('game'));FX.enter($('tray'),'trayin');}
   try{window.scrollTo(0,0);}catch(e){}
 }
+/* visitor numbers: what was chosen for this game (once per game, by the device that runs it) and what was used in it */
+function rulesTag(g){if(g.mode==='daily')return 'daily';for(const p of ['classic','quick','family','six','full'])if(E.sameRules(g.rules,E.presetRules(p)))return p;return 'custom';}
+function startStats(g){
+  if(g.mode==='online'&&!(online&&online.host))return;
+  const it=[['rules',rulesTag(g),1],['players',String(g.players.length),1]];
+  g.players.forEach(p=>{if(p.kind==='cpu'&&p.char)it.push(['opp',p.char,1]);});
+  C.stats(it);
+}
+function tally(k){if(!G)return;if(!ui.tally||ui.tally.id!==G.id)ui.tally={id:G.id,hint:0,emo:0};ui.tally[k]++;}
+function finishStats(g){
+  const it=[],min=Math.round((Date.now()-(g.created||Date.now()))/60000),tl=ui.tally&&ui.tally.id===g.id?ui.tally:null;
+  if(min>=1&&min<=180)it.push(['len',g.mode,min]);          /* a game left open for days says nothing about its length */
+  if(tl&&tl.hint)it.push(['hint',g.mode,tl.hint]);
+  if(tl&&tl.emo)it.push(['emo',g.mode,tl.emo]);
+  C.stats(it);
+}
 function openGame(g){
   cancelBot();
   if(G&&G.mode==='online'&&g.mode!=='online'){destroyPeer();online=null;}
-  if(!g.over&&!(g.log&&g.log.length)&&!(ui.counted||(ui.counted=new Set())).has(g.id)){ui.counted.add(g.id);if(C)C.event('start',g.mode);}
+  if(!g.over&&!(g.log&&g.log.length)&&!(ui.counted||(ui.counted=new Set())).has(g.id)){ui.counted.add(g.id);if(C){C.event('start',g.mode);startStats(g);}}
   G=g;ui.sel=null;ui.tip=null;ui.tipText='';ui.botPick=null;ui.just=null;ui.view=null;ui.pick=-1;ui.bubble=null;
   ui.rollNext=null;ui.holdTurn=null;ui.forcing=false;ui.awayShown=false;net.away=null;if(g.mode!=='online')net.skip.clear();
   if(G.mode==='pp'&&timerSec(G)&&!G.paused&&!G.over)startClock(G);
@@ -803,8 +820,7 @@ function nudgeHTML(){
 }
 /* one line of the menu: the name, a dotted leader, and the player's best score where the price would be */
 function mline(k,name,desc,best,extra){
-  const pr=best>0?esc(fmt(best)):ICON.chev;
-  return `<button type="button" class="mline" data-act="open" data-k="${k}"><span class="ml1"><span class="mt">${esc(name)}</span><span class="dots" aria-hidden="true"></span><span class="pr"${best>0?` aria-label="${esc(t('menuBest',{s:fmt(best)}))}"`:''}>${pr}</span></span><span class="md">${esc(desc)}</span>${extra||''}</button>`;
+  return `<button type="button" class="mline" data-act="open" data-k="${k}"><span class="ml1"><span class="mt">${esc(name)}</span><span class="dots" aria-hidden="true"></span><span class="pr">${ICON.chev}</span></span><span class="md">${esc(desc)}</span>${extra||''}</button>`;
 }
 /* the best score in these modes (all modes when null), from the account when signed in */
 function bestOf(modes){
@@ -831,25 +847,19 @@ function renderHome(){
     return `<div class="tagcard"><span class="tt"><span class="tl">${esc(modeLabel(g,it.code))}</span><span class="tm">${esc(ui.endAsk===it.m?t('endQ'):meta)}</span></span>${score&&ui.endAsk!==it.m?`<span class="ts">${esc(score)}</span>`:''}<span class="tb">${btns}</span></div>`;
   }).join('');
   let daily;
-  loadBoard('d',d.day);
-  const bd=boards['d'+d.day]&&boards['d'+d.day].data,btop=bd&&bd.top&&bd.top[0];
-  const bline=btop?`<p class="note left">${esc(t('boardBest',{s:fmt(btop.score),name:btop.name||t('playerAnon')}))} · ${esc(t('boardCount',{n:bd.count}))}${bd.me?' · '+esc(t('boardPlace',{r:bd.me.rank,n:bd.count})):''}</p>`:'';
-  const streakTxt=n=>n>=2?esc(t('streak',{n})):'';
+  loadBoard('d',d.day);   /* fetched now so the newspaper opens with today's high scores */
   const dkick=`<h2 class="sec">${esc(t('menuSpecial'))}</h2>`,ddate=`<span class="date">${esc(dateLabel(d.day))}</span>`;
   if(res&&res.done){
-    const bits=[res.prof!=null?esc(t('profScore',{s:fmt(res.prof)})):'',streakTxt(stats.daily.streak||1),esc(t('dailyNext'))].filter(Boolean);
     daily=`${dkick}<div class="drow"><h2>${esc(t('dailyDone',{s:fmt(res.score)}))}</h2>${ddate}</div>
-      <p class="note left">${bits.join(' · ')}</p>${bline}
       <button type="button" class="btnRed" data-act="daily">${esc(t('seeReceipt'))}</button>`;
   }else{
     const inprog=items.find(x=>x.m==='daily');
     /* the dice shown are today's real opening roll: the same for everyone */
     const first=E.rollDice(E.freshTurn(dailyRules().dice),'daily:'+d.day,0).dice;
-    const st=streakTxt(stats.daily.streak||0);
     daily=`${dkick}<div class="drow"><h2>${esc(t('daily'))}</h2>${ddate}</div>
       <div class="minidice" role="img" aria-label="${esc(first.join(' '))}">${first.map(mdie).join('')}</div>
       <button type="button" class="btnRed" data-act="daily">${esc(inprog?t('dailyResume'):t('dailyPlay'))}</button>
-      <p class="note">${esc(t('dailyHow'))}${st?' · '+st:''}</p>${bline}${!acctOn()&&C&&C.available()?`<button type="button" class="lnk dsign" data-act="open" data-k="account">${esc(t('homeSignIn'))}</button>`:''}`;
+      <p class="note">${esc(t('dailyHow'))}</p>${!acctOn()&&C&&C.available()?`<button type="button" class="lnk dsign" data-act="open" data-k="account">${esc(t('homeSignIn'))}</button>`:''}`;
   }
   const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
   $('home').innerHTML=`
@@ -859,6 +869,7 @@ function renderHome(){
         <div class="mark"><span class="word">Yamb <span class="amp">Café</span></span></div>
         <div class="icons"><button type="button" class="ibtn${acctOn()?' on':''}${!acctOn()&&C&&C.available()?' signin':''}" data-act="open" data-k="account" aria-label="${esc(acctOn()?t('acSignedAs',{name:acctName()}):t('profile'))}">${myPortrait()?portraitHTML(myPortrait(),'','hdr'):ICON.user}${!acctOn()&&C&&C.available()?`<span class="si">${esc(t('acSignShort'))}</span>`:''}</button><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
       </header></div>
+      <img class="crest" src="art/cup/1.webp" alt="" width="192" height="169" decoding="async">
     </div>
     <div class="wrap"><main class="homeIn">
       ${resumes?`<div class="modes">${resumes}</div>`:''}
@@ -1863,7 +1874,7 @@ function act(el,d){
     case 'hold':toggleHold(+d.i);break;
     case 'pause':doPause();break;
     case 'emo':ui.emoOpen=!ui.emoOpen;renderTray();break;
-    case 'emosend':sendEmote(d.e);break;
+    case 'emosend':sendEmote(d.e);tally('emo');break;
     case 'emomute':ui.emoMute=!(ui.emoMute||prefs.emotes===false);if(!ui.emoMute&&prefs.emotes===false){prefs.emotes=true;savePrefs();}renderTray();break;
     case 'ready':doReady(G&&G.mode==='online'?mySeat():+d.i);break;
     case 'resumenow':doReady(null,true);break;
@@ -1937,8 +1948,8 @@ function act(el,d){
     case 'startduel':{takeName();startDuel((ui.modal.fmt||'quick')==='quick');break;}
     case 'pasteduel':{const v=$('duelCode').value;const mm=v.match(/duel=([A-Za-z0-9_-]+)/)||[null,v.trim()];const o=E.decodeObj(mm[1]);if(o&&o.i&&o.r!=null)openModal('duelIn',{o});else toast(t('badLink'),true);break;}
     case 'acceptduel':{takeName();acceptDuel(ui.modal.o);break;}
-    case 'shareduel':shareText(G.duel.from?t('duelShareBack',{a:E.total(G.rules,G.players[0].sheet),b:G.duel.from.s}):t('duelShareText',{s:E.total(G.rules,G.players[0].sheet)}),duelLink());break;
-    case 'sharedaily':shareDaily(d.day);break;
+    case 'shareduel':if(C)C.stats([['share','duel',1]]);shareText(G.duel.from?t('duelShareBack',{a:E.total(G.rules,G.players[0].sheet),b:G.duel.from.s}):t('duelShareText',{s:E.total(G.rules,G.players[0].sheet)}),duelLink());break;
+    case 'sharedaily':if(C)C.stats([['share','daily',1]]);shareDaily(d.day);break;
     case 'boardtab':ui.boardTab=d.v==='w'?'w':'d';renderModal();break;
     case 'signin':case 'signout':case 'acsave':case 'acdel':case 'acdelno':case 'acdelyes':accountAct(d.act);break;
     case 'pickava':{
@@ -1958,7 +1969,7 @@ function act(el,d){
     case 'rematch':rematch();break;
     case 'host':hostGame();break;
     case 'join':joinGame($('joinCode').value);break;
-    case 'share':shareText(t('shareText'),shareUrl());break;
+    case 'share':if(C)C.stats([['share','table',1]]);shareText(t('shareText'),shareUrl());break;
     case 'install':doInstall();break;
     case 'colinfo':toast(colName(d.v)+': '+t('colD.'+d.v));break;
     case 'tipok':prefs.guideSeen=Object.assign({},prefs.guideSeen,{[d.k]:true});savePrefs();renderTray();break;
@@ -1974,7 +1985,7 @@ function act(el,d){
     case 'rmid':ui.draft.mid=d.v;renderModal();break;
     case 'step':{const k=d.k;ui.draft[k]=Math.max(0,(ui.draft[k]||0)+(+d.d));renderModal();break;}
     case 'saverules':prefs.rules=E.normRules(ui.draft);savePrefs();toast(t('rulesSaved'));if(ui.backs.length)back();else{closeModal();if(screen==='home')renderHome();}break;
-    case 'sharerules':shareText(t('rulesShareText',{r:rulesBrief(ui.draft)}),baseUrl()+'?rules='+E.encodeRules(ui.draft));break;
+    case 'sharerules':if(C)C.stats([['share','rules',1]]);shareText(t('rulesShareText',{r:rulesBrief(ui.draft)}),baseUrl()+'?rules='+E.encodeRules(ui.draft));break;
     case 'saveset':{const nm=($('setName').value||'').trim().slice(0,24);if(!nm){toast(t('setName'),true);break;}prefs.sets=(prefs.sets||[]).filter(s=>s.name!==nm);prefs.sets.unshift({name:myName()||null,rules:E.normRules(ui.draft)});prefs.sets=prefs.sets.slice(0,10);savePrefs();renderModal();break;}
     case 'loadset':{const s=prefs.sets[+d.i];if(s){ui.draft=E.normRules(s.rules);renderModal();}break;}
     case 'delset':prefs.sets.splice(+d.i,1);savePrefs();renderModal();break;
