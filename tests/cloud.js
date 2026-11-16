@@ -78,7 +78,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     ok(c&&c.stats.played===1&&c.stats.records.length===1&&c.stats.records[0].mode==='daily'&&c.stats.records[0].best===r1.score,'the device\'s earlier records went up once, as they were');
     await closePanel(d1);
     let txt=await openPanel(d1,'records');
-    ok(/Saved to your account/.test(txt)&&txt.includes(String(r1.score)),'Records says they are saved to the account and shows the Daily',txt);
+    ok(!/on this device/i.test(txt)&&txt.includes(String(r1.score)),'Records shows the account\'s records, with the Daily',txt);
     await closePanel(d1);
 
     // ---- 2. a second device signs into the same account
@@ -110,7 +110,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
     ok((await J(d2)).out===1,'with no connection the finished game waits on the device');
     await d2.goto(L.URL0);await d2.waitForFunction(()=>!!window.__jamb);
     txt=await openPanel(d2,'records');
-    ok(/Saved to your account/.test(txt)&&(txt.match(/Games: 2/)||[]).length===1,'Records already counts it (2 games against the computer)',txt);
+    ok(!/on this device/i.test(txt)&&(txt.match(/Games: 2/)||[]).length===1,'Records already counts it (2 games against the computer)',txt);
     await closePanel(d2);
     await post(cs.url+'/__test/down',{down:false});
     await d2.evaluate(()=>window.dispatchEvent(new Event('online')));
