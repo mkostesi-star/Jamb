@@ -494,7 +494,7 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 .fxbanner{position:fixed;left:50%;bottom:calc(var(--tray-h,230px) + 22px);transform:translateX(-50%);z-index:66;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:2px;
   min-width:160px;max-width:calc(100% - 48px);padding:10px 22px 11px;border-radius:12px;background:var(--slip);color:var(--text);box-shadow:0 14px 30px -10px rgba(0,0,0,.6),inset 0 -4px 0 var(--bc,var(--red));
   animation:bannerIn .42s cubic-bezier(.2,1.35,.4,1) both}
-.fxbanner b{font:700 34px/1.05 var(--f-hand);color:var(--bc,var(--text));max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fxbanner b{font:700 34px/1.05 var(--f-hand);color:var(--bc,var(--text));max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:.06em .2em .12em .08em;margin:-.06em -.2em -.12em -.08em}
 .fxbanner span{font:700 12px var(--f-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .fxbanner.out{animation:bannerOut .36s ease-in forwards}
 @keyframes bannerIn{from{opacity:0;translate:0 24px;scale:.9}to{opacity:1;translate:0 0;scale:1}}
@@ -710,7 +710,7 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 .bhead{font:800 4cqw/1.1 var(--f-serif);text-align:center;letter-spacing:.03em;white-space:nowrap}
 .bsub{font:600 2.2cqw/1.4 var(--f-ui);white-space:nowrap;text-align:center;color:#6B5444;border-bottom:1px dashed rgba(51,36,26,.5);padding-bottom:1.4cqw;margin-bottom:1.6cqw}
 .bline{display:flex;align-items:baseline;gap:1cqw;font:700 3.9cqw/1.5 var(--f-hand)}
-.bline span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bline span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 .2em 0 .08em;margin:0 -.2em 0 -.08em}   /* room for the handwriting's last stroke inside the clip */
 .bline i{flex:1;border-bottom:1.5px dotted rgba(51,36,26,.45);translate:0 -1.1cqw;min-width:2cqw}
 .bline b{font-weight:700;font-variant-numeric:lining-nums}
 .bline.win{color:#7A2018}
@@ -818,6 +818,34 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
   .resA{position:sticky;top:84px}
   .resB>.slip:first-child{margin-top:0}
 }
+/* v9.12 the tray seen from in front, the way the cups are drawn: a flat silver oval at the back with the kept cups on
+   saucers in its middle (further away, so smaller), and the cups still in play standing bigger on the table in front of
+   it, over its near rim. --df is a front cup's width. */
+.dice{--df:clamp(46px,15.2vw,66px);--d:var(--df);--db:calc(var(--df)*.72);display:grid;grid-template-columns:100%;justify-items:center;align-content:start;
+  position:relative;isolation:isolate;width:100%;min-height:0;margin:0;padding:calc(var(--df)*.10) 0 calc(var(--df)*.10);background:none;gap:0}
+.dice.six{--df:clamp(40px,12.8vw,56px)}
+.dice::before{content:"";position:absolute;z-index:0;left:50%;top:calc(var(--df)*.26);width:min(100%,calc(var(--df)*5.3));height:calc(var(--df)*.92);translate:-50% 0;
+  background:url(art/tray.webp) center/100% 100% no-repeat;filter:brightness(.9) contrast(1.05) drop-shadow(0 calc(var(--df)*.08) calc(var(--df)*.1) rgba(0,0,0,.5));pointer-events:none}
+.dice.six::before{width:min(100%,calc(var(--df)*6.2))}
+.drow{display:flex;justify-content:center;align-items:flex-end;position:relative;max-width:100%}
+.drow.back{z-index:1;--d:var(--db);gap:calc(var(--db)*.42);height:calc(var(--df)*.78)}
+.drow.front{z-index:2;--d:var(--df);gap:calc(var(--df)*.11);margin-top:calc(var(--df)*-.04)}
+.dice.six .drow.front{gap:calc(var(--df)*.08)}
+.drow .dslot{height:calc(var(--d)*.883);width:var(--d)}
+.drow .dslot .die{transform:rotate(calc(var(--r,0deg)*.5))}
+.drow .dslot .die.held{transform:none}
+.drow .dslot .die.held.popin,.drow .dslot .die.popout,.drow .dslot .die.popin{animation:none}
+.drow.back .dslot::after{left:calc(50% - var(--d)*.1);bottom:calc(var(--d)*-.2);width:calc(var(--d)*1.12);height:calc(var(--d)*.5);z-index:0}
+.drow.front .dslot::after{display:none}
+/* a cup on the table casts a small shadow in front of the tray */
+.drow.front .dslot::before{content:"";position:absolute;z-index:0;left:calc(50% - var(--d)*.1);bottom:calc(var(--d)*-.06);width:calc(var(--d)*.86);height:calc(var(--d)*.18);
+  translate:-50% 0;border-radius:50%;background:radial-gradient(closest-side,rgba(8,4,2,.6),rgba(8,4,2,0));pointer-events:none}
+.drow.front .die.idle img.dface{filter:drop-shadow(0 3px 2px rgba(20,10,4,.45))}
+@media (max-height:720px){.dice{--df:clamp(44px,13.4vw,58px)}.dice.six{--df:clamp(38px,11.6vw,50px)}}
+@media (min-width:1000px) and (min-aspect-ratio:4/3){
+  .dice{--df:clamp(64px,min(7vw,12.5vh),136px)}
+  .dice.six{--df:clamp(56px,min(6vw,10.6vh),118px)}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.die.flip{animation:flip .3s ease!important}}
 </style>
 </head>
@@ -843,15 +871,15 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=911"></script>
-<script src="ai.js?v=911"></script>
-<script src="i18n.js?v=911"></script>
-<script src="audio.js?v=911"></script>
-<script src="music.js?v=911"></script>
-<script src="fx.js?v=911"></script>
-<script src="scan.js?v=911"></script>
-<script src="vendor/supabase.js?v=911" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=911"></script>
-<script src="app.js?v=911"></script>
+<script src="engine.js?v=912"></script>
+<script src="ai.js?v=912"></script>
+<script src="i18n.js?v=912"></script>
+<script src="audio.js?v=912"></script>
+<script src="music.js?v=912"></script>
+<script src="fx.js?v=912"></script>
+<script src="scan.js?v=912"></script>
+<script src="vendor/supabase.js?v=912" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=912"></script>
+<script src="app.js?v=912"></script>
 </body>
 </html>

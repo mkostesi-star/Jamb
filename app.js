@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.11';
+const VERSION='v9.12';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -335,7 +335,7 @@ function cupStart(idx){
   const el=$('dice');if(!el)return false;
   ui.cup={idx:idx.slice(),t0:performance.now()};
   el.classList.add('shaking');
-  el.querySelectorAll('.die').forEach((d,i)=>{if(idx.includes(i)){d.classList.add('incup');if(!d.querySelector('.spin'))d.innerHTML=spinHTML(i);}});
+  el.querySelectorAll('.die').forEach(d=>{const i=+d.dataset.i;if(idx.includes(i)){d.classList.add('incup');if(!d.querySelector('.spin'))d.innerHTML=spinHTML(i);}});
   return true;
 }
 function cupStop(){
@@ -354,7 +354,7 @@ function rollFx(idx,done){
   if(reduce||!idx.length){
     cupCancel();
     ui.rolling=false;ui.rollIdx=null;A.land(idx.length||1,LAND_STEP);render();
-    document.querySelectorAll('#dice .die').forEach((d,i)=>{if(!idx.includes(i))return;d.classList.remove('flip');void d.offsetWidth;d.classList.add('flip');setTimeout(()=>d.classList.remove('flip'),360);});
+    document.querySelectorAll('#dice .die').forEach(d=>{const i=+d.dataset.i;if(!idx.includes(i))return;d.classList.remove('flip');void d.offsetWidth;d.classList.add('flip');setTimeout(()=>d.classList.remove('flip'),360);});
     if(done)done();rollChain();return;
   }
   /* already shaking from a held Roll or a shaken phone? Then it only needs to finish its minimum shake */
@@ -403,8 +403,7 @@ function doAnnounce(r){
 /* Each moved die settles with a small squash, one after another, in time with the landing sounds. */
 function landFx(idx){
   if(FX.reduce)return;
-  const ds=document.querySelectorAll('#dice .die');
-  idx.forEach((i,k)=>{const d=ds[i];if(!d)return;d.style.animationDelay=(k*LAND_STEP)+'ms';FX.pulse(d,'landed',380+k*LAND_STEP);});
+  idx.forEach((i,k)=>{const d=document.querySelector(`#dice .die[data-i="${i}"]`);if(!d)return;d.style.animationDelay=(k*LAND_STEP)+'ms';FX.pulse(d,'landed',380+k*LAND_STEP);});
 }
 /* The written score floats up from the sheet; a Jamb throws confetti and nudges the table. */
 function writeFx(p,r,s){
@@ -963,6 +962,24 @@ function spinHTML(i){
   const k=(i*7919+(G&&G.turn?G.turn.roll:0)*104729)%1000/1000;
   return `<span class="spin" style="--sp:${(0.24+k*0.1).toFixed(3)}s;--sdel:-${(k*0.3).toFixed(3)}s;--sdir:${(i+(G&&G.turn?G.turn.roll:0))%2?'reverse':'normal'}"></span>`;
 }
+/* The tray, seen from in front: cups still in play stand big on the table in front of it; a kept cup is put down on a
+   saucer in the middle of the tray, further away and so smaller. Both rows stay centred. */
+function trayRows(back,front){
+  return `<div class="drow back">${back.join('')}</div><div class="drow front">${front.join('')}</div>`;
+}
+/* After the tray is drawn again, every cup that changed place glides there from where it was (FLIP) */
+function trayPlaces(){const m={};document.querySelectorAll('#dice .dslot').forEach(s=>{const d=s.querySelector('.die');if(d)m[d.dataset.i]=s.getBoundingClientRect();});return m;}
+function trayGlide(before){
+  if(reduce||!before)return;
+  document.querySelectorAll('#dice .dslot').forEach(s=>{
+    const d=s.querySelector('.die'),a=d&&before[d.dataset.i];if(!a||!s.animate)return;
+    const b=s.getBoundingClientRect();if(!b.width)return;
+    const dx=a.left+a.width/2-(b.left+b.width/2),dy=a.bottom-b.bottom,k=a.width/b.width;
+    if(Math.abs(dx)<1&&Math.abs(dy)<1&&Math.abs(k-1)<.02)return;
+    s.animate([{transform:`translate(${dx}px,${dy}px) scale(${k})`,transformOrigin:'50% 100%'},{transform:'none',transformOrigin:'50% 100%'}],
+      {duration:dy<0||k>1.02?340:300,easing:'cubic-bezier(.3,1.25,.5,1)'});
+  });
+}
 function dieHTML(v,i,o){
   const r=((i*37+v*11)%9)-4;
   if(o.unset)return `<button type="button" class="die unset${o.picked?' ghost':''}" data-act="tdie" data-i="${i}" aria-label="${esc(t('setDie',{n:i+1}))}">?</button>`;
@@ -1002,13 +1019,14 @@ function renderTray(){
   const tipOn=ui.tip&&(ui.tip.type==='hold'||ui.tip.type==='announce');
   if(g.mode==='table'&&!g.over){
     const can=me&&!ui.rolling;
-    dice=tn.dice.map((v,i)=>v?dieHTML(v,i,{table:true,can,ghost:ui.pick===i||(tipOn&&ui.tip.held[i])}):dieHTML(0,i,{unset:true,picked:ui.pick===i})).join('');
+    dice=trayRows([],tn.dice.map((v,i)=>v?dieHTML(v,i,{table:true,can,ghost:ui.pick===i||(tipOn&&ui.tip.held[i])}):dieHTML(0,i,{unset:true,picked:ui.pick===i})));
   }else{
     const dt=ui.holdTurn&&ui.holdTurn.dice.length===tn.dice.length?ui.holdTurn:tn;   /* a newer roll is waiting its turn to be shown */
     const showIdle=dt.roll===0&&!ui.rolling;
     const can=me&&!g.over&&!ui.rolling&&tn.roll>=1&&tn.roll<3&&E.canRollAgain(g.rules,cur().sheet,tn);
     const rolling=i=>ui.rolling&&ui.rollIdx&&ui.rollIdx.includes(i);
-    dice=dt.dice.map((v,i)=>dieHTML(v,i,{held:dt.held[i]&&!showIdle&&!rolling(i),idle:showIdle,can,tumble:rolling(i),ghost:tipOn&&ui.tip.held&&ui.tip.held[i]&&!ui.rolling})).join('');
+    const kept=i=>dt.held[i]&&!showIdle&&!rolling(i),one=(v,i)=>dieHTML(v,i,{held:kept(i),idle:showIdle,can,tumble:rolling(i),ghost:tipOn&&ui.tip.held&&ui.tip.held[i]&&!ui.rolling});
+    dice=trayRows(dt.dice.map((v,i)=>kept(i)?one(v,i):''),dt.dice.map((v,i)=>kept(i)?'':one(v,i)));
   }
   if(g.mode==='online'&&!onlineReady()){st=`<span class="st">${esc(statusText())}</span>`;hint='&nbsp;';acts=idle(t('roll'));}
   else if(g.over){
@@ -1073,7 +1091,9 @@ function renderTray(){
   const emo=emoHTML(),bare=!clockOn&&!emo&&st===who&&g.mode!=='table';
   /* desktop: the computer player sits across the table, at the top of the tray panel */
   const side=sideLayout()&&hasBots()?`<div class="bubbleRow fixed side" id="bubbleRow">${bubbleHTML()}</div>`:'';
+  const before=trayPlaces();
   $('tray').innerHTML=side+`<div class="trayIn${bare?' bare':''}">${clockOn?'<div class="clockline"><i id="clockbar"></i></div>':''}${bare?'':`<div class="status">${st}<span class="sright">${clockHTML}${emo}</span></div>`}${g.mode==='online'&&g.status==='waiting'?seatsHTML(g):`<div class="dice${g.rules.dice===6?' six':''}${ui.cup?' shaking':''}" id="dice">${dice}</div>`}<p class="hint" aria-live="polite">${hint}</p><div class="acts">${acts}</div>${keysHTML(g)}</div>${tipHTML()}`;
+  trayGlide(before);
   stabTray();
 }
 /* the lobby: who has sat down, and empty chairs for the seats still free (up to four shown) */
@@ -1416,7 +1436,7 @@ function billHTML(g,st,win){
     const sh=g.players[0].sheet;
     if(g.rules.cols.length===1){
       const k=E.colTotals(g.rules,sh[g.rules.cols[0]]);
-      items=[{l:'1 \u2013 6'+(k.bonus?` (+${k.bonus})`:''),v:k.up+k.bonus},{l:'Max \u2212 Min',v:k.mid||0},{l:rowName('kenta')+' \u2013 '+rowName('jamb'),v:k.low}];
+      items=[{l:'1\u20136'+(k.bonus?` (+${k.bonus})`:''),v:k.up+k.bonus},{l:'Max\u2212Min',v:k.mid||0},{l:rowName('kenta')+'\u2013'+rowName('jamb'),v:k.low}];
     }else items=g.rules.cols.map(c=>({l:colName(c),v:E.colTotals(g.rules,sh[c]).total}));
     total=st[0].score;
   }
