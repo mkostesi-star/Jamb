@@ -828,8 +828,8 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
   background:url(art/tray.webp) center/100% 100% no-repeat;filter:brightness(.9) contrast(1.05) drop-shadow(0 calc(var(--df)*.08) calc(var(--df)*.1) rgba(0,0,0,.5));pointer-events:none}
 .dice.six::before{width:min(100%,calc(var(--df)*6.2))}
 .drow{display:flex;justify-content:center;align-items:flex-end;position:relative;max-width:100%}
-.drow.back{z-index:1;--d:var(--db);gap:calc(var(--db)*.42);height:calc(var(--df)*.78)}
-.drow.front{z-index:2;--d:var(--df);gap:calc(var(--df)*.11);margin-top:calc(var(--df)*-.04)}
+.drow.back{z-index:1;--d:var(--db);gap:calc(var(--db)*.42);height:calc(var(--df)*.78);box-sizing:border-box;padding-bottom:calc(var(--df)*.17)}   /* kept cups stand on the tray's middle line */
+.drow.front{z-index:2;--d:var(--df);gap:calc(var(--df)*.11);margin-top:calc(var(--df)*-.04);min-height:calc(var(--df)*.883)}   /* keeps its room when every cup is kept */
 .dice.six .drow.front{gap:calc(var(--df)*.08)}
 .drow .dslot{height:calc(var(--d)*.883);width:var(--d)}
 .drow .dslot .die{transform:rotate(calc(var(--r,0deg)*.5))}
@@ -841,6 +841,9 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 .drow.front .dslot::before{content:"";position:absolute;z-index:0;left:calc(50% - var(--d)*.1);bottom:calc(var(--d)*-.06);width:calc(var(--d)*.86);height:calc(var(--d)*.18);
   translate:-50% 0;border-radius:50%;background:radial-gradient(closest-side,rgba(8,4,2,.6),rgba(8,4,2,0));pointer-events:none}
 .drow.front .die.idle img.dface{filter:drop-shadow(0 3px 2px rgba(20,10,4,.45))}
+.tray .hint{color:rgba(246,238,220,.92);text-shadow:0 1px 2px rgba(0,0,0,.7);position:relative;z-index:3}
+.tray .hint .tipT{color:#F2D37C}
+.drow .die.ghost{outline-offset:1px}
 @media (max-height:720px){.dice{--df:clamp(44px,13.4vw,58px)}.dice.six{--df:clamp(38px,11.6vw,50px)}}
 @media (min-width:1000px) and (min-aspect-ratio:4/3){
   .dice{--df:clamp(64px,min(7vw,12.5vh),136px)}
@@ -871,15 +874,15 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=912"></script>
-<script src="ai.js?v=912"></script>
-<script src="i18n.js?v=912"></script>
-<script src="audio.js?v=912"></script>
-<script src="music.js?v=912"></script>
-<script src="fx.js?v=912"></script>
-<script src="scan.js?v=912"></script>
-<script src="vendor/supabase.js?v=912" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=912"></script>
-<script src="app.js?v=912"></script>
+<script src="engine.js?v=913"></script>
+<script src="ai.js?v=913"></script>
+<script src="i18n.js?v=913"></script>
+<script src="audio.js?v=913"></script>
+<script src="music.js?v=913"></script>
+<script src="fx.js?v=913"></script>
+<script src="scan.js?v=913"></script>
+<script src="vendor/supabase.js?v=913" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=913"></script>
+<script src="app.js?v=913"></script>
 </body>
 </html>
