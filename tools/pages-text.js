@@ -2,7 +2,7 @@
 // {{game}}, {{privacy}}, {{terms}} and {{rules}} become links to those pages in the same language.
 module.exports={
 privacy:{
-en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about you, where, and why.',date:'Yamb Café · updated 16 November 2026',back:'Back to the game',body:`
+en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about you, where, and why.',date:'Yamb Café · updated 17 November 2026',back:'Back to the game',body:`
 <p>Yamb Café is a dice game made by Ivan Kostešić, Croatia. This page says what the game keeps about you, where, and why. For questions or requests, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
@@ -47,7 +47,7 @@ en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about
 
 <h2>Services the website uses</h2>
 <ul>
-<li><strong>GitHub Pages</strong> hosts the website. Like any web host, it sees your internet address when you open it.</li>
+<li><strong>Cloudflare</strong> hosts the website and answers for the yambcafe.com address. Like any web host, it sees your internet address when you open a page.</li>
 <li><strong>Google Fonts</strong> provides the lettering and <strong>jsDelivr</strong> provides a small program for games on several devices. Both see your internet address when they send these files.</li>
 <li><strong>Supabase</strong> stores accounts, scores and the visitor counts, on servers in Frankfurt, Germany. The game also asks it for the day's high scores, signed in or not, so it sees your internet address.</li>
 <li><strong>Google</strong> handles the sign-in itself, under <a href="https://policies.google.com/privacy" rel="noopener">Google's privacy policy</a>.</li>
@@ -68,7 +68,7 @@ en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about
 <h2>Changes</h2>
 <p>If anything here changes, we update this page and the date at the top. The <a href="{{terms}}">terms and refunds</a> are on their own page.</p>`},
 
-hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva o tebi, gdje i zašto.',date:'Yamb Café · ažurirano 16. studenoga 2026.',back:'Natrag u igru',body:`
+hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva o tebi, gdje i zašto.',date:'Yamb Café · ažurirano 17. studenoga 2026.',back:'Natrag u igru',body:`
 <p>Yamb Café je igra s kockama koju je napravio Ivan Kostešić, Hrvatska. Ova stranica govori što igra čuva o tebi, gdje i zašto. Za pitanja i zahtjeve piši na <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
@@ -113,7 +113,7 @@ hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva
 
 <h2>Usluge koje stranica koristi</h2>
 <ul>
-<li><strong>GitHub Pages</strong> poslužuje stranicu. Kao svaki web poslužitelj, vidi tvoju internetsku adresu kad je otvoriš.</li>
+<li><strong>Cloudflare</strong> poslužuje stranicu i adresu yambcafe.com. Kao svaki web poslužitelj, vidi tvoju internetsku adresu kad otvoriš stranicu.</li>
 <li><strong>Google Fonts</strong> daje slova, a <strong>jsDelivr</strong> mali program za igre na više uređaja. Oba vide tvoju internetsku adresu kad šalju te datoteke.</li>
 <li><strong>Supabase</strong> čuva račune, rezultate i broj posjetitelja na poslužiteljima u Frankfurtu, u Njemačkoj. Igra ga pita i za dnevnu ljestvicu, bio ti prijavljen ili ne, pa vidi tvoju internetsku adresu.</li>
 <li><strong>Google</strong> obavlja samu prijavu, prema <a href="https://policies.google.com/privacy?hl=hr" rel="noopener">Googleovim pravilima o privatnosti</a>.</li>
