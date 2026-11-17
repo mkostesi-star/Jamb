@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v9.14';
+const VERSION='v10.0';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -687,6 +687,8 @@ function showScreen(s){
   if(s!=='game')cupCancel();
   screen=s;prefs.screen=s;prefs.mode=G?G.mode:null;savePrefs();
   $('home').hidden=s!=='home';$('game').hidden=s!=='game';$('tray').hidden=s!=='game';
+  document.body.classList.toggle('atTable',s==='game');   /* the game is played on the dark table; everything else is daylight */
+  const tc=document.querySelector('meta[name=theme-color]');if(tc)tc.content=s==='game'?'#182729':'#F4EFE6';
   document.documentElement.lang=I.locale(prefs.lang);
   applyAudio();
   if(s==='home'){A.motion.stop();renderHome();FX.enter($('home'));}else{render();setupMotion();FX.enter($('game'));FX.enter($('tray'),'trayin');}
@@ -783,11 +785,6 @@ const ICON={
   book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19V5"></path></svg>'
 };
 function dots(level){let s='<span class="dots" aria-hidden="true">';for(let i=0;i<5;i++)s+=`<i class="${i<=level?'on':''}"></i>`;return s+'</span>';}
-function coasterHTML(ch,extra){
-  const c=CHARS[ch];
-  return `<button type="button" class="coaster" data-act="pickchar" data-ch="${ch}" style="--ring:${c.ring}" ${extra||''}>
-    <span class="cdisc">${avatar(ch)}</span><span class="cname">${esc(c.name)}</span><span class="chabit">${esc(t('ch.'+ch+'.habit'))}</span>${dots(AI.CHARACTERS[ch].level)}</button>`;
-}
 function rulesSummary(r){
   r=E.normRules(r);
   const parts=[r.cols.map(c=>E.COLS[c].sym).join(' '),t('nDice',{n:r.dice})];
@@ -863,12 +860,11 @@ function renderHome(){
   const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
   $('home').innerHTML=`
     <div class="hero">
-      <picture><source type="image/webp" srcset="art/cafe-800.webp 800w, art/cafe-1280.webp 1280w" sizes="100vw"><img src="art/cafe-800.jpg" alt="" width="800" height="447" decoding="async"></picture>
+      <div class="shop" aria-hidden="true"><picture><source media="(min-width:600px)" srcset="art/shop/wide-900.webp 900w, art/shop/wide-1376.webp 1376w" sizes="100vw"><img class="pic" src="art/shop/phone-768.webp" srcset="art/shop/phone-480.webp 480w, art/shop/phone-768.webp 768w" sizes="100vw" alt="" decoding="async"></picture><span class="sign">Yamb Café</span><img class="cupSign" src="art/cup/1.webp" alt="" width="192" height="169" decoding="async"></div>
       <div class="wrap"><header class="top">
-        <div class="mark"><span class="word">Yamb <span class="amp">Café</span></span></div>
+        <h1 class="sr">Yamb Café</h1>
         <div class="icons"><button type="button" class="ibtn${acctOn()?' on':''}${!acctOn()&&C&&C.available()?' signin':''}" data-act="open" data-k="account" aria-label="${esc(acctOn()?t('acSignedAs',{name:acctName()}):t('profile'))}">${myPortrait()?portraitHTML(myPortrait(),'','hdr'):ICON.user}${!acctOn()&&C&&C.available()?`<span class="si">${esc(t('acSignShort'))}</span>`:''}</button><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
       </header></div>
-      <img class="crest" src="art/cup/1.webp" alt="" width="192" height="169" decoding="async">
     </div>
     <div class="wrap"><main class="homeIn">
       ${resumes?`<div class="modes">${resumes}</div>`:''}
@@ -882,7 +878,31 @@ function renderHome(){
         ${mline('howto',t('howTo'),t('menuHowD'),0)}
       </div></section>${nudgeHTML()}
     </main></div>`;
+  fitSign();
 }
+
+/* The name on the shop's sign board: letters laid in code onto the painted board, in its perspective. Each picture's
+   board is a quadrilateral (its brass inner frame, as fractions of the picture); the 1000x200 sign box is mapped onto
+   it with a matrix3d, then nudged sideways so the letters sit midway between the brass sides by eye. */
+const SIGNQ={phone:[[0.07422,0.19978],[0.82695,0.15480],[0.82865,0.24782],[0.07422,0.28060]],
+             wide:[[0.08648,0.16732],[0.37718,0.11849],[0.37791,0.22786],[0.08721,0.26367]]};
+const WIDE=matchMedia('(min-width:600px)');
+function fitSign(){
+  const shop=document.querySelector('#home .shop'),sg=shop&&shop.querySelector('.sign');if(!sg)return;
+  const W=shop.clientWidth,H=shop.clientHeight;if(!W||!H)return;
+  const [x0,y0,x1,y1,x2,y2,x3,y3]=SIGNQ[WIDE.matches?'wide':'phone'].flat().map((v,i)=>v*(i%2?H:W));
+  const dx1=x1-x2,dx2=x3-x2,dx3=x0-x1+x2-x3,dy1=y1-y2,dy2=y3-y2,dy3=y0-y1+y2-y3,den=dx1*dy2-dx2*dy1;
+  const g=(dx3*dy2-dx2*dy3)/den,h=(dx1*dy3-dx3*dy1)/den,a=x1-x0+g*x1,b=x3-x0+h*x3,d=y1-y0+g*y1,e=y3-y0+h*y3;
+  sg.style.paddingLeft=sg.style.paddingRight='0px';
+  sg.style.transform=`matrix3d(${a/1000},${d/1000},0,${g/1000},${b/200},${e/200},0,${h/200},0,0,1,0,${x0},${y0},0,1)`;
+  const r=document.createRange();r.selectNodeContents(sg);const t=r.getBoundingClientRect(),o=shop.getBoundingClientRect();
+  if(!t.width)return;
+  const ym=(t.top+t.bottom)/2-o.top,xl=x0+(x3-x0)*((ym-y0)/(y3-y0)),xr=x1+(x2-x1)*((ym-y1)/(y2-y1));
+  const off=(xl+xr)/2-((t.left+t.right)/2-o.left),k=1000/(xr-xl);
+  if(off>0)sg.style.paddingLeft=2*off*k+'px';else sg.style.paddingRight=-2*off*k+'px';
+}
+addEventListener('resize',()=>{if(!$('home').hidden)fitSign();});
+if(document.fonts)document.fonts.ready.then(()=>{if(!$('home').hidden)fitSign();});
 
 /* ---------- game screen ---------- */
 function cellHTML(p,c,r){
@@ -1421,7 +1441,7 @@ function resultHTML(){
   }
   let more=gameStatsHTML(G);
   G.players.forEach((p,i)=>{if(p.kind==='human'&&G.log.some(ev=>ev.p===i))more+=reviewHTML(i);});
-  h+=`<div class="slip">${more}</div>`;
+  if(more)h+=`<div class="slip">${more}</div>`;
   const canRematch=!['daily','duel'].includes(G.mode);
   a+=`<div class="btnRow" style="margin-top:16px">${canRematch?`<button type="button" class="btnRed" data-act="rematch">${esc(t('rematch'))}</button>`:''}<button type="button" class="btnInk" style="margin-top:0" data-act="exit">${esc(t('menu'))}</button></div>`;
   return head(t('results'))+endTip+`<div class="resgrid"><div class="resA">${a}</div><div class="resB">${h}</div></div>`;
@@ -1519,25 +1539,25 @@ function recordGame(g){
 }
 function recordsHTML(){
   const av=acctView(),recs=av?av.recs:Object.values(stats.records||{});
-  const where=(av?'':`<p class="fine" style="margin-top:14px">${esc(t('recPhone'))}</p>`)+(acctOn()||!C||!C.available()?'':`<button type="button" class="btnInk" data-act="open" data-k="account">${esc(t('recSignIn'))}</button>`);
-  /* the wall of regulars: your portrait in the gilded oval, every best game on a brass plaque */
+  const where=(av?'':`<p class="fine">${esc(t('recPhone'))}</p>`)+(acctOn()||!C||!C.available()?'':`<button type="button" class="btnInk" data-act="open" data-k="account">${esc(t('recSignIn'))}</button>`);
+  /* the regulars' pinboard: your portrait as a taped print, every best game on a pinned note */
   const me=acctName()||myName()||t('youName'),games=recs.reduce((a,r)=>a+(r.games||0),0),best=recs.reduce((m,r)=>r.best&&r.best.s>m?r.best.s:m,0);
-  let h=head(t('records'))+`<div class="wall"><div class="wallme"><button type="button" class="oval" data-act="open" data-k="account" aria-label="${esc(t('profile'))}">${portraitHTML(myPortrait(),me,'full')}</button>
-    <div><b>${esc(me)}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
+  let h=head(t('records'))+`<div class="cork"><div class="pinme"><button type="button" class="print big" data-act="open" data-k="account" aria-label="${esc(t('profile'))}">${portraitHTML(myPortrait(),me,'full')}</button>
+    <div class="pinlabel"><b>${esc(me)}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
   const modes=['cpu','pp','online','duel','table','daily'],mt={cpu:t('playChar'),pp:t('modePP'),online:t('modeOnline'),duel:t('modeDuel'),table:t('modeTable'),daily:t('daily')};
-  if(!recs.length)return h+`<p class="wallnone">${esc(t('recNone'))}</p></div>`+`<div class="slip">${where}</div>`;
+  if(!recs.length)return h+`<p class="pnote none">${esc(t('recNone'))}</p></div>`+(where?`<div class="slip">${where}</div>`:'');
   modes.forEach(m=>{
     const list=recs.filter(r=>r.mode===m).sort((a,b)=>(b.best?b.best.s:0)-(a.best?a.best.s:0));if(!list.length)return;
-    h+=`<h3 class="wallh">${esc(mt[m])}</h3><div class="plaques">`;
+    h+=`<h3 class="corkh">${esc(mt[m])}</h3><div class="pnotes">`;
     list.forEach(r=>{
       const many=m!=='daily'&&m!=='duel'&&m!=='table';
-      h+=`<div class="plq"><div class="plate"><span class="pr">${esc(rulesLabel(r.rules))}</span><b>${r.best?fmt(r.best.s):'\u2013'}</b><span class="pb">${r.best?esc(t('recBy',{name:r.best.name||'',date:dateLabel(r.best.day)})):''}</span></div>
-        <p class="pf">${esc(t('recGames'))}: ${r.games} · ${esc(t('recAvg'))}: ${fmt(Math.round(r.sum/Math.max(1,r.games)))}${many&&m!=='pp'?` · ${esc(t('recWins'))}: ${r.wins}`:''}</p></div>`;
+      h+=`<div class="pnote"><span class="pr">${esc(rulesLabel(r.rules))}</span><b>${r.best?fmt(r.best.s):'\u2013'}</b><span class="pb">${r.best?esc(t('recBy',{name:r.best.name||'',date:dateLabel(r.best.day)})):''}</span>
+        <span class="pf">${esc(t('recGames'))}: ${r.games} · ${esc(t('recAvg'))}: ${fmt(Math.round(r.sum/Math.max(1,r.games)))}${many&&m!=='pp'?` · ${esc(t('recWins'))}: ${r.wins}`:''}</span></div>`;
     });
+    if(m==='daily')h+=`<div class="pnote"><span class="pr">${esc(t('recStreak'))}</span><b>${Math.max(stats.daily.maxStreak||0,stats.daily.streak||0,av?av.maxStreak:0)}</b></div>`;
     h+=`</div>`;
-    if(m==='daily')h+=`<p class="pf wallstreak">${esc(t('recStreak'))}: ${Math.max(stats.daily.maxStreak||0,stats.daily.streak||0,av?av.maxStreak:0)}</p>`;
   });
-  return h+`</div><div class="slip">${where}</div>`;
+  return h+`</div>`+(where?`<div class="slip">${where}</div>`:'');
 }
 
 /* ---------- table mode ---------- */
@@ -2089,7 +2109,7 @@ async function takePhoto(f){
 }
 document.addEventListener('change',e=>{const el=e.target;if(el&&el.id==='photoIn'){takePhoto(el.files&&el.files[0]);el.value='';}});
 function portraitHTML(id,name,cls){
-  /* in the oval frame a painted regular is shown whole, head to shoulders (art/regulars/full) */
+  /* in a taped print a painted regular is shown whole, head to shoulders (art/regulars/full) */
   const src=cls&&/\bfull\b/.test(cls)&&PORTRAITS.includes(id)?`art/regulars/full/${id.slice(1)}.webp`:portraitSrc(id);
   return `<span class="ptr${cls?' '+cls:''}" aria-hidden="true">${src?`<img src="${src}" alt="" decoding="async">`:`<b>${esc(String(name||'?').slice(0,1).toUpperCase())}</b>`}</span>`;
 }
@@ -2261,7 +2281,7 @@ function portraitPicker(){
     ${ph?`<p class="fine rmphoto"><button type="button" class="lnk" data-act="rmphoto">${esc(t('removePhoto'))}</button></p>`:''}`;
 }
 const CAMERA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>';
-function profileTop(name){return `<div class="proftop"><span class="oval big">${portraitHTML(myPortrait(),name,'full')}</span><b>${esc(name)}</b></div>`;}
+function profileTop(name){return `<div class="proftop"><span class="print big">${portraitHTML(myPortrait(),name,'full')}</span><b>${esc(name)}</b></div>`;}
 function accountHTML(m){
   let h=head(t('profile'));
   if(!acctOn()){

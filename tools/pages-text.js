@@ -48,7 +48,7 @@ en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about
 <h2>Services the website uses</h2>
 <ul>
 <li><strong>Cloudflare</strong> hosts the website and answers for the yambcafe.com address. Like any web host, it sees your internet address when you open a page.</li>
-<li><strong>Google Fonts</strong> provides the lettering and <strong>jsDelivr</strong> provides a small program for games on several devices. Both see your internet address when they send these files.</li>
+<li><strong>jsDelivr</strong> provides a small program for games on several devices, and sees your internet address when it sends that file. The lettering comes from our own site.</li>
 <li><strong>Supabase</strong> stores accounts, scores and the visitor counts, on servers in Frankfurt, Germany. The game also asks it for the day's high scores, signed in or not, so it sees your internet address.</li>
 <li><strong>Google</strong> handles the sign-in itself, under <a href="https://policies.google.com/privacy" rel="noopener">Google's privacy policy</a>.</li>
 </ul>
@@ -114,7 +114,7 @@ hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva
 <h2>Usluge koje stranica koristi</h2>
 <ul>
 <li><strong>Cloudflare</strong> poslužuje stranicu i adresu yambcafe.com. Kao svaki web poslužitelj, vidi tvoju internetsku adresu kad otvoriš stranicu.</li>
-<li><strong>Google Fonts</strong> daje slova, a <strong>jsDelivr</strong> mali program za igre na više uređaja. Oba vide tvoju internetsku adresu kad šalju te datoteke.</li>
+<li><strong>jsDelivr</strong> daje mali program za igre na više uređaja i vidi tvoju internetsku adresu kad šalje tu datoteku. Slova dolaze s naše stranice.</li>
 <li><strong>Supabase</strong> čuva račune, rezultate i broj posjetitelja na poslužiteljima u Frankfurtu, u Njemačkoj. Igra ga pita i za dnevnu ljestvicu, bio ti prijavljen ili ne, pa vidi tvoju internetsku adresu.</li>
 <li><strong>Google</strong> obavlja samu prijavu, prema <a href="https://policies.google.com/privacy?hl=hr" rel="noopener">Googleovim pravilima o privatnosti</a>.</li>
 </ul>
