@@ -62,16 +62,16 @@ ${alt}
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}">
-<meta property="og:image" content="${SITE}/icons/v7/icon-512.png">
+<meta property="og:image" content="${SITE}/icons/v10/icon-512.png">
 <link rel="icon" href="${up}favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="${up}icons/v7/favicon-32.png">
+<link rel="icon" type="image/png" sizes="32x32" href="${up}icons/v10/favicon-32.png">
 <style>
 ${CSS}
 </style>
 </head>
 <body>
 <main class="card">
-<div class="top"><img src="${up}icons/v7/icon-192.png" alt=""><h1>${esc(h1)}</h1></div>
+<div class="top"><img src="${up}icons/v10/icon-192.png" alt=""><h1>${esc(h1)}</h1></div>
 ${date?`<p class="date">${esc(date)}</p>`:''}
 ${body}
 </main>
@@ -120,7 +120,7 @@ const R={
     go:'Igraj Yamb Café brezplačno',goNote:'V brskalniku na kateri koli napravi, brez prijave.',langs:'Ta stran v jeziku:',terms:'Pogoji'},
   de:{file:'rules/de/index.html',title:'Yamb Spielregeln · Yamb Café',h1:'So spielt man Yamb',
     desc:'Die Regeln von Yamb (Jamb), dem Würfelspiel mit fünf Würfeln und einem Block mit Spalten: ein Zug, die Spalten, die Wertung und wo man es kostenlos spielt.',
-    lead:'Yamb, auf dem Balkan Jamb genannt, ist ein Würfelspiel für einen bis sechs Spieler. Es ähnelt Kniffel, mit einem Unterschied, der es tiefer macht: Der Block hat mehrere Spalten, und jede wird in ihrer eigenen Reihenfolge gefüllt.',
+    lead:'Yamb, in Kroatien, Serbien, Bosnien und Herzegowina und Slowenien Jamb genannt, ist ein Würfelspiel für einen bis sechs Spieler. Es ähnelt Kniffel, mit einem Unterschied, der es tiefer macht: Der Block hat mehrere Spalten, und jede wird in ihrer eigenen Reihenfolge gefüllt.',
     turn:'Ein Zug',cols:'Die Spalten',colsIntro:'Yamb Café beginnt mit vier Spalten. In jeder stehen dieselben Felder, von den Einsern bis zum Yamb.',
     more:'Weitere Spalten für Hausregeln',moreIntro:'Diese Spalten lassen sich unter „{rules}“ hinzufügen:',modes:'So spielt man in Yamb Café',
     go:'Yamb Café kostenlos spielen',goNote:'Im Browser auf jedem Gerät, ohne Anmeldung.',langs:'Diese Seite auf:',terms:'Bedingungen'}

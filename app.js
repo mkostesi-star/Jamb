@@ -620,35 +620,59 @@ function dailyShareText(day){
   const sq=r.grid.map(q=>q===2?'🟨':q===1?'🟦':'⬜').join('');
   return `${t('daily')} · ${dateLabel(day)} · ${r.score}\n${sq}${r.prof!=null?'\n'+t('profScore',{s:r.prof}):''}\n${baseUrl()}`;
 }
-/* the Daily result as a picture: the morning scene, the slip with the score, and the squares */
-function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
+/* (loadPic: by address; loadImg further down reads a photo file. Both were once called loadImg, so the share picture lost its scene.) */
+/* the Daily result as a picture: the front of the café (the name on its board, the cup on its hanging sign), the slip
+   with the score, and the squares */
+function loadPic(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
+/* the name in raised letters, laid onto a board given as four corners (top-left, top-right, bottom-right, bottom-left):
+   drawn flat once, then copied across in thin strips, each stretched to the board's height at that point */
+function drawSign(x,q,fam){
+  const off=document.createElement('canvas');off.width=1000;off.height=200;const o=off.getContext('2d');
+  o.font=`800 138px ${fam}`;o.textAlign='center';o.textBaseline='middle';o.letterSpacing='1.6px';
+  const em=138,txt='Yamb Café',cx=500,cy=97;
+  o.save();o.shadowColor='rgba(10,20,22,.55)';o.shadowBlur=em*.12;o.shadowOffsetY=em*.1;o.fillStyle='#7A5D23';o.fillText(txt,cx,cy+em*.06);o.restore();
+  [['#7A5D23',.06],['#97742C',.048],['#B38A36',.036],['#C9A24B',.024],['#E2C574',.012]].forEach(([c,d])=>{o.fillStyle=c;o.fillText(txt,cx,cy+em*d);});
+  o.fillStyle='#F4E7C6';o.fillText(txt,cx,cy);
+  const [p0,p1,p2,p3]=q,lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],S=2;
+  for(let u=0;u<1000;u+=S){
+    const t=u/1000,top=lerp(p0,p1,t),bot=lerp(p3,p2,t),t2=(u+S)/1000,top2=lerp(p0,p1,t2);
+    x.drawImage(off,u,0,S,200,top[0],top[1],top2[0]-top[0]+.6,bot[1]-top[1]);
+  }
+}
 async function dailyImage(day){
   const r=stats.daily.results[day];if(!r)return null;
   const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
   const css=getComputedStyle(document.documentElement),fam=v=>(css.getPropertyValue(v)||'').trim();
-  const fUI=fam('--f-ui')||'sans-serif',fR=fam('--f-receipt')||'monospace',fS=fam('--f-sign')||'serif';
-  try{await Promise.all([`700 40px ${fUI}`,`400 40px ${fR}`,`400 60px ${fS}`].map(f=>document.fonts.load(f)));}catch(e){}
-  x.fillStyle='#2A1A0D';x.fillRect(0,0,W,H);
-  try{const img=await loadImg('art/daily-800.webp'),hh=640,sc=Math.max(W/img.width,hh/img.height);
-    x.save();x.beginPath();x.rect(0,0,W,hh);x.clip();x.drawImage(img,(W-img.width*sc)/2,(hh-img.height*sc)/2,img.width*sc,img.height*sc);x.restore();
-    const gr=x.createLinearGradient(0,380,0,hh);gr.addColorStop(0,'rgba(42,26,13,0)');gr.addColorStop(1,'rgba(42,26,13,1)');x.fillStyle=gr;x.fillRect(0,380,W,hh-380);}catch(e){}
-  const cx=140,cy=450,cw=800,chh=770;
-  x.save();x.shadowColor='rgba(0,0,0,.45)';x.shadowBlur=40;x.shadowOffsetY=16;x.fillStyle='#FBF6EA';x.fillRect(cx,cy,cw,chh);x.restore();
-  const mid=cx+cw/2,line=y=>{x.strokeStyle='#C9C2B5';x.setLineDash([10,8]);x.lineWidth=3;x.beginPath();x.moveTo(cx+50,y);x.lineTo(cx+cw-50,y);x.stroke();x.setLineDash([]);};
-  x.textAlign='center';x.fillStyle='#C8322B';x.font=`700 34px ${fUI}`;x.fillText(t('daily').toUpperCase().split('').join(String.fromCharCode(8202)),mid,cy+80);
-  x.fillStyle='#1F3FA6';x.font=`400 64px ${fS}`;x.fillText(t('dailyTitle'),mid,cy+160);
-  x.fillStyle='#6B655C';x.font=`400 30px ${fR}`;x.fillText(dateLabel(day),mid,cy+210);
-  line(cy+250);
-  const q=['#C9C2B5','#1F3FA6','#E0A800'],n=r.grid.length,sz=Math.min(46,Math.floor((cw-100-(n-1)*8)/n)),gw=n*sz+(n-1)*8;
-  r.grid.forEach((v,i)=>{x.fillStyle=q[v]||q[0];x.fillRect(mid-gw/2+i*(sz+8),cy+290,sz,sz);});
-  line(cy+380);
-  const row=(label,val,y,big)=>{x.textAlign='left';x.fillStyle='#2A2520';x.font=`${big?700:400} ${big?44:34}px ${fR}`;x.fillText(label,cx+60,y);x.textAlign='right';x.font=`700 ${big?72:38}px ${fR}`;x.fillText(String(val),cx+cw-60,y+(big?10:0));};
-  row(t('total').toUpperCase(),r.score,cy+470,true);
-  if(r.prof!=null)row(CHARS.profesor.name,r.prof,cy+550);
-  row(t('streakShort'),stats.daily.streak||1,cy+610);
-  line(cy+660);
-  x.textAlign='center';x.fillStyle='#6B655C';x.font=`400 28px ${fR}`;x.fillText(t('dailySame'),mid,cy+715);
-  x.fillStyle='#F6EEDC';x.font=`700 34px ${fUI}`;x.fillText('Yamb Café',mid,cy+chh+78);
+  const fUI=fam('--f-ui')||'sans-serif',fR=fam('--f-receipt')||'monospace',fS=fam('--f-serif')||'serif';
+  try{await Promise.all([`600 30px ${fUI}`,`400 30px ${fR}`,`700 64px ${fS}`,`800 138px ${fS}`].map(f=>document.fonts.load(f,'Yamb Café 0123')));}catch(e){}
+  x.fillStyle='#F4EFE6';x.fillRect(0,0,W,H);
+  const sc=W/768,top=150,hh=700;
+  try{
+    const img=await loadPic('art/shop/phone-768.webp');
+    x.drawImage(img,0,top,768,hh/sc,0,0,W,hh);
+    const gr=x.createLinearGradient(0,hh-220,0,hh);gr.addColorStop(0,'rgba(244,239,230,0)');gr.addColorStop(1,'#F4EFE6');x.fillStyle=gr;x.fillRect(0,hh-220,W,220);
+    drawSign(x,SIGNQ.phone.map(([u,v])=>[u*W,(v*1376-top)*sc]),fS);
+    const cup=await loadPic('art/cup/1.webp'),cw=.12*W,chh=cw*cup.height/cup.width;
+    x.save();x.shadowColor='rgba(0,0,0,.35)';x.shadowBlur=12;x.shadowOffsetY=6;x.drawImage(cup,.7878*W-.383*cw,(.3445*1376-top)*sc-.5*chh,cw,chh);x.restore();
+  }catch(e){console.warn('share picture: scene',e);}
+  const cx=110,cy=520,cw=860,ch=740,mid=cx+cw/2;
+  x.save();x.shadowColor='rgba(70,50,30,.32)';x.shadowBlur=44;x.shadowOffsetY=18;x.fillStyle='#FFFCF6';
+  x.beginPath();x.roundRect?x.roundRect(cx,cy,cw,ch,28):x.rect(cx,cy,cw,ch);x.fill();x.restore();
+  const line=y=>{x.strokeStyle='#D8CFC2';x.setLineDash([10,8]);x.lineWidth=3;x.beginPath();x.moveTo(cx+56,y);x.lineTo(cx+cw-56,y);x.stroke();x.setLineDash([]);};
+  x.textAlign='center';x.fillStyle='#C25A3C';x.font=`600 30px ${fUI}`;x.fillText(t('daily').toUpperCase().split('').join(String.fromCharCode(8202,8202)),mid,cy+82);
+  x.fillStyle='#2A1A12';x.font=`700 64px ${fS}`;x.fillText(t('dailyTitle'),mid,cy+158);
+  x.fillStyle='#6E5D4E';x.font=`400 30px ${fR}`;x.fillText(dateLabel(day),mid,cy+208);
+  line(cy+248);
+  const q=['#D8CFC2','#2F5A5E','#E0A800'],n=r.grid.length,sz=Math.min(46,Math.floor((cw-112-(n-1)*8)/n)),gw=n*sz+(n-1)*8;
+  r.grid.forEach((v,i)=>{x.fillStyle=q[v]||q[0];x.fillRect(mid-gw/2+i*(sz+8),cy+284,sz,sz);});
+  line(cy+372);
+  const row=(label,val,y,big)=>{x.textAlign='left';x.fillStyle='#2A1A12';x.font=`${big?700:400} ${big?44:34}px ${fR}`;x.fillText(label,cx+64,y);x.textAlign='right';x.font=`700 ${big?72:38}px ${fR}`;x.fillText(String(val),cx+cw-64,y+(big?10:0));};
+  row(t('total').toUpperCase(),r.score,cy+462,true);
+  if(r.prof!=null)row(CHARS.profesor.name,r.prof,cy+542);
+  row(t('streakShort'),stats.daily.streak||1,cy+602);
+  line(cy+650);
+  x.textAlign='center';x.fillStyle='#6E5D4E';x.font=`400 28px ${fR}`;x.fillText(t('dailySame'),mid,cy+704);
+  x.fillStyle='#2A1A12';x.font=`700 38px ${fS}`;x.fillText('Yamb Café',mid,cy+ch+64);
   return new Promise(res=>cv.toBlob(b=>res(b),'image/png'));
 }
 async function shareDaily(day){

@@ -2,7 +2,7 @@
 const CACHE = 'jamb-v10.0';
 const CORE = [
   './', 'index.html', 'engine.js?v=1000', 'ai.js?v=1000', 'i18n.js?v=1000', 'audio.js?v=1000', 'music.js?v=1000', 'fx.js?v=1000', 'scan.js?v=1000', 'vendor/supabase.js?v=1000', 'cloud.js?v=1000', 'app.js?v=1000', 'manifest.webmanifest',
-  'icons/v7/icon-192.png', 'icons/v7/apple-touch-icon.png', 'icons/v7/favicon-64.png',
+  'icons/v10/icon-192.png', 'icons/v10/apple-touch-icon.png', 'icons/v10/favicon-64.png',
   'art/shop/phone-768.webp', 'art/shop/wide-1376.webp', 'art/table-teal.webp', 'art/tray.webp', 'art/saucer.webp', 'art/daily-800.webp',
   'fonts/caveat-latin-ext.woff2', 'fonts/caveat-latin.woff2', 'fonts/courier-prime-latin-400.woff2', 'fonts/courier-prime-latin-700.woff2', 'fonts/courier-prime-latin-ext-400.woff2', 'fonts/courier-prime-latin-ext-700.woff2', 'fonts/fraunces-latin-ext.woff2', 'fonts/fraunces-latin.woff2', 'fonts/instrument-sans-latin-ext.woff2', 'fonts/instrument-sans-latin.woff2',
   'art/cast/ema.webp', 'art/cast/nono.webp', 'art/cast/mira.webp', 'art/cast/joza.webp', 'art/cast/profesor.webp',
