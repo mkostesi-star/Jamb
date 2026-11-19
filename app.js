@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v10.3';
+const VERSION='v10.4';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -522,6 +522,8 @@ function finishGame(){
   if(me>=0&&st[0].i===me)setTimeout(()=>{A.win();if(many&&screen==='game')FX.confetti(true);},700);
   if(G.mode==='daily')finishDaily();
   if(G.mode==='dailyp')finishPractice();
+  /* Plus is offered once, on the bill after the 10th finished game, and never again */
+  if(plusLocked()&&!prefs.plusAsked&&stats.played>=10){prefs.plusAsked=true;savePrefs();ui.plusAsk=G.id;}
   recordGame(G);
   if(G.mode==='duel'){stats.duels[G.duel.id]={score:E.total(G.rules,G.players[0].sheet),at:Date.now(),from:G.duel.from||null};}
   saveStats();
@@ -946,6 +948,7 @@ function renderHome(){
         <h2 class="sec next">${esc(t('menuSides'))}</h2>
         ${mline('records',t('records'),t('menuRecordsD'),bestOf(null))}
         ${mline('howto',t('howTo'),t('menuHowD'),0)}
+        ${plusOpen()?mline('plus','Yamb Café Plus',hasPlus()?t('plusHave'):t('plusLine'),0):''}
       </div></section>${nudgeHTML()}
     </main></div>`;
   fitSign();
@@ -1515,6 +1518,7 @@ function resultHTML(){
   let more=gameStatsHTML(G);
   G.players.forEach((p,i)=>{if(p.kind==='human'&&G.log.some(ev=>ev.p===i))more+=reviewHTML(i);});
   if(more)h+=`<div class="slip">${more}</div>`;
+  if(ui.plusAsk===G.id&&plusLocked())h+=`<div class="slip plusask"><i class="pmark sm">Plus</i><b>${esc(t('plusAskT'))}</b><p>${esc(t('plusAskD',{price:eur(PLUS_AMTS[0])}))}</p><button type="button" class="btnInk" data-act="open" data-k="plus">${esc(t('plusAskB'))}</button></div>`;
   if(G.mode==='dailyp'){
     const day=G.daily.day,r=stats.daily.results[day],p=(stats.daily.practice||{})[day];
     h=`<div class="slip"><h3>${esc(t('practiceTag'))} · ${esc(dateLabel(day))}</h3><p>${r&&r.done?esc(t('practiceFirst',{s:fmt(r.score)})):''}</p>${p&&p.prof!=null?`<p>${esc(t('profScore',{s:fmt(p.prof)}))}</p>`:''}${p?`<p class="fine">${esc(t('practiceBest',{s:fmt(p.best)}))}</p>`:''}</div>`+h;
