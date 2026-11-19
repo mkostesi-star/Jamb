@@ -2,7 +2,7 @@
 // {{game}}, {{privacy}}, {{terms}} and {{rules}} become links to those pages in the same language.
 module.exports={
 privacy:{
-en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about you, where, and why.',date:'Yamb Café · updated 17 November 2026',back:'Back to the game',body:`
+en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about you, where, and why.',date:'Yamb Café · updated 19 November 2026',back:'Back to the game',body:`
 <p>Yamb Café is a dice game made by Ivan Kostešić, Croatia. This page says what the game keeps about you, where, and why. For questions or requests, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
@@ -54,7 +54,7 @@ en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about
 </ul>
 
 <h2>Payments</h2>
-<p>There is nothing to buy yet. Yamb Café Plus and “A coffee for the café” go on sale with the public start. They will be sold by Polar (Polar Software, Inc., USA) as the merchant of record, which takes the payment, issues the receipt and handles VAT under its own privacy policy. We never see your card. Before the first sale this page will say exactly what we receive from Polar.</p>
+<p>Yamb Café Plus goes on sale with the public start. It is sold by Polar (Polar Software, Inc., USA) as the merchant of record, which takes the payment, issues the receipt and handles VAT under its own privacy policy. We never see your card. When you choose to buy, the game sends Polar your account's id and email address, so the payment page is filled in and the purchase is linked to your account. From Polar we keep only the order number, the amounts paid and refunded, the currency, the order's status and its date, linked to your account so Plus works on every device.</p>
 
 <h2>How long we keep it</h2>
 <p>Account data is kept until you delete your account. Deleting it removes your profile, your saved games and your scores at once. Visitor codes are deleted the next day; the daily totals are kept. What is stored on your device stays there until you clear it.</p>
@@ -68,7 +68,7 @@ en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about
 <h2>Changes</h2>
 <p>If anything here changes, we update this page and the date at the top. The <a href="{{terms}}">terms and refunds</a> are on their own page.</p>`},
 
-hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva o tebi, gdje i zašto.',date:'Yamb Café · ažurirano 17. studenoga 2026.',back:'Natrag u igru',body:`
+hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva o tebi, gdje i zašto.',date:'Yamb Café · ažurirano 19. studenoga 2026.',back:'Natrag u igru',body:`
 <p>Yamb Café je igra s kockama koju je napravio Ivan Kostešić, Hrvatska. Ova stranica govori što igra čuva o tebi, gdje i zašto. Za pitanja i zahtjeve piši na <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
@@ -120,7 +120,7 @@ hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva
 </ul>
 
 <h2>Plaćanja</h2>
-<p>Zasad se ništa ne prodaje. Yamb Café Plus i „Kava za kafić“ u prodaji su od javnog početka. Prodavat će ih Polar (Polar Software, Inc., SAD) kao trgovac, koji naplaćuje, izdaje račun i obračunava PDV prema svojim pravilima o privatnosti. Tvoju karticu nikad ne vidimo. Prije prve prodaje ova će stranica točno navesti što od Polara dobivamo.</p>
+<p>Yamb Café Plus u prodaji je od javnog početka. Prodaje ga Polar (Polar Software, Inc., SAD) kao trgovac, koji naplaćuje, izdaje račun i obračunava PDV prema svojim pravilima o privatnosti. Tvoju karticu nikad ne vidimo. Kad odlučiš kupiti, igra Polaru šalje oznaku tvog računa i adresu e-pošte, da stranica za plaćanje bude popunjena i da kupnja bude vezana uz tvoj račun. Od Polara čuvamo samo broj narudžbe, plaćene i vraćene iznose, valutu, stanje narudžbe i datum, vezano uz tvoj račun, da Plus radi na svakom uređaju.</p>
 
 <h2>Koliko dugo čuvamo</h2>
 <p>Podaci računa čuvaju se dok ne izbrišeš račun. Brisanjem se odmah uklanjaju profil, spremljene igre i rezultati. Kodovi posjetitelja brišu se sutradan, a dnevni zbrojevi ostaju. Ono što je spremljeno na tvom uređaju ostaje dok ga ne izbrišeš.</p>
@@ -158,13 +158,10 @@ en:{title:'Terms and refunds · Yamb Café',h1:'Terms and refunds',desc:'The few
 <p>Daily Yamb scores are checked by playing your moves again with that day's dice. Scores or accounts that get around this may be removed from the high scores.</p>
 
 <h2>Yamb Café Plus</h2>
-<p>Plus is a one-time purchase of €4.99. It unlocks the Plus parts of the game, as described in the game, for your account on all your devices, for as long as Yamb Café runs. There are no renewals and nothing to cancel. Plus may grow with new things; it will never become a subscription. Plus only adds to games without other real people, so it never gives anyone an advantage over another player.</p>
-
-<h2>A coffee for the café</h2>
-<p>When you buy Plus you can add “A coffee for the café”: a voluntary thank-you on top of the price, in steps of €2. If you already have Plus, you can buy a coffee on its own. It unlocks nothing beyond a small thank-you pin on your profile.</p>
+<p>Plus is a one-time purchase from €4.99. You may choose to pay more; anything above €4.99 also brings a small thank-you pin on your profile and unlocks nothing else. It unlocks the Plus parts of the game, as described in the game, for your account on all your devices, for as long as Yamb Café runs. There are no renewals and nothing to cancel. Plus may grow with new things; it will never become a subscription. Plus only adds to games without other real people, so it never gives anyone an advantage over another player.</p>
 
 <h2>Who sells it</h2>
-<p>Plus and the coffee are sold by our reseller Polar (Polar Software, Inc., USA), which is the merchant of record. Polar takes the payment, issues the receipt and handles VAT, and its buyer terms apply to the payment itself. Prices include VAT.</p>
+<p>Plus is sold by our reseller Polar (Polar Software, Inc., USA), which is the merchant of record. Polar takes the payment, issues the receipt and handles VAT, and its buyer terms apply to the payment itself. In Europe prices include VAT; elsewhere local tax may be added at checkout.</p>
 
 <h2>Refunds</h2>
 <p>If you change your mind, write to us within 7 days of buying and we refund you in full. Plus is digital content that you get at once: by buying it you ask for it to start immediately and accept that the legal 14-day right to withdraw ends at that moment. The 7 days are our own promise on top. If Plus does not work for you later and we cannot fix it, we refund you too. A refund removes Plus and the thank-you pin from the account.</p>
@@ -203,13 +200,10 @@ hr:{title:'Uvjeti i povrat novca · Yamb Café',h1:'Uvjeti i povrat novca',desc:
 <p>Rezultati Dnevnog Jamba provjeravaju se tako da se tvoji potezi odigraju ponovno s kockama tog dana. Rezultati ili računi koji to zaobilaze mogu se ukloniti s ljestvice.</p>
 
 <h2>Yamb Café Plus</h2>
-<p>Plus je jednokratna kupnja od 4,99 €. Otključava dijelove igre označene kao Plus, kako je opisano u igri, za tvoj račun na svim tvojim uređajima, dok god Yamb Café radi. Nema obnavljanja i nema se što otkazivati. Plus može rasti novim stvarima, ali nikad neće postati pretplata. Plus dodaje samo igrama bez drugih stvarnih ljudi, pa nikome ne daje prednost pred drugim igračem.</p>
-
-<h2>Kava za kafić</h2>
-<p>Pri kupnji Plusa možeš dodati „Kavu za kafić“: dobrovoljnu zahvalu povrh cijene, u koracima od 2 €. Ako već imaš Plus, kavu možeš kupiti i zasebno. Ne otključava ništa osim male značke zahvale na tvom profilu.</p>
+<p>Plus je jednokratna kupnja od 4,99 € naviše. Možeš odlučiti platiti i više; uz svaki iznos veći od 4,99 € dobivaš i malu značku zahvale na profilu, a ništa drugo se time ne otključava. Plus otključava dijelove igre označene kao Plus, kako je opisano u igri, za tvoj račun na svim tvojim uređajima, dok god Yamb Café radi. Nema obnavljanja i nema se što otkazivati. Plus može rasti novim stvarima, ali nikad neće postati pretplata. Plus dodaje samo igrama bez drugih stvarnih ljudi, pa nikome ne daje prednost pred drugim igračem.</p>
 
 <h2>Tko prodaje</h2>
-<p>Plus i kavu prodaje naš preprodavač Polar (Polar Software, Inc., SAD), koji je trgovac u prodaji. Polar naplaćuje, izdaje račun i obračunava PDV, a na samo plaćanje primjenjuju se njegovi uvjeti za kupce. Cijene uključuju PDV.</p>
+<p>Plus prodaje naš preprodavač Polar (Polar Software, Inc., SAD), koji je trgovac u prodaji. Polar naplaćuje, izdaje račun i obračunava PDV, a na samo plaćanje primjenjuju se njegovi uvjeti za kupce. U Europi cijene uključuju PDV; drugdje se pri plaćanju može dodati lokalni porez.</p>
 
 <h2>Povrat novca</h2>
 <p>Ako se predomisliš, javi nam se u roku od 7 dana od kupnje i vraćamo ti cijeli iznos. Plus je digitalni sadržaj koji dobivaš odmah: kupnjom tražiš da isporuka počne odmah i prihvaćaš da zakonsko pravo na odustanak u roku od 14 dana time prestaje. Ovih 7 dana naše je vlastito obećanje povrh toga. Ako ti Plus kasnije ne radi, a mi to ne možemo popraviti, također vraćamo novac. Povrat uklanja Plus i značku zahvale s računa.</p>

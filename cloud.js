@@ -89,6 +89,18 @@ const API={
     try{root.localStorage.removeItem('yamb-auth');}catch(e){}
     session=null;emit('out');
   },
+  /* Plus: asks the Edge Function polar-checkout for a payment page (Polar) for this player and amount (cents);
+     the page's address comes back, and Polar returns the player to the game afterwards */
+  async buyPlus(amount,lang){
+    if(!sb)throw new Error('offline');
+    let s=null;try{const r=await sb.auth.getSession();s=r&&r.data?r.data.session:null;}catch(e){}
+    if(!s||!s.access_token)throw new Error('signin');
+    const res=await root.fetch(CFG.url+'/functions/v1/polar-checkout',{method:'POST',
+      headers:{Authorization:'Bearer '+s.access_token,apikey:CFG.key,'Content-Type':'application/json'},body:JSON.stringify({amount,lang})});
+    let j={};try{j=await res.json();}catch(e){}
+    if(!res.ok||!j||!j.url)throw new Error(j&&j.error||('checkout '+res.status));
+    return j;
+  },
   /* one call to a database function; throws with the database's own short message (YC_...) when it refuses */
   async rpc(fn,args){
     if(!sb)throw new Error('offline');

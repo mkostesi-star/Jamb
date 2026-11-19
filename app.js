@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v10.0';
+const VERSION='v10.1';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -1239,7 +1239,7 @@ function turnFx(){
 /* ---------- pages and sheets ----------
    Everything but a few small sheets opens as a full page with a back arrow; the phone's own back gesture closes it. */
 const SHEETS=['install','scan','rulesIn'];
-const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account'];
+const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus'];
 const isPage=k=>!!k&&!SHEETS.includes(k);
 window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.backs.length)back();else closeModal();}});
 ui.backs=[];
@@ -1359,6 +1359,7 @@ function renderModal(){
     case 'result':h=resultHTML();break;
     case 'records':h=recordsHTML();break;
     case 'account':h=accountHTML(m);break;
+    case 'plus':h=plusHTML(m);break;
     case 'daily':h=dailyModalHTML(m.day);break;
     case 'scan':
       h=head(t('scanTitle')+' ('+t('beta')+')')+`<p class="fine">${esc(t('scanHint'))}</p><div class="scanbox"><video id="scanV" playsinline muted></video><canvas id="scanC" hidden></canvas></div>
@@ -2016,6 +2017,7 @@ function act(el,d){
     case 'sharedaily':if(C)C.stats([['share','daily',1]]);shareDaily(d.day);break;
     case 'boardtab':ui.boardTab=d.v==='w'?'w':'d';renderModal();break;
     case 'signin':case 'signout':case 'acsave':case 'acdel':case 'acdelno':case 'acdelyes':accountAct(d.act);break;
+    case 'plusamt':case 'plusbuy':plusAct(d);break;
     case 'pickava':{
       const v=d.v;if(!PORTRAITS.includes(v))break;
       prefs.avatar=v;prefs.painted=v;savePrefs();A.hold(true);
@@ -2168,7 +2170,7 @@ function acctView(){
   return{played,wins,best,maxStreak,recs:Object.values(recs).map(r=>({mode:r.mode,rules:rulesOfKey(r.rk),games:r.games,wins:r.wins,sum:r.sum,best:r.best}))};
 }
 function acctUI(){
-  if(ui.modal&&['account','settings','records','daily','result'].includes(ui.modal.kind)){
+  if(ui.modal&&['account','settings','records','daily','result','plus'].includes(ui.modal.kind)){
     const f=document.activeElement;if(!(ui.modal.kind==='account'&&f&&f.id==='acName'))renderModal();
   }
   if(screen==='home')renderHome();
@@ -2306,10 +2308,65 @@ function portraitPicker(){
 }
 const CAMERA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>';
 function profileTop(name){return `<div class="proftop"><span class="print big">${portraitHTML(myPortrait(),name,'full')}</span><b>${esc(name)}</b></div>`;}
+/* ---------- Yamb Café Plus ----------
+   A one-time unlock bought through Polar (the merchant of record) and kept on the player's account. While it is being
+   tested it shows only after opening the game once with ?plus=test (or on this computer's own test server). */
+const PLUS_AMTS=[499,699,899,1299];
+const plusOpen=()=>!!prefs.plusTest||/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const plusOf=()=>{const d=acctState();return d&&d.plus?d.plus:null;};
+const hasPlus=()=>!!(plusOf()&&plusOf().plus);
+const eur=c=>{try{return new Intl.NumberFormat(I.locale(prefs.lang),{style:'currency',currency:'EUR'}).format(c/100);}catch(e){return (c/100).toFixed(2)+' €';}};
+const PLUS_ITEMS=[['plusProf','plusProfD','<img src="art/cast/profesor.webp" alt="">'],
+  ['plusDaily','plusDailyD','<img src="art/daily-800.webp" alt="" style="object-position:50% 30%">'],
+  ['plusFaces','plusFacesD','<img src="art/plus/01.webp" alt="">'],
+  ['plusWall','plusWallD','<i class="ppin" aria-hidden="true"></i>'],
+  ['plusMark','plusMarkD','<i class="pmark sm" aria-hidden="true">Plus</i>']];
+function plusHTML(m){
+  if(!m.seen){m.seen=true;if(C)C.event('plus_view');}
+  const p=plusOf(),amt=m.amt||PLUS_AMTS[0];
+  let h=head('Yamb Café Plus')+`<div class="plustop"><i class="pmark" aria-hidden="true">Plus</i><p>${esc(t('plusLead'))}</p></div>
+    <ul class="plist">${PLUS_ITEMS.map(([a,b,ic])=>`<li><span class="pic">${ic}</span><span><b>${esc(t(a))}</b><small>${esc(t(b))}</small></span></li>`).join('')}</ul>
+    <div class="pfaces" aria-hidden="true">${[2,5,8,11,4,9].map(i=>`<img src="art/plus/${String(i).padStart(2,'0')}.webp" alt="" loading="lazy">`).join('')}</div>`;
+  if(p&&p.plus)return h+`<div class="slip plusyes"><b>${esc(t('plusYours'))}</b><span>${esc(t('plusSince',{date:dateLabel(String(p.since||'').slice(0,10))}))}${p.pin?' · '+esc(t('plusPinHave')):''}</span></div>`;
+  if(m.waiting)return h+`<div class="slip plusyes wait"><b>${esc(t('plusWait'))}</b><span>${esc(t('plusWaitD'))}</span></div>`;
+  h+=`<h3>${esc(t('plusPrice'))}</h3><div class="pamts">${PLUS_AMTS.map(c=>`<button type="button" data-act="plusamt" data-v="${c}" aria-pressed="${c===amt}">${esc(eur(c))}</button>`).join('')}</div>
+    <p class="fine">${esc(t('plusPinNote',{min:eur(PLUS_AMTS[0])}))}</p>`;
+  if(acctOn())h+=`<button type="button" class="btnRed" data-act="plusbuy"${m.busy?' disabled':''}>${esc(t('plusBuy',{price:eur(amt)}))}</button>`;
+  else h+=`<p>${esc(t('plusSignIn'))}</p>`+gbtn();
+  return h+`<p class="fine" style="margin-top:12px">${esc(t('plusFine'))} ${siteLinks()}</p>`;
+}
+async function plusAct(d){
+  const m=ui.modal;if(!m||m.kind!=='plus')return;
+  if(d.act==='plusamt'){const v=+d.v;if(PLUS_AMTS.includes(v)){m.amt=v;renderModal();}return;}
+  if(m.busy)return;
+  if(!acctOn()){accountAct('signin');return;}
+  m.busy=true;renderModal();
+  try{const j=await C.buyPlus(m.amt||PLUS_AMTS[0],prefs.lang);location.href=j.url;}
+  catch(e){m.busy=false;renderModal();toast(t(/signin/.test(e&&e.message)?'acNoNet':'plusFail'),true);}
+}
+/* back from the payment page: Polar tells the database a moment later, so ask a few times */
+async function plusWait(){
+  const t0=Date.now();
+  while(Date.now()-t0<120000){
+    await new Promise(r=>setTimeout(r,2500));
+    const m=ui.modal;if(!m||m.kind!=='plus'||!m.waiting)return;
+    if(!C||!C.ready||!cloud.uid)continue;
+    try{
+      const p=await C.rpc('my_plus',{});
+      if(p&&p.plus){
+        const d=acctState();if(d)d.plus=p;saveCloud();
+        m.waiting=false;renderModal();toast(t('plusThanks'));FX.confetti(true);if(C)C.event('plus_buy');
+        return;
+      }
+    }catch(e){}
+  }
+  const m=ui.modal;if(m&&m.kind==='plus'&&m.waiting){m.waiting=false;renderModal();toast(t('plusLate'),true);}
+}
 function accountHTML(m){
   let h=head(t('profile'));
   if(!acctOn()){
-    h+=profileTop(myName()||t('youName'))+portraitPicker()+`<h3>${esc(t('account'))}</h3><p>${esc(t('acIntro'))}</p>`+gbtn();
+    h+=profileTop(myName()||t('youName'))+portraitPicker()+`<h3>${esc(t('account'))}</h3><p>${esc(t('acIntro'))}</p>`+gbtn()+
+      (plusOpen()?`<nav class="mlines" style="margin-top:14px">${mline('plus','Yamb Café Plus',t('plusLine'))}</nav>`:'');
     if(!C||!C.available())h+=`<p class="fine" style="margin-top:10px">${esc(t('acNoNet'))}</p>`;
     return h+`<button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button><p class="fine" style="margin-top:14px;text-align:center">${siteLinks()}</p>`;
   }
@@ -2320,6 +2377,7 @@ function accountHTML(m){
     <label class="field"><span>${esc(t('acName'))}</span><input id="acName" maxlength="16" autocomplete="nickname" autocapitalize="words" value="${esc(nm)}"></label>
     <button type="button" class="btnRed" data-act="acsave"${m.busy?' disabled':''}>${esc(t('acSave'))}</button>
     <p class="fine" style="margin-top:12px">${esc(waiting?t('acSyncWait'):t('acSyncOk'))}</p>
+    ${plusOpen()?`<nav class="mlines" style="margin-top:14px">${mline('plus','Yamb Café Plus',hasPlus()?t('plusHave'):t('plusLine'))}</nav>`:''}
     <button type="button" class="btnInk" data-act="signout">${esc(t('acSignOut'))}</button>
     <button type="button" class="linkbtn" data-act="acdel">${esc(t('acDelete'))}</button>`;
 }
@@ -2337,6 +2395,7 @@ function cloudIn(u,fresh){
     const d=dailyToday(),res=stats.daily.results[d.day];
     if((after==='daily'||after==='result')&&res&&res.done)openModal('daily',{day:d.day});
     else if(after==='records')openModal('records');
+    else if(after==='plus')openModal('plus');
     else if(after)openModal('account');
   }
   acctUI();syncCloud(fresh);
@@ -2413,7 +2472,8 @@ function visitSource(q,gameCode,duel,rules){
 function start(){
   document.documentElement.lang=I.locale(prefs.lang);
   let q;try{q=new URLSearchParams(location.search);}catch(e){q=new Map();}
-  const gameCode=cleanCode(q.get&&q.get('game')),duel=q.get&&q.get('duel'),rules=q.get&&q.get('rules');
+  const gameCode=cleanCode(q.get&&q.get('game')),duel=q.get&&q.get('duel'),rules=q.get&&q.get('rules'),plusQ=q.get&&q.get('plus');
+  if(plusQ==='test'){prefs.plusTest=true;savePrefs();}
   if(C)C.count('game',visitSource(q,gameCode,duel,rules),prefs.lang,isStandalone());
   if(location.search){try{history.replaceState(null,'',location.pathname+location.hash);}catch(e){}}
   const sess=loadOnline();
@@ -2421,6 +2481,7 @@ function start(){
   if(gameCode&&sess&&sess.code===gameCode){resumeOnline(sess);return;}
   if(duel){const o=E.decodeObj(duel);showScreen('home');if(o&&o.i&&o.r!=null)openModal('duelIn',{o});else toast(t('badLink'),true);return;}
   if(rules){const r=E.decodeRules(rules);showScreen('home');if(r)openModal('rulesIn',{rules:r});return;}
+  if(plusQ==='done'||plusQ==='back'||plusQ==='test'){showScreen('home');openModal('plus',{waiting:plusQ==='done'});if(plusQ==='done')plusWait();return;}
   if(prefs.screen==='game'&&prefs.mode){
     if(prefs.mode==='online'&&sess){resumeOnline(sess);return;}
     const g=loadSlot(prefs.mode);if(g&&!g.over){openGame(g);return;}

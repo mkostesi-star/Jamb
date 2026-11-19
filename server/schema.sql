@@ -257,7 +257,8 @@ begin
       select jsonb_agg(jsonb_build_object('day', s.day, 'score', s.score, 'moves', s.moves) order by s.day)
       from public.daily_scores s where s.user_id = me and s.day > (now() at time zone 'utc')::date - 70), '[]'::jsonb),
     'daily_days', (select count(*) from public.daily_scores s where s.user_id = me),
-    'daily_best', (select max(s.score) from public.daily_scores s where s.user_id = me));
+    'daily_best', (select max(s.score) from public.daily_scores s where s.user_id = me),
+    'plus', yamb.plus_of(me));
 end $$;
 
 -- sends up a device's old records (once) and its finished games, and returns the player's records
@@ -529,6 +530,83 @@ revoke all on function public.count_visit(text, text, text, boolean, text, integ
 grant execute on function public.count_visit(text, text, text, boolean, text, integer), public.count_event(text, text), public.count_stats(jsonb)
   to anon, authenticated;
 grant execute on function public.numbers(date, date) to authenticated;
+
+-- ---------------------------------------------------------------- Yamb Café Plus
+-- A one-time unlock, sold through Polar (the merchant of record). Polar tells the database about a payment or a refund
+-- through the Edge Function polar-webhook, which alone may call yamb_order (with the project's secret key). The game
+-- only ever asks whether the signed-in player has Plus. Testers are given Plus by a line in yamb.plus_gifts.
+create table if not exists yamb.orders (
+  id          text primary key check (char_length(id) between 4 and 80),   -- Polar's order id
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  env         text not null check (env in ('sandbox', 'live')),
+  status      text not null,
+  net         integer not null default 0,      -- cents, before tax
+  tax         integer not null default 0,
+  total       integer not null default 0,
+  refunded    integer not null default 0,      -- net cents refunded
+  currency    text not null default 'eur',
+  paid_at     timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists orders_user on yamb.orders (user_id);
+create table if not exists yamb.plus_gifts (
+  user_id     uuid primary key references auth.users (id) on delete cascade,
+  why         text not null default '',
+  created_at  timestamptz not null default now()
+);
+revoke all on yamb.orders, yamb.plus_gifts from public, anon, authenticated;
+
+-- whether a player has Plus, since when, and the thank-you pin (paid more than the €4.99 minimum; a buyer in Europe
+-- pays VAT inside the price, so the test is on the amount before tax: €5.20 is above any VAT share of €4.99 and below
+-- any VAT share of €6.99)
+create or replace function yamb.plus_of(p_user uuid) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select case
+    when g.user_id is null and o.since is null then jsonb_build_object('plus', false)
+    else jsonb_build_object('plus', true, 'since', least(g.created_at, o.since), 'pin', coalesce(o.pin, false), 'gift', g.user_id is not null)
+  end
+  from (select 1) one
+  left join yamb.plus_gifts g on g.user_id = p_user
+  left join lateral (select min(x.paid_at) as since, bool_or(x.net - x.refunded >= 520) as pin from yamb.orders x
+                     where x.user_id = p_user and x.status in ('paid', 'partially_refunded') and x.net - x.refunded > 0) o on true
+$$;
+
+create or replace function public.my_plus() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then raise exception 'YC_SIGNIN'; end if;
+  return yamb.plus_of(auth.uid());
+end $$;
+
+-- a payment or refund reported by Polar (the order as Polar sends it). Only the secret key may call this.
+create or replace function public.yamb_order(p_order jsonb, p_env text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare uid uuid; oid text := p_order ->> 'id'; st text := coalesce(p_order ->> 'status', '');
+begin
+  if oid is null or char_length(oid) not between 4 and 80 then raise exception 'YC_ORDER'; end if;
+  begin
+    uid := coalesce(nullif(p_order -> 'customer' ->> 'external_id', ''), nullif(p_order -> 'metadata' ->> 'user_id', ''))::uuid;
+  exception when others then uid := null;
+  end;
+  if uid is null or not exists (select 1 from auth.users u where u.id = uid) then
+    return jsonb_build_object('ok', false, 'why', 'no player');
+  end if;
+  insert into yamb.orders as o (id, user_id, env, status, net, tax, total, refunded, currency, paid_at, updated_at)
+  values (oid, uid, case when p_env = 'live' then 'live' else 'sandbox' end, st,
+          coalesce((p_order ->> 'net_amount')::integer, 0), coalesce((p_order ->> 'tax_amount')::integer, 0),
+          coalesce((p_order ->> 'total_amount')::integer, 0), coalesce((p_order ->> 'refunded_amount')::integer, 0),
+          lower(coalesce(p_order ->> 'currency', 'eur')), coalesce((p_order ->> 'created_at')::timestamptz, now()), now())
+  on conflict (id) do update set status = excluded.status, refunded = greatest(o.refunded, excluded.refunded),
+    net = excluded.net, tax = excluded.tax, total = excluded.total, updated_at = now();
+  return jsonb_build_object('ok', true) || yamb.plus_of(uid);
+end $$;
+
+revoke all on function yamb.plus_of(uuid) from public, anon, authenticated;
+revoke all on function public.my_plus(), public.yamb_order(jsonb, text) from public, anon, authenticated;
+grant execute on function public.my_plus() to authenticated;
+grant execute on function public.yamb_order(jsonb, text) to service_role;
+-- to give a tester Plus (their account id is on the Numbers page or in Authentication → Users):
+--   insert into yamb.plus_gifts (user_id, why) values ('<account id>', 'tester') on conflict do nothing;
 
 notify pgrst, 'reload schema';
 select 'Yamb Café database is ready' as result;

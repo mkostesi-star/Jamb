@@ -187,5 +187,34 @@ function professorMoves(seed){
   ok(after.rows[0].keys===1&&after.rows[0].old===0&&after.rows[0].p===2,'a new day: yesterday\'s key and codes are gone, and the same visitor counts again');
   await S.admin(`select set_config('request.headers', '', false)`);
 
+  // ---- 8. Plus: only the payment function (secret key) records orders; refunds take it away; gifts for testers
+  const svc=async(sql,params)=>S.admin(`set role service_role`).then(async()=>{try{return await S.admin(sql,params);}finally{await S.admin('reset role');}});
+  const lea=await S.addUser('lea@example.com','Lea'),tom=await S.addUser('tom@example.com','Tom');
+  const order=(o)=>JSON.stringify(Object.assign({id:'ord_'+Math.random().toString(36).slice(2,10),status:'paid',net_amount:399,tax_amount:100,total_amount:499,refunded_amount:0,currency:'eur',created_at:new Date().toISOString(),customer:{external_id:lea},metadata:{}},o));
+  r=await S.as(lea,'select public.my_plus() as p');ok(r.rows[0].p.plus===false,'no Plus before paying');
+  await denied('a player cannot record an order',lea,`select public.yamb_order('{"id":"ord_x1"}'::jsonb, 'live')`);
+  await denied('a visitor cannot record an order',null,`select public.yamb_order('{"id":"ord_x1"}'::jsonb, 'live')`);
+  await denied('players cannot read orders',lea,'select * from yamb.orders');
+  const o1=order({});r=await svc('select public.yamb_order($1::jsonb, $2) as x',[o1,'sandbox']);
+  ok(r.rows[0].x.ok&&r.rows[0].x.plus===true&&r.rows[0].x.pin===false,'a €4.99 payment (VAT inside) gives Plus without the pin');
+  r=await S.as(lea,'select public.my_plus() as p');ok(r.rows[0].p.plus===true&&r.rows[0].p.since,'the player sees Plus');
+  r=await S.as(lea,'select public.my_state() as s');ok(r.rows[0].s.plus&&r.rows[0].s.plus.plus===true,'and so does the account state');
+  await svc('select public.yamb_order($1::jsonb, $2)',[o1,'sandbox']);
+  r=await S.admin('select count(*)::int as n from yamb.orders where user_id=$1',[lea]);ok(r.rows[0].n===1,'the same order reported twice is kept once');
+  const o2=order({id:'ord_pin1',net_amount:559,tax_amount:140,total_amount:699,customer:{external_id:tom}});
+  r=await svc('select public.yamb_order($1::jsonb, $2) as x',[o2,'live']);ok(r.rows[0].x.pin===true,'€6.99 in Croatia (net €5.59) gives the pin');
+  const o3=order({id:'ord_us1',net_amount:499,tax_amount:40,total_amount:539,customer:{external_id:tom}});
+  r=await svc('select public.yamb_order($1::jsonb, $2) as x',[o3,'live']);r=await S.admin(`select yamb.plus_of($1) as p`,[tom]);ok(r.rows[0].p.pin===true,'a second order keeps the pin');
+  r=await svc('select public.yamb_order($1::jsonb, $2) as x',[JSON.stringify(Object.assign(JSON.parse(o1),{status:'refunded',refunded_amount:399})),'sandbox']);
+  ok(r.rows[0].x.plus===false,'a full refund takes Plus away');
+  r=await svc('select public.yamb_order($1::jsonb, $2) as x',[order({id:'ord_nouser',customer:{external_id:'00000000-0000-4000-8000-000000000000'}}),'live']);
+  ok(r.rows[0].x.ok===false,'an order for an unknown player is ignored');
+  r=await svc('select public.yamb_order($1::jsonb, $2) as x',[order({id:'ord_meta',customer:{external_id:null},metadata:{user_id:lea}}),'live']);
+  ok(r.rows[0].x.plus===true,'the player is found from the order metadata too');
+  const pia=await S.addUser('pia@example.com','Pia');
+  await S.admin(`insert into yamb.plus_gifts (user_id, why) values ($1, 'tester')`,[pia]);
+  r=await S.as(pia,'select public.my_plus() as p');ok(r.rows[0].p.plus===true&&r.rows[0].p.gift===true,'a tester given Plus has it');
+  let e8=null;try{await S.as(null,'select public.my_plus()');}catch(x){e8=x.message;}ok(e8&&/permission denied|YC_SIGNIN/.test(e8),'a visitor cannot ask about Plus');
+
   console.log(bad?`\n${bad} problem(s)`:`\nall good (${Math.round((Date.now()-t0)/1000)} s)`);process.exit(bad?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});
