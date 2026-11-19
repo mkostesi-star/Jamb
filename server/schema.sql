@@ -190,9 +190,9 @@ begin
     'count', (select count(*) from public.daily_scores s where s.day = p_day),
     'top', coalesce((
       select jsonb_agg(jsonb_build_object('rank', r.rnk, 'name', r.name, 'avatar', r.avatar, 'score', r.score,
-                                          'me', coalesce(r.user_id = me, false))
+                                          'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.wall, false) and yamb.has_plus(r.user_id))
                        order by r.score desc, r.created_at)
-      from (select s.user_id, s.score, s.created_at, coalesce(p.name, '') as name, p.avatar,
+      from (select s.user_id, s.score, s.created_at, coalesce(p.name, '') as name, p.avatar, p.wall,
                    rank() over (order by s.score desc) as rnk
             from public.daily_scores s left join public.profiles p on p.id = s.user_id
             where s.day = p_day
@@ -213,9 +213,9 @@ begin
     'count', (select count(distinct s.user_id) from public.daily_scores s where s.day between mon and mon + 6),
     'top', coalesce((
       select jsonb_agg(jsonb_build_object('rank', r.rnk, 'name', r.name, 'avatar', r.avatar, 'score', r.total,
-                                          'days', r.days, 'me', coalesce(r.user_id = me, false))
+                                          'days', r.days, 'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.wall, false) and yamb.has_plus(r.user_id))
                        order by r.total desc, r.last_at)
-      from (select w.user_id, w.total, w.days, w.last_at, coalesce(p.name, '') as name, p.avatar,
+      from (select w.user_id, w.total, w.days, w.last_at, coalesce(p.name, '') as name, p.avatar, p.wall,
                    rank() over (order by w.total desc) as rnk
             from (select s.user_id, sum(s.score)::integer as total, count(*)::integer as days, max(s.created_at) as last_at
                   from public.daily_scores s where s.day between mon and mon + 6 group by s.user_id) w
@@ -239,7 +239,7 @@ begin
   if me is null then raise exception 'YC_SIGNIN'; end if;
   return jsonb_build_object(
     'id', me,
-    'profile', (select jsonb_build_object('name', p.name, 'avatar', p.avatar, 'since', p.created_at)
+    'profile', (select jsonb_build_object('name', p.name, 'avatar', p.avatar, 'since', p.created_at, 'wall', p.wall)
                 from public.profiles p where p.id = me),
     'carried', coalesce((select jsonb_agg(c.stats order by c.created_at) from public.carried c where c.user_id = me), '[]'::jsonb),
     'totals', (select jsonb_build_object('games', count(*),
@@ -297,9 +297,10 @@ declare me uuid := auth.uid(); nm text := yamb.clean_name(p_name);
         av text := case when p_avatar ~ '^[a-z0-9_-]{1,24}$' then p_avatar else null end;
 begin
   if me is null then raise exception 'YC_SIGNIN'; end if;
+  if av ~ '^p[0-9]+$' and not yamb.has_plus(me) then av := null; end if;
   insert into public.profiles (id, name, avatar) values (me, nm, av)
   on conflict (id) do update set name = excluded.name, avatar = excluded.avatar, updated_at = now();
-  return (select jsonb_build_object('name', p.name, 'avatar', p.avatar, 'since', p.created_at) from public.profiles p where p.id = me);
+  return (select jsonb_build_object('name', p.name, 'avatar', p.avatar, 'since', p.created_at, 'wall', p.wall) from public.profiles p where p.id = me);
 end $$;
 
 -- a Daily Yamb result: checked by playing the moves again; the first result of the day stands
@@ -467,7 +468,7 @@ language plpgsql security definer set search_path = '' as $$
 declare d date := (now() at time zone 'utc')::date; h text; fresh integer := 0; m text := lower(coalesce(p_mode, ''));
 begin
   if p_ev is null or p_ev not in ('start', 'finish', 'install', 'signin', 'plus_view', 'plus_buy', 'tip_buy') then return; end if;
-  if m not in ('cpu', 'pp', 'online', 'duel', 'table', 'daily', '-') then m := '-'; end if;
+  if m not in ('cpu', 'pp', 'online', 'duel', 'table', 'daily', 'dailyp', '-') then m := '-'; end if;
   h := yamb.visitor();
   insert into yamb.seen (day, what, h) values (d, p_ev || ':' || m, h) on conflict do nothing;
   get diagnostics fresh = row_count;
@@ -549,6 +550,8 @@ create table if not exists yamb.orders (
   updated_at  timestamptz not null default now()
 );
 create index if not exists orders_user on yamb.orders (user_id);
+-- the regulars' wall and the Plus mark on the high scores: shown only when the owner switches it on
+alter table public.profiles add column if not exists wall boolean not null default false;
 create table if not exists yamb.plus_gifts (
   user_id     uuid primary key references auth.users (id) on delete cascade,
   why         text not null default '',
@@ -569,6 +572,33 @@ language sql stable security definer set search_path = '' as $$
   left join yamb.plus_gifts g on g.user_id = p_user
   left join lateral (select min(x.paid_at) as since, bool_or(x.net - x.refunded >= 520) as pin from yamb.orders x
                      where x.user_id = p_user and x.status in ('paid', 'partially_refunded') and x.net - x.refunded > 0) o on true
+$$;
+
+create or replace function yamb.has_plus(p_user uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from yamb.plus_gifts g where g.user_id = p_user)
+      or exists (select 1 from yamb.orders x where x.user_id = p_user and x.status in ('paid', 'partially_refunded') and x.net - x.refunded > 0)
+$$;
+
+-- on or off: the player's portrait on the regulars' wall and the Plus mark beside their name on the high scores
+create or replace function public.set_wall(p_on boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  if coalesce(p_on, false) and not yamb.has_plus(me) then raise exception 'YC_PLUS'; end if;
+  insert into public.profiles (id, wall) values (me, coalesce(p_on, false))
+  on conflict (id) do update set wall = excluded.wall, updated_at = now();
+  return jsonb_build_object('wall', coalesce(p_on, false));
+end $$;
+
+-- the regulars' wall: Plus owners who chose to be on it, oldest first (names and portraits only)
+create or replace function public.regulars_wall() returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_agg(jsonb_build_object('name', w.name, 'avatar', w.avatar, 'since', w.since, 'me', w.id = auth.uid()) order by w.since), '[]'::jsonb)
+  from (select p.id, coalesce(nullif(p.name, ''), '') as name, p.avatar, (yamb.plus_of(p.id) ->> 'since')::timestamptz as since
+        from public.profiles p where p.wall and yamb.has_plus(p.id)
+        limit 300) w
 $$;
 
 create or replace function public.my_plus() returns jsonb
@@ -602,8 +632,10 @@ begin
 end $$;
 
 revoke all on function yamb.plus_of(uuid) from public, anon, authenticated;
-revoke all on function public.my_plus(), public.yamb_order(jsonb, text) from public, anon, authenticated;
-grant execute on function public.my_plus() to authenticated;
+revoke all on function yamb.has_plus(uuid) from public, anon, authenticated;
+revoke all on function public.my_plus(), public.yamb_order(jsonb, text), public.set_wall(boolean), public.regulars_wall() from public, anon, authenticated;
+grant execute on function public.my_plus(), public.set_wall(boolean) to authenticated;
+grant execute on function public.regulars_wall() to anon, authenticated;
 grant execute on function public.yamb_order(jsonb, text) to service_role;
 -- to give a tester Plus (their account id is on the Numbers page or in Authentication → Users):
 --   insert into yamb.plus_gifts (user_id, why) values ('<account id>', 'tester') on conflict do nothing;

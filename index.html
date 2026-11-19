@@ -922,6 +922,27 @@ body.atTable::before{background:var(--wood-lo)}
 .pmark{display:inline-grid;place-items:center;padding:5px 14px 6px;border-radius:999px;font:700 15px/1 var(--f-serif);font-style:normal;letter-spacing:.04em;color:#3A2A0E;
   background:linear-gradient(180deg,#F2D98E,#D2AA52 55%,#B98F38);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.18),0 2px 4px rgba(90,60,10,.3)}
 .pmark.sm{padding:3px 9px 4px;font-size:12px}
+.pmark.xs{text-transform:none;display:inline-grid;vertical-align:.12em;margin-left:.4em;padding:2px 6px 3px;font-size:10px;letter-spacing:.05em;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 1px 2px rgba(90,60,10,.3)}
+.ppin.sm{display:inline-block;width:11px;height:11px;margin-left:.3em;vertical-align:.05em}
+/* locked behind Plus: the face dims, the brass tag sits at the foot */
+.charpick button.locked .face,.ppick button.locked img{filter:saturate(.35) brightness(.85)}
+.charpick button.locked .pmark.xs,.ppick button.locked .pmark.xs{position:absolute;left:50%;bottom:6%;margin:0;transform:translateX(-50%);font-size:9px;padding:2px 5px 3px;z-index:2}
+.ppick button{position:relative}
+.ppick button.locked .pmark.xs{font-size:8.5px}
+/* Daily again */
+.practice{margin-top:14px;display:grid;gap:8px}
+.practice h3{display:flex;align-items:center;gap:2px}
+.missed{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}
+.missed button{flex:none;display:grid;gap:2px;justify-items:center;min-width:58px;padding:8px 6px;border-radius:10px;border:1.5px solid var(--line-strong);background:#fff;color:var(--text);font:600 15px var(--f-ui);font-variant-numeric:lining-nums tabular-nums}
+.missed button small{font:400 12px var(--f-ui);color:var(--muted)}
+.plusbtn .pmark.xs{margin-left:.6em}
+/* the regulars' wall */
+.cork.wall{min-height:60vh}
+.wallgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:18px 14px;padding:8px 4px 16px}
+.wallgrid figure{margin:0;display:grid;justify-items:center;gap:6px;transform:rotate(var(--tilt))}
+.wallgrid .print{--pw:88px}
+.wallgrid figcaption{font:400 17px/1.1 var(--f-hand,var(--f-serif));color:#2B2118;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wallbtn{margin:10px auto 0;display:block}
 .plustop{display:grid;justify-items:center;gap:10px;text-align:center;margin:4px 0 10px}
 .plustop p{margin:0;max-width:34ch}
 .plist{list-style:none;margin:6px 0 4px;padding:0;display:grid;gap:12px}
@@ -974,15 +995,15 @@ body.atTable::before{background:var(--wood-lo)}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=1020"></script>
-<script src="ai.js?v=1020"></script>
-<script src="i18n.js?v=1020"></script>
-<script src="audio.js?v=1020"></script>
-<script src="music.js?v=1020"></script>
-<script src="fx.js?v=1020"></script>
-<script src="scan.js?v=1020"></script>
-<script src="vendor/supabase.js?v=1020" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=1020"></script>
-<script src="app.js?v=1020"></script>
+<script src="engine.js?v=1030"></script>
+<script src="ai.js?v=1030"></script>
+<script src="i18n.js?v=1030"></script>
+<script src="audio.js?v=1030"></script>
+<script src="music.js?v=1030"></script>
+<script src="fx.js?v=1030"></script>
+<script src="scan.js?v=1030"></script>
+<script src="vendor/supabase.js?v=1030" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=1030"></script>
+<script src="app.js?v=1030"></script>
 </body>
 </html>

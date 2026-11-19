@@ -125,8 +125,8 @@ function professorMoves(seed){
   ok(r.rows[0].s.totals.games===0&&r.rows[0].s.carried.length===0&&r.rows[0].s.dailies.length===1,'another player sees only their own records');
 
   // ---- 6. profile and deleting
-  r=await S.as(ana,'select public.save_profile($1, $2) as p',['  Ana   <script>\n Banana of the long name  ','p3']);
-  ok(r.rows[0].p.name==='Ana script Banan'&&r.rows[0].p.avatar==='p3','a name is trimmed, cleaned and cut to 16 letters: "'+r.rows[0].p.name+'"');
+  r=await S.as(ana,'select public.save_profile($1, $2) as p',['  Ana   <script>\n Banana of the long name  ','r03']);
+  ok(r.rows[0].p.name==='Ana script Banan'&&r.rows[0].p.avatar==='r03','a name is trimmed, cleaned and cut to 16 letters: "'+r.rows[0].p.name+'"');
   r=await S.as(ana,'select public.save_profile($1, $2) as p',['Ana','../../etc']);ok(r.rows[0].p.avatar===null,'a strange picture name is dropped');
   r=await S.as(null,'select public.daily_board($1::date) as b',[today]);ok(r.rows[0].b.top[0].name==='Ana','the table shows the chosen name');
   r=await S.as(ana,'select public.delete_my_account() as d');
@@ -215,6 +215,24 @@ function professorMoves(seed){
   await S.admin(`insert into yamb.plus_gifts (user_id, why) values ($1, 'tester')`,[pia]);
   r=await S.as(pia,'select public.my_plus() as p');ok(r.rows[0].p.plus===true&&r.rows[0].p.gift===true,'a tester given Plus has it');
   let e8=null;try{await S.as(null,'select public.my_plus()');}catch(x){e8=x.message;}ok(e8&&/permission denied|YC_SIGNIN/.test(e8),'a visitor cannot ask about Plus');
+
+  // ---- 9. Plus parts: Plus portraits, the wall and the mark on the high scores, only for owners who choose it
+  r=await S.as(tom,'select public.save_profile($1, $2) as p',['Tom','p04']);ok(r.rows[0].p.avatar==='p04','a Plus owner may take a Plus portrait');
+  const noa=await S.addUser('noa@example.com','Noa');
+  r=await S.as(noa,'select public.save_profile($1, $2) as p',['Noa','p04']);ok(r.rows[0].p.avatar===null,'a player without Plus may not');
+  let e9=null;try{await S.as(noa,'select public.set_wall(true)');}catch(x){e9=x.message;}ok(e9&&/YC_PLUS/.test(e9),'only a Plus owner can go on the wall');
+  r=await S.as(null,'select public.regulars_wall() as w');ok(r.rows[0].w.length===0,'the wall is empty until someone chooses it');
+  await S.as(tom,'select public.set_wall(true)');
+  r=await S.as(null,'select public.regulars_wall() as w');ok(r.rows[0].w.length===1&&r.rows[0].w[0].name==='Tom'&&r.rows[0].w[0].avatar==='p04'&&!('id' in r.rows[0].w[0]),'Tom is on the wall, with name and portrait only');
+  const td=new Date().toISOString().slice(0,10);
+  await S.admin(`insert into public.daily_scores (day, user_id, score, moves) values ($1,$2,250,'[]'),($1,$3,240,'[]')`,[td,tom,lea]);
+  r=await S.as(null,'select public.daily_board($1::date) as b',[td]);
+  const tb=r.rows[0].b.top,tr=tb.find(x=>x.name==='Tom'),lr=tb.find(x=>x.score===240);
+  ok(tr&&tr.plus===true&&lr&&lr.plus===false,'the high scores show the Plus mark only beside an owner who chose it');
+  r=await S.as(tom,'select public.my_state() as s');ok(r.rows[0].s.profile.wall===true,'the player sees their own choice');
+  await S.as(tom,'select public.set_wall(false)');r=await S.as(null,'select public.regulars_wall() as w');ok(r.rows[0].w.length===0,'and can take it back');
+  await S.as(null,'select public.count_event($1, $2)',['start','dailyp']);
+  r=await S.admin(`select count(*)::int as n from yamb.events where ev='start' and mode='dailyp'`);ok(r.rows[0].n===1,'a practice game of the Daily is counted as its own kind');
 
   console.log(bad?`\n${bad} problem(s)`:`\nall good (${Math.round((Date.now()-t0)/1000)} s)`);process.exit(bad?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

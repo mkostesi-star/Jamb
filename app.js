@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v10.2';
+const VERSION='v10.3';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -56,7 +56,7 @@ const rowName=r=>t('row.'+r);
 const colName=c=>t('col.'+c);
 function savePrefs(){store.set(PKEY,JSON.stringify(prefs));}
 function saveStats(){store.set(SKEY,JSON.stringify(stats));}
-function applyAudio(){A.set({sound:prefs.sound,ambience:prefs.ambience&&screen==='game',haptics:prefs.haptics,music:prefs.music!==false,musicLevel:screen==='game'?0.085:0.17,musicMood:screen==='game'&&G&&G.mode==='daily'?'daily':'main'});}
+function applyAudio(){A.set({sound:prefs.sound,ambience:prefs.ambience&&screen==='game',haptics:prefs.haptics,music:prefs.music!==false,musicLevel:screen==='game'?0.085:0.17,musicMood:screen==='game'&&G&&(G.mode==='daily'||G.mode==='dailyp')?'daily':'main'});}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')A.sleep();else applyAudio();});
 
 /* ---------- games ---------- */
@@ -92,7 +92,7 @@ function pname(g,i){const p=g.players[i];if(!p)return '';if(p.kind==='cpu')retur
 /* the only person on this phone, with no name typed in, is simply "You" */
 function isYou(g,i){const p=g.players[i];return !!p&&p.kind!=='cpu'&&!p.name&&g.mode!=='online'&&g.players.filter(q=>q.kind!=='cpu').length===1;}
 const name=i=>pname(G,i);
-function mySeat(){if(!G)return -1;if(G.mode==='online')return G.players.findIndex(p=>p.cid&&p.cid===prefs.cid);if(G.mode==='cpu')return G.players.findIndex(p=>p.kind==='human');if(G.mode==='daily'||G.mode==='duel')return 0;return -1;}
+function mySeat(){if(!G)return -1;if(G.mode==='online')return G.players.findIndex(p=>p.cid&&p.cid===prefs.cid);if(G.mode==='cpu')return G.players.findIndex(p=>p.kind==='human');if(G.mode==='daily'||G.mode==='dailyp'||G.mode==='duel')return 0;return -1;}
 function mayAct(){
   if(!G||G.over||G.paused)return false;
   if(G.mode==='online')return onlineReady()&&G.status==='playing'&&G.current===mySeat();
@@ -521,6 +521,7 @@ function finishGame(){
   const many=G.players.length>1;
   if(me>=0&&st[0].i===me)setTimeout(()=>{A.win();if(many&&screen==='game')FX.confetti(true);},700);
   if(G.mode==='daily')finishDaily();
+  if(G.mode==='dailyp')finishPractice();
   recordGame(G);
   if(G.mode==='duel'){stats.duels[G.duel.id]={score:E.total(G.rules,G.players[0].sheet),at:Date.now(),from:G.duel.from||null};}
   saveStats();
@@ -585,10 +586,45 @@ function qualityGrid(rules,sheet){
   });
   return out;
 }
+/* Plus: the Daily again for practice, today's after playing it, or a missed day of the last 30. Never sent, never ranked. */
+/* k calendar days back (by date, not by 24-hour steps, which slip a day near midnight across a clock change) */
+const daysAgo=k=>{const n=new Date();return E.localDay(new Date(n.getFullYear(),n.getMonth(),n.getDate()-k,12));};
+function practiceDays(){
+  const out=[],today=E.localDay();
+  for(let k=1;k<=30;k++){const day=daysAgo(k),r=stats.daily.results[day];if(!(r&&r.done))out.push(day);}
+  return out.filter(d=>d<today);
+}
+function startPractice(day){
+  if(plusLocked()){pushBack();openModal('plus');return;}
+  const today=E.localDay(),ok=day===today?!!(stats.daily.results[today]&&stats.daily.results[today].done):practiceDays().includes(day);
+  if(!ok)return;
+  const g=loadSlot('dailyp');
+  if(g&&g.daily&&g.daily.day===day&&!g.over){openGame(g);return;}
+  openGame(makeGame('dailyp',dailyRules(),[{name:myName()||null,kind:'human'}],{seed:'daily:'+day,daily:{day,n:E.dailyNumber(day),practice:true}}));
+}
+function finishPractice(){
+  const day=G.daily.day,score=E.total(G.rules,G.players[0].sheet);
+  const P=stats.daily.practice=stats.daily.practice||{},p=P[day]||(P[day]={best:0,n:0,prof:null});
+  p.best=Math.max(p.best||0,score);p.n=(p.n||0)+1;p.last=score;
+  const keys=Object.keys(P).sort();while(keys.length>40)delete P[keys.shift()];
+  saveStats();
+  if(p.prof==null)profPlay(G.seed,G.rules,sc=>{const q=(stats.daily.practice||{})[day];if(q){q.prof=sc;saveStats();}if(ui.modal&&ui.modal.kind==='result')renderModal();});
+}
+function practiceHTML(day){
+  if(!plusOpen())return '';
+  const today=E.localDay(),r=stats.daily.results[day],P=stats.daily.practice||{},lock=plusLocked()?'<i class="pmark xs" aria-hidden="true">Plus</i>':'';
+  let h='';
+  if(day===today&&r&&r.done)h+=`<button type="button" class="btnInk plusbtn" data-act="dailyp" data-day="${day}">${esc(t('plusDaily'))}${lock}</button>${P[day]?`<p class="fine" style="text-align:center">${esc(t('practiceBest',{s:fmt(P[day].best)}))}</p>`:''}`;
+  if(day===today){
+    const miss=practiceDays();
+    if(miss.length)h+=`<h3>${esc(t('missedDays'))}${lock}</h3><p class="fine">${esc(t('missedNote'))}</p><div class="missed">${miss.map(d=>{const dt=new Date(d+'T12:00:00');return `<button type="button" data-act="dailyp" data-day="${d}"><b>${dt.getDate()}.${dt.getMonth()+1}.</b><small>${P[d]?fmt(P[d].best):'·'}</small></button>`;}).join('')}</div>`;
+  }
+  return h?`<div class="practice">${h}</div>`:'';
+}
 function finishDaily(){
   const d=G.daily,score=E.total(G.rules,G.players[0].sheet);
   const prev=stats.daily.last;
-  const yest=E.localDay(new Date(Date.now()-864e5));
+  const yest=daysAgo(1);
   stats.daily.streak=prev===yest?(stats.daily.streak||0)+1:(prev===d.day?stats.daily.streak||1:1);
   stats.daily.last=d.day;stats.daily.maxStreak=Math.max(stats.daily.maxStreak||0,stats.daily.streak||0);
   /* the moves are kept with the result, checked here first: played again from the list they must give the same score */
@@ -719,7 +755,7 @@ function showScreen(s){
   try{window.scrollTo(0,0);}catch(e){}
 }
 /* visitor numbers: what was chosen for this game (once per game, by the device that runs it) and what was used in it */
-function rulesTag(g){if(g.mode==='daily')return 'daily';for(const p of ['classic','quick','family','six','full'])if(E.sameRules(g.rules,E.presetRules(p)))return p;return 'custom';}
+function rulesTag(g){if(g.mode==='daily'||g.mode==='dailyp')return 'daily';for(const p of ['classic','quick','family','six','full'])if(E.sameRules(g.rules,E.presetRules(p)))return p;return 'custom';}
 function startStats(g){
   if(g.mode==='online'&&!(online&&online.host))return;
   const it=[['rules',rulesTag(g),1],['players',String(g.players.length),1]];
@@ -834,6 +870,7 @@ function modeLabel(g,code){
   if(!g)return t('mOnline',{code:code||''});
   if(g.mode==='cpu'){return t('mCpu',{name:g.players.filter(p=>p.kind==='cpu').map(p=>(CHARS[p.char]||CHARS.profesor).name).join(', ')});}
   if(g.mode==='online')return t('mOnline',{code:g.code||code||''});
+  if(g.mode==='dailyp')return t('practiceTag')+' · '+dateLabel(g.daily.day);
   return t('m_'+g.mode);
 }
 function dateLabel(day){
@@ -858,8 +895,9 @@ function bestOf(modes){
 function renderHome(){
   const d=dailyToday(),res=stats.daily.results[d.day];
   const items=[];
-  for(const m of ['cpu','pp','duel','table','daily']){
+  for(const m of ['cpu','pp','duel','table','daily','dailyp']){
     const g=loadSlot(m);if(!g||g.over||progress(g)===0)continue;
+    if(m==='dailyp'&&plusLocked())continue;
     if(m==='daily'&&(!g.daily||g.daily.day!==d.day))continue;
     items.push({m,g,at:g.updated||0});
   }
@@ -1247,7 +1285,7 @@ function turnFx(){
 /* ---------- pages and sheets ----------
    Everything but a few small sheets opens as a full page with a back arrow; the phone's own back gesture closes it. */
 const SHEETS=['install','scan','rulesIn'];
-const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus'];
+const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus'];   /* 'wall' is a cork board of its own */
 const isPage=k=>!!k&&!SHEETS.includes(k);
 window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.backs.length)back();else closeModal();}});
 ui.backs=[];
@@ -1296,9 +1334,10 @@ function renderModal(){
   const nameVal=esc(m.fName!=null?m.fName:(prefs.name||''));
   switch(m.kind){
     case 'cpu':{
-      m.chars=m.chars||(Array.isArray(prefs.chars)&&prefs.chars.length?prefs.chars.filter(k=>CHARS[k]).slice(0,5):[m.ch||prefs.char]);
+      m.chars=(m.chars||(Array.isArray(prefs.chars)&&prefs.chars.length?prefs.chars.filter(k=>CHARS[k]).slice(0,5):[m.ch||prefs.char])).filter(k=>!charLocked(k));
+      if(!m.chars.length)m.chars=['ema'];
       const ch=m.focus||m.chars[m.chars.length-1],c=CHARS[ch];
-      h=head(t('playChar'))+`<p class="fine">${esc(t('pickOpp'))}</p><div class="charpick">${CHAR_ORDER.map(k=>`<button type="button" data-act="setchar" data-ch="${k}" style="--ring:${CHARS[k].ring}" aria-pressed="${m.chars.includes(k)}" aria-label="${esc(CHARS[k].name)}">${avatar(k)}</button>`).join('')}</div>
+      h=head(t('playChar'))+`<p class="fine">${esc(t('pickOpp'))}</p><div class="charpick">${CHAR_ORDER.map(k=>`<button type="button" data-act="setchar" data-ch="${k}" style="--ring:${CHARS[k].ring}" aria-pressed="${m.chars.includes(k)}"${charLocked(k)?' class="locked"':''} aria-label="${esc(CHARS[k].name)}${charLocked(k)?' · Plus':''}">${avatar(k)}${charLocked(k)?'<i class="pmark xs" aria-hidden="true">Plus</i>':''}</button>`).join('')}</div>
         <p class="fine" style="margin:2px 0 8px">${esc(t('oppCount',{n:m.chars.length,names:m.chars.map(k=>CHARS[k].name).join(', ')}))}</p>
         <div class="charcard" style="--ring:${c.ring}"><span class="cdisc">${avatar(ch)}</span><span><b>${esc(c.name)}</b><q>${esc(t('ch.'+ch+'.quote'))}</q><span style="display:block;margin-top:4px">${dots(AI.CHARACTERS[ch].level).replace(/rgba\(246,238,220,.25\)/g,'')}</span></span></div>
         ${nameField(nameVal)}
@@ -1368,6 +1407,7 @@ function renderModal(){
     case 'records':h=recordsHTML();break;
     case 'account':h=accountHTML(m);break;
     case 'plus':h=plusHTML(m);break;
+    case 'wall':h=wallHTML();break;
     case 'daily':h=dailyModalHTML(m.day);break;
     case 'scan':
       h=head(t('scanTitle')+' ('+t('beta')+')')+`<p class="fine">${esc(t('scanHint'))}</p><div class="scanbox"><video id="scanV" playsinline muted></video><canvas id="scanC" hidden></canvas></div>
@@ -1457,7 +1497,7 @@ function newsHTML(day){
   h+=`<section class="nstreak">${stampCardHTML(streak)}<div><b>${esc(streak>=1?t('streak',{n:streak}):t('streakShort'))}</b><p>${esc(t('dailyNext'))}</p></div></section>`;
   h+=`</article></div>`;
   if(done)h+=`<button type="button" class="btnRed onwood" data-act="sharedaily" data-day="${day}">${esc(t('shareResult'))}</button>`;
-  return h;
+  return h+practiceHTML(day);
 }
 function dailyModalHTML(day){return head(t('daily'))+newsHTML(day);}
 function resultHTML(){
@@ -1475,7 +1515,12 @@ function resultHTML(){
   let more=gameStatsHTML(G);
   G.players.forEach((p,i)=>{if(p.kind==='human'&&G.log.some(ev=>ev.p===i))more+=reviewHTML(i);});
   if(more)h+=`<div class="slip">${more}</div>`;
-  const canRematch=!['daily','duel'].includes(G.mode);
+  if(G.mode==='dailyp'){
+    const day=G.daily.day,r=stats.daily.results[day],p=(stats.daily.practice||{})[day];
+    h=`<div class="slip"><h3>${esc(t('practiceTag'))} · ${esc(dateLabel(day))}</h3><p>${r&&r.done?esc(t('practiceFirst',{s:fmt(r.score)})):''}</p>${p&&p.prof!=null?`<p>${esc(t('profScore',{s:fmt(p.prof)}))}</p>`:''}${p?`<p class="fine">${esc(t('practiceBest',{s:fmt(p.best)}))}</p>`:''}</div>`+h;
+    a+=`<button type="button" class="btnRed onwood" data-act="dailyp" data-day="${day}">${esc(t('playAgain'))}</button>`;
+  }
+  const canRematch=!['daily','dailyp','duel'].includes(G.mode);
   a+=`<div class="btnRow" style="margin-top:16px">${canRematch?`<button type="button" class="btnRed" data-act="rematch">${esc(t('rematch'))}</button>`:''}<button type="button" class="btnInk" style="margin-top:0" data-act="exit">${esc(t('menu'))}</button></div>`;
   return head(t('results'))+endTip+`<div class="resgrid"><div class="resA">${a}</div><div class="resB">${h}</div></div>`;
 }
@@ -1553,6 +1598,7 @@ function rulesLabel(r){
   return rulesBrief(r);
 }
 function recordGame(g){
+  if(g.mode==='dailyp')return;     /* practice of the Daily: not a record */
   stats.recIds=stats.recIds||[];
   if(!g.id||stats.recIds.includes(g.id))return;
   stats.recIds.push(g.id);while(stats.recIds.length>60)stats.recIds.shift();
@@ -1576,7 +1622,7 @@ function recordsHTML(){
   /* the regulars' pinboard: your portrait as a taped print, every best game on a pinned note */
   const me=acctName()||myName()||t('youName'),games=recs.reduce((a,r)=>a+(r.games||0),0),best=recs.reduce((m,r)=>r.best&&r.best.s>m?r.best.s:m,0);
   let h=head(t('records'))+`<div class="cork"><div class="pinme"><button type="button" class="print big" data-act="open" data-k="account" aria-label="${esc(t('profile'))}">${portraitHTML(myPortrait(),me,'full')}</button>
-    <div class="pinlabel"><b>${esc(me)}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
+    <div class="pinlabel"><b>${esc(me)}${plusMark()}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
   const modes=['cpu','pp','online','duel','table','daily'],mt={cpu:t('playChar'),pp:t('modePP'),online:t('modeOnline'),duel:t('modeDuel'),table:t('modeTable'),daily:t('daily')};
   if(!recs.length)return h+`<p class="pnote none">${esc(t('recNone'))}</p></div>`+(where?`<div class="slip">${where}</div>`:'');
   modes.forEach(m=>{
@@ -1590,6 +1636,7 @@ function recordsHTML(){
     if(m==='daily')h+=`<div class="pnote"><span class="pr">${esc(t('recStreak'))}</span><b>${Math.max(stats.daily.maxStreak||0,stats.daily.streak||0,av?av.maxStreak:0)}</b></div>`;
     h+=`</div>`;
   });
+  if(plusOpen())h+=`<button type="button" class="btnInk wallbtn" data-act="open" data-k="wall">${esc(t('wallTitle'))}</button>`;
   return h+`</div>`+(where?`<div class="slip">${where}</div>`:'');
 }
 
@@ -1905,7 +1952,7 @@ async function askMotion(){
   const ok=await A.motion.request();if(ok)setupMotion();
 }
 function syncPlayers(m){(m.players||[]).forEach((p,i)=>{if(p.kind!=='cpu'){const el=$('pl'+i);if(el)p.name=el.value.trim().slice(0,16);}});return m.players;}
-function nextChar(list,from){const used=list.filter(p=>p.kind==='cpu').map(p=>p.char);let i=from?CHAR_ORDER.indexOf(from):-1;for(let k=0;k<CHAR_ORDER.length;k++){i=(i+1)%CHAR_ORDER.length;if(!used.includes(CHAR_ORDER[i])||CHAR_ORDER[i]===from)return CHAR_ORDER[i];}return CHAR_ORDER[(i+1)%CHAR_ORDER.length];}
+function nextChar(list,from){const used=list.filter(p=>p.kind==='cpu').map(p=>p.char);let i=from?CHAR_ORDER.indexOf(from):-1;for(let k=0;k<CHAR_ORDER.length;k++){i=(i+1)%CHAR_ORDER.length;if(!charLocked(CHAR_ORDER[i])&&!used.includes(CHAR_ORDER[i])||CHAR_ORDER[i]===from)return CHAR_ORDER[i];}return CHAR_ORDER[(i+1)%CHAR_ORDER.length];}
 
 /* ---------- events ---------- */
 ['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>A.unlock(),{capture:true,passive:true}));
@@ -1986,12 +2033,13 @@ function act(el,d){
     case 'tval':tableVal(+d.v);break;
     case 'troll':tableRoll(+d.n);break;
     case 'daily':startDaily();break;
+    case 'dailyp':{if(G&&G.mode==='dailyp'&&G.over)clearSlot('dailyp');startPractice(d.day);break;}
     case 'resume':resumeSaved(d.m);break;
     case 'endask':ui.endAsk=d.m;renderHome();break;
     case 'endno':ui.endAsk=null;renderHome();break;
     case 'endsaved':endSaved(d.m);break;
     case 'pickchar':openModal('cpu',{chars:[d.ch],focus:d.ch});break;
-    case 'setchar':{const m=ui.modal,ch=d.ch;m.chars=m.chars||[];const i=m.chars.indexOf(ch);
+    case 'setchar':{const m=ui.modal,ch=d.ch;if(charLocked(ch)){pushBack();openModal('plus');break;}m.chars=m.chars||[];const i=m.chars.indexOf(ch);
       if(i>=0){if(m.chars.length>1)m.chars.splice(i,1);}else if(m.chars.length<5)m.chars.push(ch);
       m.focus=m.chars.includes(ch)?ch:m.chars[m.chars.length-1];prefs.char=m.chars[0];prefs.chars=m.chars.slice();savePrefs();renderModal();break;}
     case 'open':{
@@ -2013,7 +2061,7 @@ function act(el,d){
     case 'plrm':{const m=ui.modal;syncPlayers(m);m.players.splice(+d.i,1);renderModal();break;}
     case 'startcpu':{
       takeName();
-      const chars=(ui.modal.chars&&ui.modal.chars.length?ui.modal.chars:[prefs.char]).slice(0,5);prefs.char=chars[0];savePrefs();
+      let chars=(ui.modal.chars&&ui.modal.chars.length?ui.modal.chars:[prefs.char]).filter(k=>CHARS[k]&&!charLocked(k)).slice(0,5);if(!chars.length)chars=['ema'];prefs.char=chars[0];savePrefs();
       openGame(makeGame('cpu',prefs.rules,[{name:myName()||null,kind:'human'}].concat(chars.map(ch=>({kind:'cpu',char:ch}))),{}));break;}
     case 'startpp':case 'starttable':{const list=syncPlayers(ui.modal),first=list.find(p=>p.kind!=='cpu');if(first&&first.name)prefs.name=first.name;savePrefs();
       {const g=makeGame(d.act==='startpp'?'pp':'table',prefs.rules,list.map(p=>p.kind==='cpu'?{kind:'cpu',char:p.char}:{name:p.name||null}),d.act==='startpp'&&prefs.ppTimer?{timer:{sec:prefs.ppTimer}}:{});startClock(g);openGame(g);}break;}
@@ -2026,9 +2074,10 @@ function act(el,d){
     case 'sharedaily':if(C)C.stats([['share','daily',1]]);shareDaily(d.day);break;
     case 'boardtab':ui.boardTab=d.v==='w'?'w':'d';renderModal();break;
     case 'signin':case 'signout':case 'acsave':case 'acdel':case 'acdelno':case 'acdelyes':accountAct(d.act);break;
-    case 'plusamt':case 'plusbuy':plusAct(d);break;
+    case 'plusamt':case 'plusbuy':case 'plusWall':plusAct(d);break;
     case 'pickava':{
-      const v=d.v;if(!PORTRAITS.includes(v))break;
+      const v=d.v;if(!ALL_PORTRAITS.includes(v))break;
+      if(!okPortrait(v)){pushBack();openModal('plus');break;}
       prefs.avatar=v;prefs.painted=v;savePrefs();A.hold(true);
       const st=acctOn()&&acctState();if(st&&st.profile)st.profile.avatar=v;
       if(st&&cloudLive())C.rpc('save_profile',{p_name:acctName()||myName()||'',p_avatar:v}).then(p=>{const s2=acctState();if(s2&&p)s2.profile=p;saveCloud();acctUI();}).catch(()=>{});
@@ -2122,12 +2171,16 @@ function nameField(v){
 function takeName(){const f=$('fName');if(f){prefs.name=f.value.trim().slice(0,16)||null;savePrefs();}}
 /* Your portrait: one of the twelve painted regulars (art/regulars), kept on the device and, signed in, on the account. */
 const PORTRAITS=['r01','r02','r03','r04','r05','r06','r07','r08','r09','r10','r11','r12'];
+const PLUS_PORTRAITS=['p01','p02','p03','p04','p05','p06','p07','p08','p09','p10','p11','p12'];
+const ALL_PORTRAITS=PORTRAITS.concat(PLUS_PORTRAITS);
+/* a Plus portrait counts as yours only while you have Plus */
+const okPortrait=id=>PORTRAITS.includes(id)||(PLUS_PORTRAITS.includes(id)&&hasPlus());
 /* Your own photo stays on this device (a 256px square in localStorage): you see it wherever you appear, while other
    players see the painted portrait you picked, so nobody's picture reaches the public high scores unchecked. */
 const PHOTO_KEY='jamb4-photo';
 function myPhoto(){try{return localStorage.getItem(PHOTO_KEY)||'';}catch(e){return '';}}
-const portraitSrc=id=>id==='photo'?myPhoto():PORTRAITS.includes(id)?`art/regulars/${id.slice(1)}.webp`:'';
-function publicPortrait(){const d=acctOn()&&acctState(),a=d&&d.profile&&d.profile.avatar;return PORTRAITS.includes(a)?a:(PORTRAITS.includes(prefs.painted)?prefs.painted:(PORTRAITS.includes(prefs.avatar)?prefs.avatar:''));}
+const portraitSrc=id=>id==='photo'?myPhoto():ALL_PORTRAITS.includes(id)?`art/${id[0]==='p'?'plus':'regulars'}/${id.slice(1)}.webp`:'';
+function publicPortrait(){const d=acctOn()&&acctState(),a=d&&d.profile&&d.profile.avatar;return okPortrait(a)?a:(okPortrait(prefs.painted)?prefs.painted:(okPortrait(prefs.avatar)?prefs.avatar:''));}
 function myPortrait(){return prefs.avatar==='photo'&&myPhoto()?'photo':publicPortrait();}
 function loadImg(f){return new Promise((res,rej)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{URL.revokeObjectURL(u);res(im);};im.onerror=e=>{URL.revokeObjectURL(u);rej(e);};im.src=u;});}
 async function takePhoto(f){
@@ -2145,7 +2198,7 @@ async function takePhoto(f){
 document.addEventListener('change',e=>{const el=e.target;if(el&&el.id==='photoIn'){takePhoto(el.files&&el.files[0]);el.value='';}});
 function portraitHTML(id,name,cls){
   /* in a taped print a painted regular is shown whole, head to shoulders (art/regulars/full) */
-  const src=cls&&/\bfull\b/.test(cls)&&PORTRAITS.includes(id)?`art/regulars/full/${id.slice(1)}.webp`:portraitSrc(id);
+  const src=cls&&/\bfull\b/.test(cls)&&ALL_PORTRAITS.includes(id)?`art/${id[0]==='p'?'plus':'regulars'}/full/${id.slice(1)}.webp`:portraitSrc(id);
   return `<span class="ptr${cls?' '+cls:''}" aria-hidden="true">${src?`<img src="${src}" alt="" decoding="async">`:`<b>${esc(String(name||'?').slice(0,1).toUpperCase())}</b>`}</span>`;
 }
 function acctName(){const d=acctState();return (d&&d.profile&&d.profile.name)||(cloud.me&&cloud.me.name)||'';}
@@ -2179,7 +2232,7 @@ function acctView(){
   return{played,wins,best,maxStreak,recs:Object.values(recs).map(r=>({mode:r.mode,rules:rulesOfKey(r.rk),games:r.games,wins:r.wins,sum:r.sum,best:r.best}))};
 }
 function acctUI(){
-  if(ui.modal&&['account','settings','records','daily','result','plus'].includes(ui.modal.kind)){
+  if(ui.modal&&['account','settings','records','daily','result','plus','wall','cpu'].includes(ui.modal.kind)){
     const f=document.activeElement;if(!(ui.modal.kind==='account'&&f&&f.id==='acName'))renderModal();
   }
   if(screen==='home')renderHome();
@@ -2300,7 +2353,7 @@ function boardHTML(day){
   else if(!d.top||!d.top.length)h+=`<p class="fine bnote">${esc(t('boardNone'))}</p>`;
   else{
     const rows=d.top.slice(0,10),mine=d.top.find(x=>x.me);if(mine&&!rows.includes(mine))rows.push(mine);
-    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${(av=>portraitSrc(av)?portraitHTML(av,x.name,'sm'):'')(x.me&&myPortrait()==='photo'?'photo':x.avatar)}${esc(x.name||t('playerAnon'))}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
+    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${(av=>portraitSrc(av)?portraitHTML(av,x.name,'sm'):'')(x.me&&myPortrait()==='photo'?'photo':x.avatar)}${esc(x.name||t('playerAnon'))}${x.plus?' <i class="pmark xs" title="Yamb Café Plus">Plus</i>':''}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
       <p class="fine bnote">${esc(t('boardCount',{n:d.count}))}${d.me&&!rows.some(x=>x.me)?' · '+esc(t('boardPlace',{r:d.me.rank,n:d.count})):''}</p>`;
   }
   if(!acctOn())h+=`<p class="fine bnote">${esc(t('boardSignIn'))}</p>`+gbtn();
@@ -2310,19 +2363,24 @@ function boardHTML(day){
 }
 function portraitPicker(){
   const cur=myPortrait(),ph=myPhoto();
-  return `<h3>${esc(t('pickPortrait'))}</h3><div class="ppick">${PORTRAITS.map(id=>`<button type="button" data-act="pickava" data-v="${id}" aria-pressed="${cur===id}" aria-label="${esc(t('pickPortrait'))} ${+id.slice(1)}"><img src="${portraitSrc(id)}" alt="" decoding="async"></button>`).join('')}
+  const list=plusOpen()?ALL_PORTRAITS:PORTRAITS;
+  return `<h3>${esc(t('pickPortrait'))}</h3><div class="ppick">${list.map(id=>{const lk=!okPortrait(id);return `<button type="button" data-act="pickava" data-v="${id}" aria-pressed="${cur===id}"${lk?' class="locked"':''} aria-label="${esc(t('pickPortrait'))} ${+id.slice(1)}${lk?' · Plus':''}"><img src="${portraitSrc(id)}" alt="" decoding="async" loading="lazy">${lk?'<i class="pmark xs" aria-hidden="true">Plus</i>':''}</button>`;}).join('')}
     <button type="button" class="phototile" data-act="photo" aria-pressed="${cur==='photo'}" aria-label="${esc(t('usePhoto'))}">${ph?`<img src="${ph}" alt="">`:CAMERA}</button></div>
     <input type="file" id="photoIn" accept="image/*" hidden>
     ${ph?`<p class="fine rmphoto"><button type="button" class="lnk" data-act="rmphoto">${esc(t('removePhoto'))}</button></p>`:''}`;
 }
 const CAMERA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>';
-function profileTop(name){return `<div class="proftop"><span class="print big">${portraitHTML(myPortrait(),name,'full')}</span><b>${esc(name)}</b></div>`;}
+function profileTop(name){return `<div class="proftop"><span class="print big">${portraitHTML(myPortrait(),name,'full')}</span><b>${esc(name)}${plusMark()}</b></div>`;}
 /* ---------- Yamb Café Plus ----------
    A one-time unlock bought through Polar (the merchant of record) and kept on the player's account. While it is being
    tested it shows only after opening the game once with ?plus=test (or on this computer's own test server). */
 const PLUS_AMTS=[499,699,899,1299];
-const plusOpen=()=>!!prefs.plusTest||/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const plusOpen=()=>PLUS_LIVE||!!prefs.plusTest;
+const plusLocked=()=>plusOpen()&&!hasPlus();
+const charLocked=k=>k==='profesor'&&plusLocked();
+const plusMark=()=>hasPlus()?`<i class="pmark xs" title="Yamb Café Plus">Plus</i>${plusOf().pin?'<i class="ppin sm" aria-hidden="true"></i>':''}`:'';
 const plusOf=()=>{const d=acctState();return d&&d.plus?d.plus:null;};
+const PLUS_LIVE=false;   /* true from the public start: Plus is sold to everyone, and the Professor and the rest need it */
 const hasPlus=()=>!!(plusOf()&&plusOf().plus);
 const eur=c=>{try{return new Intl.NumberFormat(I.locale(prefs.lang),{style:'currency',currency:'EUR'}).format(c/100);}catch(e){return (c/100).toFixed(2)+' €';}};
 const PLUS_ITEMS=[['plusProf','plusProfD','<img src="art/cast/profesor.webp" alt="">'],
@@ -2330,23 +2388,50 @@ const PLUS_ITEMS=[['plusProf','plusProfD','<img src="art/cast/profesor.webp" alt
   ['plusFaces','plusFacesD','<img src="art/plus/01.webp" alt="">'],
   ['plusWall','plusWallD','<i class="ppin" aria-hidden="true"></i>'],
   ['plusMark','plusMarkD','<i class="pmark sm" aria-hidden="true">Plus</i>']];
+async function loadWall(){
+  const b=boards.wall;if(b&&(b.busy||Date.now()-b.at<60000))return;
+  boards.wall={busy:true,at:Date.now(),data:b&&b.data};
+  try{boards.wall={at:Date.now(),data:await C.rpc('regulars_wall',{})};}catch(e){boards.wall={at:Date.now(),err:true,data:b&&b.data};}
+  if(ui.modal&&ui.modal.kind==='wall')renderModal();
+}
+function wallHTML(){
+  let h=head(t('wallTitle'))+`<div class="cork wall"><p class="pnote none" style="font-size:19px">${esc(t('wallIntro'))}</p>`;
+  if(!C||!C.available())return h+`<p class="pnote none">${esc(t('boardOff'))}</p></div>`;
+  loadWall();
+  const w=boards.wall&&boards.wall.data;
+  if(!w)h+=`<p class="pnote none">${esc(boards.wall&&boards.wall.err?t('boardOff'):t('boardWait'))}</p>`;
+  else if(!w.length)h+=`<p class="pnote none">${esc(t('wallEmpty'))}</p>`;
+  else h+=`<div class="wallgrid">${w.map((x,i)=>`<figure style="--tilt:${((i*37)%7)-3}deg"><span class="print">${portraitHTML(x.avatar,x.name,'full')}</span><figcaption>${esc(x.name||t('playerAnon'))}</figcaption></figure>`).join('')}</div>`;
+  if(hasPlus()&&!(acctState().profile&&acctState().profile.wall))h+=`<button type="button" class="btnInk" data-act="open" data-k="plus">${esc(t('wallSwitch'))}</button>`;
+  return h+`</div>`;
+}
 function plusHTML(m){
   if(!m.seen){m.seen=true;if(C)C.event('plus_view');}
   const p=plusOf(),amt=m.amt||PLUS_AMTS[0];
   let h=head('Yamb Café Plus')+`<div class="plustop"><i class="pmark" aria-hidden="true">Plus</i><p>${esc(t('plusLead'))}</p></div>
     <ul class="plist">${PLUS_ITEMS.map(([a,b,ic])=>`<li><span class="pic">${ic}</span><span><b>${esc(t(a))}</b><small>${esc(t(b))}</small></span></li>`).join('')}</ul>
     <div class="pfaces" aria-hidden="true">${[2,5,8,11,4,9].map(i=>`<img src="art/plus/${String(i).padStart(2,'0')}.webp" alt="" loading="lazy">`).join('')}</div>`;
-  if(p&&p.plus)return h+`<div class="slip plusyes"><b>${esc(t('plusYours'))}</b><span>${esc(t('plusSince',{date:dateLabel(String(p.since||'').slice(0,10))}))}${p.pin?' · '+esc(t('plusPinHave')):''}</span></div>`;
+  const wallLink=`<button type="button" class="btnInk" data-act="open" data-k="wall">${esc(t('wallTitle'))}</button>`;
+  if(p&&p.plus){const st=acctState(),on=!!(st&&st.profile&&st.profile.wall);
+    return h+`<div class="slip plusyes"><b>${esc(t('plusYours'))}</b><span>${esc(t('plusSince',{date:dateLabel(String(p.since||'').slice(0,10))}))}${p.pin?' · '+esc(t('plusPinHave')):''}</span></div>
+      <div class="toggle"><span>${esc(t('wallSwitch'))}<small>${esc(t('wallSwitchD'))}</small></span><button type="button" class="sw" role="switch" data-act="plusWall" aria-checked="${on}" aria-label="${esc(t('wallSwitch'))}"${m.busy?' disabled':''}></button></div>`+wallLink;}
   if(m.waiting)return h+`<div class="slip plusyes wait"><b>${esc(t('plusWait'))}</b><span>${esc(t('plusWaitD'))}</span></div>`;
   h+=`<h3>${esc(t('plusPrice'))}</h3><div class="pamts">${PLUS_AMTS.map(c=>`<button type="button" data-act="plusamt" data-v="${c}" aria-pressed="${c===amt}">${esc(eur(c))}</button>`).join('')}</div>
     <p class="fine">${esc(t('plusPinNote',{min:eur(PLUS_AMTS[0])}))}</p>`;
   if(acctOn())h+=`<button type="button" class="btnRed" data-act="plusbuy"${m.busy?' disabled':''}>${esc(t('plusBuy',{price:eur(amt)}))}</button>`;
   else h+=`<p>${esc(t('plusSignIn'))}</p>`+gbtn();
-  return h+`<p class="fine" style="margin-top:12px">${esc(t('plusFine'))} ${siteLinks()}</p>`;
+  return h+wallLink+`<p class="fine" style="margin-top:12px">${esc(t('plusFine'))} ${siteLinks()}</p>`;
 }
 async function plusAct(d){
   const m=ui.modal;if(!m||m.kind!=='plus')return;
   if(d.act==='plusamt'){const v=+d.v;if(PLUS_AMTS.includes(v)){m.amt=v;renderModal();}return;}
+  if(d.act==='plusWall'){
+    const st=acctState();if(!st||m.busy)return;const on=!(st.profile&&st.profile.wall);
+    m.busy=true;renderModal();
+    try{const r=await C.rpc('set_wall',{p_on:on});st.profile=Object.assign({},st.profile||{},{wall:!!(r&&r.wall)});saveCloud();delete boards.wall;
+      Object.keys(boards).forEach(k=>delete boards[k]);}catch(e){toast(t('acFail'),true);}
+    m.busy=false;renderModal();return;
+  }
   if(m.busy)return;
   if(!acctOn()){accountAct('signin');return;}
   m.busy=true;renderModal();
