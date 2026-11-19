@@ -190,6 +190,7 @@ thead th{position:sticky;top:env(safe-area-inset-top,0px);z-index:3;background:v
 thead th:first-child{border-top-left-radius:11px}thead th:last-child{border-top-right-radius:11px}
 /* column arrows: the phone's own font draws ↓ ↑ ↕ at one size; Alegreya Sans draws them unevenly */
 .sym{display:block;font:700 calc(19px*var(--z))/1 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:var(--chalk)}
+.csvg{display:block;width:1.15em;height:1.15em;margin:0 auto}dt .csvg,.colbtn b .csvg{display:inline-block;vertical-align:-.12em}
 .cnm{display:block;margin-top:2px;font:700 calc(11px*max(var(--z),.9))/1.2 var(--f-sc);letter-spacing:.05em;color:var(--chalk-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-inline:1px}
 th.lab{text-align:left;padding-left:7px;border-right:2px solid var(--chalk-strong);font:700 calc(15.5px*min(var(--z),1.2)) var(--f-ui);color:var(--chalk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 thead th.lab{width:calc(var(--labw,22%)*min(max(var(--z),1),1.35));vertical-align:middle;padding:0 0 0 4px}
@@ -541,16 +542,18 @@ button.pressing:not(:disabled){scale:.95;filter:brightness(.93);transition-durat
 @keyframes saucerout{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.7)}}
 /* a spinning cup: painted frames of the cup turning on its own axis (art/cup/spin.webp), the pips a blur until it stops */
 .die .spin{position:absolute;left:calc(var(--d)*-.348);bottom:0;width:calc(var(--d)*1.465);height:calc(var(--d)*.883);pointer-events:none;
-  background:url(art/cup/spin.webp) 0 0/1200% 100% no-repeat;filter:drop-shadow(0 3px 2px rgba(20,10,4,.45));
+  background:url(art/cup/spin.webp) 0 0/1200% 100% no-repeat;
   animation:cupframes var(--sp,.3s) steps(12,jump-none) var(--sdel,0s) infinite var(--sdir,normal)}
 .die.slow .spin{animation-duration:calc(var(--sp,.3s)*2.4)}
 @keyframes cupframes{to{background-position:100% 0}}
+/* its shadow is a soft oval drawn under it, not a filter: iPhones flashed a rectangle when a filtered layer started spinning */
+.die .spin::after{content:'';position:absolute;left:30%;right:30%;bottom:-4%;height:14%;border-radius:50%;background:radial-gradient(closest-side,rgba(20,10,4,.42),rgba(20,10,4,0));z-index:-1}
 .dslot .die.tumble,.dslot .die.incup{animation:cupwobble .17s ease-in-out infinite alternate}
 .dslot .die.slow{animation-duration:.28s}
 @keyframes cupwobble{from{rotate:-2.5deg;translate:-1px 0}to{rotate:2.5deg;translate:1px -1px}}
 /* when it stops, the face comes out of the blur */
-.die.landed img.dface{animation:unblur .22s ease-out both}
-@keyframes unblur{from{filter:blur(1.6px) drop-shadow(0 3px 2px rgba(20,10,4,.45))}to{filter:blur(0) drop-shadow(0 3px 2px rgba(20,10,4,.45))}}
+.die.landed img.dface{animation:settle .22s ease-out both}
+@keyframes settle{from{opacity:.55;transform:scale(.96)}to{opacity:1;transform:none}}
 /* lines that come and go stay inside the tray's kept height, so nothing on the screen moves */
 .trayIn{align-content:end}
 .bubbleRow.fixed{height:58px;align-items:flex-end;margin-bottom:6px}
@@ -971,15 +974,15 @@ body.atTable::before{background:var(--wood-lo)}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=1010"></script>
-<script src="ai.js?v=1010"></script>
-<script src="i18n.js?v=1010"></script>
-<script src="audio.js?v=1010"></script>
-<script src="music.js?v=1010"></script>
-<script src="fx.js?v=1010"></script>
-<script src="scan.js?v=1010"></script>
-<script src="vendor/supabase.js?v=1010" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=1010"></script>
-<script src="app.js?v=1010"></script>
+<script src="engine.js?v=1020"></script>
+<script src="ai.js?v=1020"></script>
+<script src="i18n.js?v=1020"></script>
+<script src="audio.js?v=1020"></script>
+<script src="music.js?v=1020"></script>
+<script src="fx.js?v=1020"></script>
+<script src="scan.js?v=1020"></script>
+<script src="vendor/supabase.js?v=1020" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=1020"></script>
+<script src="app.js?v=1020"></script>
 </body>
 </html>

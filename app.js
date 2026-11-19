@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v10.1';
+const VERSION='v10.2';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -786,6 +786,14 @@ const DICE=[0,1,2,3,4,5,6].map(v=>v?`art/cup/${v}.webp`:'');
 const FACES=[0,1,2,3,4,5,6].map(v=>v?`art/dice/${v}.webp`:'');
 DICE.forEach(s=>{if(s){const im=new Image();im.decoding='async';im.src=s;}});
 ['art/tray.webp','art/saucer.webp','art/cup/spin.webp'].forEach(s=>{const im=new Image();im.decoding='async';im.src=s;});
+/* the column arrows, drawn: phones draw ↕ in their own font or as an emoji (iPhone), and the game's fonts draw them unevenly */
+const ARW=(x,down,w)=>down?`<path d="M${x} 4v16M${x-w} ${20-w}l${w} ${w} ${w} -${w}"/>`:`<path d="M${x} 20V4M${x-w} ${4+w}l${w} -${w} ${w} ${w}"/>`;
+const COLSVG={down:ARW(12,1,5),up:ARW(12,0,5),free:'<path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/>',
+  mid:ARW(7.5,0,3.6)+ARW(16.5,1,3.6),tomid:ARW(7.5,1,3.6)+ARW(16.5,0,3.6)};
+function colIcon(c){
+  const d=COLSVG[c];if(!d)return esc(E.COLS[c]&&E.COLS[c].sym||'');
+  return `<svg class="csvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+}
 function pipsHTML(v){
   if(!v)return '';
   return `<img class="dface" src="${DICE[v]}" alt="" width="192" height="169" draggable="false">`;
@@ -953,7 +961,7 @@ function sheetHTML(p){
   const row=r=>`<tr><th scope="row" class="lab">${UPPER.includes(r)?miniFace(+r)+`<span class="sr">${esc(rowName(r))}</span>`:esc(rowName(r))}</th>${cols.map(c=>`<td>${cellHTML(p,c,r)}</td>`).join('')}</tr>`;
   const sum=(cls,label,fn)=>`<tr class="${cls}"><th scope="row" class="lab">${label}</th>${cols.map(c=>`<td>${fn(calc[c])}</td>`).join('')}</tr>`;
   const zl={fit:t('zFit'),large:t('zLarge'),huge:t('zHuge')}[zoomMode()];
-  let h=`<thead><tr><th class="lab" scope="col"><span class="sr">${esc(name(p))}</span><button type="button" class="zbtn" data-act="zoom" aria-label="${esc(t('zLabel')+': '+zl)}">${ICON.zoom}<span>${esc(zl)}</span></button></th>${cols.map(c=>`<th scope="col"><button type="button" class="colh" data-act="colinfo" data-v="${c}" title="${esc(colName(c))}" aria-label="${esc(colName(c)+': '+t('colD.'+c))}"><span class="sym">${E.COLS[c].sym}</span><span class="cnm">${esc(t('cols.'+c))}</span></button></th>`).join('')}</tr></thead><tbody>`;
+  let h=`<thead><tr><th class="lab" scope="col"><span class="sr">${esc(name(p))}</span><button type="button" class="zbtn" data-act="zoom" aria-label="${esc(t('zLabel')+': '+zl)}">${ICON.zoom}<span>${esc(zl)}</span></button></th>${cols.map(c=>`<th scope="col"><button type="button" class="colh" data-act="colinfo" data-v="${c}" title="${esc(colName(c))}" aria-label="${esc(colName(c)+': '+t('colD.'+c))}"><span class="sym">${colIcon(c)}</span><span class="cnm">${esc(t('cols.'+c))}</span></button></th>`).join('')}</tr></thead><tbody>`;
   UPPER.forEach(r=>{h+=row(r);});
   h+=sum('sum',`Σ<span class="sr"> ${esc(t('sumUp'))}</span>`,k=>k.upAny?`${k.up}${k.bonus?`<sup>+${k.bonus}</sup>`:''}`:'');
   h+=row('max')+row('min');
@@ -1376,7 +1384,7 @@ function renderModal(){
 function rulesModalHTML(){
   const d=ui.draft=E.normRules(ui.draft);
   const presets=['classic','quick','family','six','full'].map(p=>`<button type="button" data-act="preset" data-v="${p}" aria-pressed="${E.sameRules(d,E.presetRules(p))}">${esc(t('p_'+p))}</button>`).join('');
-  const cols=E.COL_ORDER.map(c=>`<button type="button" class="colbtn" data-act="togcol" data-v="${c}" aria-pressed="${d.cols.includes(c)}"><b>${E.COLS[c].sym}</b><span>${esc(colName(c))}</span></button>`).join('');
+  const cols=E.COL_ORDER.map(c=>`<button type="button" class="colbtn" data-act="togcol" data-v="${c}" aria-pressed="${d.cols.includes(c)}"><b>${colIcon(c)}</b><span>${esc(colName(c))}</span></button>`).join('');
   const step=(k,label,dl)=>`<div class="stepper"><span>${esc(label)}</span><span class="sv"><button type="button" data-act="step" data-k="${k}" data-d="${-dl}" aria-label="−">−</button><output>${d[k]}</output><button type="button" data-act="step" data-k="${k}" data-d="${dl}" aria-label="+">+</button></span></div>`;
   const sets=(prefs.sets||[]).map((s,i)=>`<div class="toggle"><span>${esc(s.name)}<small>${esc(rulesBrief(s.rules))}</small></span><span style="display:flex;gap:6px"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="loadset" data-i="${i}">${esc(t('load'))}</button><button type="button" class="sbtn ghost" style="color:var(--text);box-shadow:inset 0 0 0 1.5px var(--line-strong)" data-act="delset" data-i="${i}" aria-label="${esc(t('remove'))}">×</button></span></div>`).join('');
   return head(t('modeRules'))+`<p class="fine">${esc(rulesSummary(d))}</p>
@@ -1401,7 +1409,7 @@ function siteLinks(){
 }
 function howtoHTML(r){
   r=E.normRules(r);
-  const cols=r.cols.map(c=>`<dt>${E.COLS[c].sym}</dt><dd><b>${esc(colName(c))}.</b> ${esc(t('colD.'+c))}</dd>`).join('');
+  const cols=r.cols.map(c=>`<dt>${colIcon(c)}</dt><dd><b>${esc(colName(c))}.</b> ${esc(t('colD.'+c))}</dd>`).join('');
   const kenta=r.kenta==='roll'?t('kentaRoll',{a:r.k1,b:r.k2,c:r.k3}):t('kentaFlat',{a:r.ks,b:r.kb});
   const rows=[['1 – 6',t('sc.upper')],[t('bonusTitle'),r.bonus?t('sc.bonus',{a:r.bonusAt,b:r.bonus}):'–'],['Max, Min',t('sc.maxmin',{n:r.dice===6?t('sc.best5'):''})],[r.mid==='plain'?'Max − Min':t('midOnes'),r.mid==='plain'?t('sc.midPlain'):t('sc.midOnes')],
     [rowName('kenta'),kenta],[rowName('triling'),t('sc.tri',{b:r.tri})],[rowName('ful'),t('sc.ful',{b:r.ful})],[rowName('poker'),t('sc.poker',{b:r.poker})],[rowName('jamb'),t('sc.jamb',{b:r.jamb})]];
@@ -1900,6 +1908,7 @@ function syncPlayers(m){(m.players||[]).forEach((p,i)=>{if(p.kind!=='cpu'){const
 function nextChar(list,from){const used=list.filter(p=>p.kind==='cpu').map(p=>p.char);let i=from?CHAR_ORDER.indexOf(from):-1;for(let k=0;k<CHAR_ORDER.length;k++){i=(i+1)%CHAR_ORDER.length;if(!used.includes(CHAR_ORDER[i])||CHAR_ORDER[i]===from)return CHAR_ORDER[i];}return CHAR_ORDER[(i+1)%CHAR_ORDER.length];}
 
 /* ---------- events ---------- */
+['touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,()=>A.unlock(),{capture:true,passive:true}));
 document.addEventListener('pointerdown',e=>{
   A.unlock();
   const btn=e.target.closest('button');

@@ -11,7 +11,7 @@ const LOWER=['kenta','triling','ful','poker','jamb'];
 const COLS={
   down:{sym:'↓',chains:[ROWS.slice()]},
   up:{sym:'↑',chains:[ROWS.slice().reverse()]},
-  free:{sym:'↕',any:true},
+  free:{sym:'↕\uFE0E',any:true},   /* \uFE0E: as text, never as the emoji some phones draw */
   mid:{sym:'⇅',chains:[['max','6','5','4','3','2','1'],['min','kenta','triling','ful','poker','jamb']]},
   tomid:{sym:'⇵',chains:[['1','2','3','4','5','6','max'],['jamb','poker','ful','triling','kenta','min']]},
   ann:{sym:'N',any:true,announce:true},
