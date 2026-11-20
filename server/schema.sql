@@ -190,7 +190,8 @@ begin
     'count', (select count(*) from public.daily_scores s where s.day = p_day),
     'top', coalesce((
       select jsonb_agg(jsonb_build_object('rank', r.rnk, 'name', r.name, 'avatar', r.avatar, 'score', r.score,
-                                          'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.wall, false) and yamb.has_plus(r.user_id))
+                                          'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.wall, false) and yamb.has_plus(r.user_id),
+                                          'pin', coalesce(r.wall, false) and coalesce((yamb.plus_of(r.user_id) ->> 'pin')::boolean, false))
                        order by r.score desc, r.created_at)
       from (select s.user_id, s.score, s.created_at, coalesce(p.name, '') as name, p.avatar, p.wall,
                    rank() over (order by s.score desc) as rnk
@@ -213,7 +214,8 @@ begin
     'count', (select count(distinct s.user_id) from public.daily_scores s where s.day between mon and mon + 6),
     'top', coalesce((
       select jsonb_agg(jsonb_build_object('rank', r.rnk, 'name', r.name, 'avatar', r.avatar, 'score', r.total,
-                                          'days', r.days, 'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.wall, false) and yamb.has_plus(r.user_id))
+                                          'days', r.days, 'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.wall, false) and yamb.has_plus(r.user_id),
+                                          'pin', coalesce(r.wall, false) and coalesce((yamb.plus_of(r.user_id) ->> 'pin')::boolean, false))
                        order by r.total desc, r.last_at)
       from (select w.user_id, w.total, w.days, w.last_at, coalesce(p.name, '') as name, p.avatar, p.wall,
                    rank() over (order by w.total desc) as rnk
@@ -258,7 +260,8 @@ begin
       from public.daily_scores s where s.user_id = me and s.day > (now() at time zone 'utc')::date - 70), '[]'::jsonb),
     'daily_days', (select count(*) from public.daily_scores s where s.user_id = me),
     'daily_best', (select max(s.score) from public.daily_scores s where s.user_id = me),
-    'plus', yamb.plus_of(me));
+    'plus', yamb.plus_of(me),
+    'host', exists (select 1 from yamb.badges b where b.user_id = me and b.badge = 'host'));
 end $$;
 
 -- sends up a device's old records (once) and its finished games, and returns the player's records
@@ -287,6 +290,7 @@ begin
         end;
       end loop;
     end if;
+    perform yamb.check_host(i.invited_by) from yamb.invites i where i.user_id = me;
   end if;
   return public.my_state();
 end $$;
@@ -329,6 +333,9 @@ begin
   delete from public.daily_scores where user_id = me;
   delete from public.results where user_id = me;
   delete from public.carried where user_id = me;
+  perform public.leave_friend_table(s.table_id, current_date) from yamb.friend_seats s where s.user_id = me;
+  delete from yamb.invites where user_id = me or invited_by = me;
+  delete from yamb.badges where user_id = me;
   delete from public.profiles where id = me;
   begin
     delete from auth.users where id = me;
@@ -558,6 +565,43 @@ create table if not exists yamb.plus_gifts (
   created_at  timestamptz not null default now()
 );
 revoke all on yamb.orders, yamb.plus_gifts from public, anon, authenticated;
+-- friends' tables, invites, badges and gift links (described further down, with their functions)
+create table if not exists yamb.friend_tables (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null check (char_length(name) between 1 and 24),
+  owner       uuid references auth.users (id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create table if not exists yamb.friend_seats (
+  table_id    uuid not null references yamb.friend_tables (id) on delete cascade,
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  ref         text not null unique check (ref ~ '^[A-HJ-NP-Z2-9]{6}$'),   -- this player's invite code for this table
+  joined_at   timestamptz not null default now(),
+  primary key (table_id, user_id)
+);
+create index if not exists friend_seats_user on yamb.friend_seats (user_id);
+create table if not exists yamb.invites (
+  user_id     uuid primary key references auth.users (id) on delete cascade,   -- the player who came
+  invited_by  uuid not null references auth.users (id) on delete cascade,      -- whose code brought them
+  at          timestamptz not null default now()
+);
+create index if not exists invites_by on yamb.invites (invited_by);
+create table if not exists yamb.badges (
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  badge       text not null check (badge in ('host')),
+  at          timestamptz not null default now(),
+  primary key (user_id, badge)
+);
+-- gift links (yambcafe.com/?dar=CODE) that put Plus on the account that opens them, e.g. for testers.
+-- The codes are made in the SQL editor only and never written in this file, which is public.
+create table if not exists yamb.gift_codes (
+  code        text primary key check (code ~ '^[A-Z0-9-]{6,32}$'),
+  why         text not null default 'tester',
+  uses_left   integer not null default 30,
+  until       date,
+  created_at  timestamptz not null default now()
+);
+revoke all on yamb.friend_tables, yamb.friend_seats, yamb.invites, yamb.badges, yamb.gift_codes from public, anon, authenticated;
 
 -- whether a player has Plus, since when, and the thank-you pin (paid more than the €4.99 minimum; a buyer in Europe
 -- pays VAT inside the price, so the test is on the amount before tax: €5.20 is above any VAT share of €4.99 and below
@@ -595,9 +639,13 @@ end $$;
 -- the regulars' wall: Plus owners who chose to be on it, oldest first (names and portraits only)
 create or replace function public.regulars_wall() returns jsonb
 language sql stable security definer set search_path = '' as $$
-  select coalesce(jsonb_agg(jsonb_build_object('name', w.name, 'avatar', w.avatar, 'since', w.since, 'me', w.id = auth.uid()) order by w.since), '[]'::jsonb)
-  from (select p.id, coalesce(nullif(p.name, ''), '') as name, p.avatar, (yamb.plus_of(p.id) ->> 'since')::timestamptz as since
-        from public.profiles p where p.wall and yamb.has_plus(p.id)
+  select coalesce(jsonb_agg(jsonb_build_object('name', w.name, 'avatar', w.avatar, 'since', w.since, 'me', w.id = auth.uid(),
+                                               'pin', w.pin, 'host', w.host) order by w.since), '[]'::jsonb)
+  from (select p.id, coalesce(nullif(p.name, ''), '') as name, p.avatar, (x.p ->> 'since')::timestamptz as since,
+               coalesce((x.p ->> 'pin')::boolean, false) as pin,
+               exists (select 1 from yamb.badges b where b.user_id = p.id and b.badge = 'host') as host
+        from public.profiles p cross join lateral (select yamb.plus_of(p.id) as p) x
+        where p.wall and yamb.has_plus(p.id)
         limit 300) w
 $$;
 
@@ -637,6 +685,191 @@ revoke all on function public.my_plus(), public.yamb_order(jsonb, text), public.
 grant execute on function public.my_plus(), public.set_wall(boolean) to authenticated;
 grant execute on function public.regulars_wall() to anon, authenticated;
 grant execute on function public.yamb_order(jsonb, text) to service_role;
+-- ---------------------------------------------------------------- friends' tables (Stol prijatelja) and the Šef sale badge
+-- A friends' table is a small private league for the Daily Yamb: the people at it see each other's Daily scores for the
+-- day and the week, and nobody else does. Every member has an invite code of their own for the table. Whoever first
+-- brings a player in through their code is remembered, once; three such friends who keep playing (at least three
+-- finished games a week, three weeks in a row) earn the inviter the Šef sale badge. Plus is never given for inviting.
+create or replace function yamb.clean_text(p text, n integer) returns text
+language sql immutable set search_path = '' as $$
+  select left(btrim(regexp_replace(regexp_replace(coalesce(p, ''), '\s+', ' ', 'g'), '[\u0001-\u001F\u007F<>]', '', 'g')), n)
+$$;
+
+-- six letters and digits that can't be mixed up (no I, O, 0 or 1), not used by any other seat
+create or replace function yamb.new_ref() returns text
+language plpgsql volatile set search_path = '' as $$
+declare a text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; r text;
+begin
+  loop
+    r := '';
+    for i in 1..6 loop r := r || substr(a, 1 + floor(random() * 32)::integer, 1); end loop;
+    exit when not exists (select 1 from yamb.friend_seats s where s.ref = r);
+  end loop;
+  return r;
+end $$;
+
+-- the longest run of weeks in a row (Monday to Sunday, UTC) with at least three finished games, from the week they came
+create or replace function yamb.kept_weeks(p_user uuid, p_since timestamptz) returns integer
+language sql stable security definer set search_path = '' as $$
+  select coalesce(max(z.n), 0)::integer from (
+    select count(*) as n from (
+      select w.wk - (row_number() over (order by w.wk))::integer * 7 as grp
+      from (select (date_trunc('week', r.finished_at at time zone 'utc'))::date as wk
+            from public.results r
+            where r.user_id = p_user and r.finished_at >= (date_trunc('week', p_since at time zone 'utc') at time zone 'utc')
+            group by 1 having count(*) >= 3) w) g
+    group by g.grp) z
+$$;
+
+create or replace function yamb.host_progress(p_user uuid) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'badge', exists (select 1 from yamb.badges b where b.user_id = p_user and b.badge = 'host'),
+    'friends', coalesce((select jsonb_agg(jsonb_build_object('name', coalesce(nullif(p.name, ''), ''), 'avatar', p.avatar,
+                                  'weeks', least(yamb.kept_weeks(i.user_id, i.at), 3)) order by i.at)
+                         from yamb.invites i left join public.profiles p on p.id = i.user_id
+                         where i.invited_by = p_user), '[]'::jsonb))
+$$;
+
+-- gives the badge once three friends have kept playing; once earned it stays
+create or replace function yamb.check_host(p_user uuid) returns boolean
+language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if p_user is null then return false; end if;
+  if exists (select 1 from yamb.badges b where b.user_id = p_user and b.badge = 'host') then return true; end if;
+  if (select count(*) from yamb.invites i where i.invited_by = p_user and yamb.kept_weeks(i.user_id, i.at) >= 3) >= 3 then
+    insert into yamb.badges (user_id, badge) values (p_user, 'host') on conflict do nothing;
+    return true;
+  end if;
+  return false;
+end $$;
+
+-- the player's tables (with how many played that day and their own place), and their way to Šef sale
+create or replace function public.my_friend_tables(p_day date) returns jsonb
+language plpgsql volatile security definer set search_path = '' as $$
+declare me uuid := auth.uid(); mine integer;
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  perform yamb.check_host(me);
+  select d.score into mine from public.daily_scores d where d.user_id = me and d.day = p_day;
+  return jsonb_build_object(
+    'tables', coalesce((
+      select jsonb_agg(jsonb_build_object('id', t.id, 'name', t.name, 'ref', s.ref, 'owner', coalesce(t.owner = me, false),
+               'seats', (select count(*) from yamb.friend_seats x where x.table_id = t.id),
+               'played', (select count(*) from yamb.friend_seats x join public.daily_scores d on d.user_id = x.user_id and d.day = p_day
+                          where x.table_id = t.id),
+               'mine', mine,
+               'place', case when mine is null then null else 1 + (select count(*) from yamb.friend_seats x
+                          join public.daily_scores d on d.user_id = x.user_id and d.day = p_day
+                          where x.table_id = t.id and d.score > mine) end)
+             order by s.joined_at)
+      from yamb.friend_seats s join yamb.friend_tables t on t.id = s.table_id where s.user_id = me), '[]'::jsonb),
+    'host', yamb.host_progress(me));
+end $$;
+
+create or replace function public.make_friend_table(p_name text, p_day date) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); nm text := yamb.clean_text(p_name, 24); tid uuid;
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  if nm = '' then raise exception 'YC_NAME'; end if;
+  if (select count(*) from yamb.friend_seats s where s.user_id = me) >= 5 then raise exception 'YC_TOOMANY'; end if;
+  insert into public.profiles (id) values (me) on conflict do nothing;
+  insert into yamb.friend_tables (name, owner) values (nm, me) returning id into tid;
+  insert into yamb.friend_seats (table_id, user_id, ref) values (tid, me, yamb.new_ref());
+  return public.my_friend_tables(p_day) || jsonb_build_object('made', tid);
+end $$;
+
+-- what an invite link opens: the table's name, who invites, how many sit there (anyone may ask, with the code)
+create or replace function public.peek_friend_table(p_ref text) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('name', t.name, 'by', coalesce(nullif(p.name, ''), ''), 'avatar', p.avatar,
+                            'seats', (select count(*) from yamb.friend_seats x where x.table_id = t.id))
+  from yamb.friend_seats s join yamb.friend_tables t on t.id = s.table_id left join public.profiles p on p.id = s.user_id
+  where s.ref = upper(btrim(coalesce(p_ref, '')))
+$$;
+
+create or replace function public.join_friend_table(p_ref text, p_day date) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); tid uuid; inviter uuid;
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  select x.table_id, x.user_id into tid, inviter from yamb.friend_seats x where x.ref = upper(btrim(coalesce(p_ref, '')));
+  if tid is null then raise exception 'YC_NOTABLE'; end if;
+  if not exists (select 1 from yamb.friend_seats x where x.table_id = tid and x.user_id = me) then
+    if (select count(*) from yamb.friend_seats x where x.user_id = me) >= 5 then raise exception 'YC_TOOMANY'; end if;
+    if (select count(*) from yamb.friend_seats x where x.table_id = tid) >= 30 then raise exception 'YC_FULL'; end if;
+    insert into public.profiles (id) values (me) on conflict do nothing;
+    insert into yamb.friend_seats (table_id, user_id, ref) values (tid, me, yamb.new_ref());
+    if inviter <> me then insert into yamb.invites (user_id, invited_by) values (me, inviter) on conflict do nothing; end if;
+  end if;
+  return public.my_friend_tables(p_day) || jsonb_build_object('joined', tid);
+end $$;
+
+-- one table's Daily for the day and the week, for the people at it only
+create or replace function public.friend_table_board(p_table uuid, p_day date) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare me uuid := auth.uid(); mon date := date_trunc('week', p_day::timestamp)::date;
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  if not exists (select 1 from yamb.friend_seats s where s.table_id = p_table and s.user_id = me) then raise exception 'YC_NOTABLE'; end if;
+  return (select jsonb_build_object('id', t.id, 'name', t.name, 'owner', coalesce(t.owner = me, false), 'day', p_day, 'from', mon, 'to', mon + 6,
+    'ref', (select s.ref from yamb.friend_seats s where s.table_id = t.id and s.user_id = me),
+    'seats', coalesce((
+      select jsonb_agg(jsonb_build_object('name', coalesce(nullif(p.name, ''), ''), 'avatar', p.avatar, 'me', s.user_id = me,
+               'today', d.score, 'week', w.total, 'days', coalesce(w.days, 0),
+               'host', exists (select 1 from yamb.badges b where b.user_id = s.user_id and b.badge = 'host'),
+               'plus', coalesce(p.wall, false) and yamb.has_plus(s.user_id),
+               'pin', coalesce(p.wall, false) and coalesce((yamb.plus_of(s.user_id) ->> 'pin')::boolean, false))
+             order by d.score desc nulls last, w.total desc nulls last, s.joined_at)
+      from yamb.friend_seats s
+      left join public.profiles p on p.id = s.user_id
+      left join public.daily_scores d on d.user_id = s.user_id and d.day = p_day
+      left join lateral (select sum(x.score)::integer as total, count(*)::integer as days from public.daily_scores x
+                         where x.user_id = s.user_id and x.day between mon and mon + 6) w on true
+      where s.table_id = t.id), '[]'::jsonb))
+    from yamb.friend_tables t where t.id = p_table);
+end $$;
+
+-- getting up from a table: the oldest player left takes it over; an empty table is cleared away
+create or replace function public.leave_friend_table(p_table uuid, p_day date) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  delete from yamb.friend_seats s where s.table_id = p_table and s.user_id = me;
+  update yamb.friend_tables t set owner = (select s.user_id from yamb.friend_seats s where s.table_id = t.id order by s.joined_at limit 1)
+  where t.id = p_table and (t.owner = me or t.owner is null);
+  delete from yamb.friend_tables t where t.id = p_table and not exists (select 1 from yamb.friend_seats s where s.table_id = t.id);
+  return public.my_friend_tables(p_day);
+end $$;
+
+-- a gift link: Plus for the account that opens it, while the code has uses left and has not run out
+create or replace function public.redeem_gift(p_code text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); c text := upper(btrim(coalesce(p_code, ''))); w text;
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  if yamb.has_plus(me) then return yamb.plus_of(me) || jsonb_build_object('had', true); end if;
+  update yamb.gift_codes g set uses_left = g.uses_left - 1
+  where g.code = c and g.uses_left > 0 and (g.until is null or g.until >= (now() at time zone 'utc')::date)
+  returning g.why into w;
+  if w is null then raise exception 'YC_GIFT'; end if;
+  insert into public.profiles (id) values (me) on conflict do nothing;
+  insert into yamb.plus_gifts (user_id, why) values (me, left('gift ' || c || ': ' || w, 80)) on conflict do nothing;
+  return yamb.plus_of(me);
+end $$;
+
+revoke all on function yamb.clean_text(text, integer), yamb.new_ref(), yamb.kept_weeks(uuid, timestamptz), yamb.host_progress(uuid),
+  yamb.check_host(uuid) from public, anon, authenticated;
+revoke all on function public.my_friend_tables(date), public.make_friend_table(text, date), public.peek_friend_table(text),
+  public.join_friend_table(text, date), public.friend_table_board(uuid, date), public.leave_friend_table(uuid, date),
+  public.redeem_gift(text) from public, anon, authenticated;
+grant execute on function public.my_friend_tables(date), public.make_friend_table(text, date), public.join_friend_table(text, date),
+  public.friend_table_board(uuid, date), public.leave_friend_table(uuid, date), public.redeem_gift(text) to authenticated;
+grant execute on function public.peek_friend_table(text) to anon, authenticated;
+-- a gift link for testers (pick your own code; the link is then yambcafe.com/?dar=THE-CODE):
+--   insert into yamb.gift_codes (code, why, uses_left, until) values ('THE-CODE', 'tester', 25, '2027-01-10');
 -- to give a tester Plus (their account id is on the Numbers page or in Authentication → Users):
 --   insert into yamb.plus_gifts (user_id, why) values ('<account id>', 'tester') on conflict do nothing;
 

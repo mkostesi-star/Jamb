@@ -24,11 +24,12 @@ en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about
 <li>your Google account's identifier, email address, name and profile picture link, which Google passes on when you sign in;</li>
 <li>the name you choose for the high scores;</li>
 <li>the painted portrait you pick for your profile, if you pick one, and, if you have Plus, whether you pinned yourself on the regulars' wall;</li>
+<li>the friends' tables you sit at, your invite code for each, and whose invite code first brought you to a table;</li>
 <li>your finished games: when, which mode and rules, the score, and whether you won;</li>
 <li>the records this device had before you first signed in, so they are not lost;</li>
 <li>for the Daily Yamb, your moves, so that the server can check your score is possible with that day's dice.</li>
 </ul>
-<p>On the high scores, other players see the name you chose, the painted portrait you picked (never your own photo) and your Daily Yamb scores, with a Plus mark if you have Plus. If you have Plus and switch on the regulars' wall, your name and portrait are also pinned on a wall that anyone who opens the game can see; switch it off and they come down at once. Your email address is never shown.</p>
+<p>On the high scores, other players see the name you chose, the painted portrait you picked (never your own photo) and your Daily Yamb scores. If you have Plus and switch on the regulars' wall, your name and portrait are also pinned on a wall that anyone who opens the game can see, and a Plus mark shows beside your name; switch it off and both come down at once. At a friends' table, only the people sitting there see each other's names, portraits and Daily Yamb scores for the day and the week, and the Šef sale badge of anyone who earned it. The friends who sat down with your code see their own progress towards your badge only as part of yours: you see their names and how many weeks in a row they have played. Your email address is never shown.</p>
 <p>We use this to run the game you signed in for. The legal basis is providing the service you asked for (Article 6(1)(b) of the GDPR).</p>
 
 <h2>Games on several devices</h2>
@@ -91,11 +92,12 @@ hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva
 <li>oznaku tvog Google računa, adresu e-pošte, ime i poveznicu na profilnu sliku, koje Google prosljeđuje pri prijavi;</li>
 <li>ime koje odabereš za ljestvicu;</li>
 <li>naslikani portret koji odabereš za profil, ako ga odabereš, a ako imaš Plus, i jesi li se prikvačio na zid stalnih gostiju;</li>
+<li>stolove prijatelja za kojima sjediš, tvoj kod za svaki od njih i čiji te kod prvi doveo za stol;</li>
 <li>tvoje završene igre: kada, koji način i pravila, rezultat i jesi li pobijedio;</li>
 <li>rekorde koje je ovaj uređaj imao prije prve prijave, da se ne izgube;</li>
 <li>za Dnevni Jamb tvoje poteze, da poslužitelj provjeri je li rezultat moguć s kockama tog dana.</li>
 </ul>
-<p>Na ljestvici drugi igrači vide ime koje si odabrao, naslikani portret koji si izabrao (nikad tvoju fotografiju) i tvoje rezultate Dnevnog Jamba, uz oznaku Plus ako ga imaš. Ako imaš Plus i uključiš zid stalnih gostiju, tvoje ime i portret prikvačeni su i na zid koji vidi svatko tko otvori igru; kad ga isključiš, odmah se skidaju. Tvoja adresa e-pošte nikad se ne prikazuje.</p>
+<p>Na ljestvici drugi igrači vide ime koje si odabrao, naslikani portret koji si izabrao (nikad tvoju fotografiju) i tvoje rezultate Dnevnog Jamba. Ako imaš Plus i uključiš zid stalnih gostiju, tvoje ime i portret prikvačeni su i na zid koji vidi svatko tko otvori igru, a uz tvoje ime stoji oznaka Plus; kad ga isključiš, oboje se odmah skida. Za stolom prijatelja samo oni koji za njim sjede vide međusobno imena, portrete i rezultate Dnevnog Jamba za dan i tjedan te značku šefa sale onoga tko ju je zaslužio. Kad prijatelji sjednu s tvojim kodom, ti vidiš njihova imena i koliko su tjedana zaredom igrali, kao dio svog puta do značke. Tvoja adresa e-pošte nikad se ne prikazuje.</p>
 <p>To koristimo za igru za koju si se prijavio. Pravna osnova je pružanje usluge koju si zatražio (članak 6. stavak 1. točka (b) GDPR-a).</p>
 
 <h2>Igre na više uređaja</h2>
@@ -138,7 +140,7 @@ hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva
 },
 
 terms:{
-en:{title:'Terms and refunds · Yamb Café',h1:'Terms and refunds',desc:'The few rules for playing Yamb Café, buying Yamb Café Plus, and getting your money back.',date:'Yamb Café · 16 November 2026',back:'Back to the game',body:`
+en:{title:'Terms and refunds · Yamb Café',h1:'Terms and refunds',desc:'The few rules for playing Yamb Café, buying Yamb Café Plus, and getting your money back.',date:'Yamb Café · 20 November 2026',back:'Back to the game',body:`
 <p>Yamb Café is a dice game made by Ivan Kostešić, Croatia (“we” on this page). For anything here, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
@@ -154,7 +156,7 @@ en:{title:'Terms and refunds · Yamb Café',h1:'Terms and refunds',desc:'The few
 <p>Yamb Café is free to play in the browser on any device. We keep improving it, so parts of it may change. We do our best to keep it running, but cannot promise it is never interrupted.</p>
 
 <h2>Accounts</h2>
-<p>Signing in is optional and is for people aged 16 and over, one person per account. Choose a name others may see on the high scores: a name that insults someone or pretends to be someone else may be changed or removed. You can delete your account at any time in the game. How we handle your data is on the <a href="{{privacy}}">privacy page</a>.</p>
+<p>Signing in is optional and is for people aged 16 and over, one person per account. Choose a name others may see on the high scores: a name that insults someone or pretends to be someone else may be changed or removed. The same goes for the names of friends' tables. Inviting friends never earns Plus; it can earn the Šef sale badge, which has no other effect in the game. You can delete your account at any time in the game. How we handle your data is on the <a href="{{privacy}}">privacy page</a>.</p>
 
 <h2>Fair play</h2>
 <p>Daily Yamb scores are checked by playing your moves again with that day's dice. Scores or accounts that get around this may be removed from the high scores.</p>
@@ -180,7 +182,7 @@ en:{title:'Terms and refunds · Yamb Café',h1:'Terms and refunds',desc:'The few
 <h2>Changes</h2>
 <p>If these terms change, we update this page and its date. A change never takes away Plus you already bought.</p>`},
 
-hr:{title:'Uvjeti i povrat novca · Yamb Café',h1:'Uvjeti i povrat novca',desc:'Nekoliko pravila za igru Yamb Café, kupnju Yamb Café Plusa i povrat novca.',date:'Yamb Café · 16. studenoga 2026.',back:'Natrag u igru',body:`
+hr:{title:'Uvjeti i povrat novca · Yamb Café',h1:'Uvjeti i povrat novca',desc:'Nekoliko pravila za igru Yamb Café, kupnju Yamb Café Plusa i povrat novca.',date:'Yamb Café · 20. studenoga 2026.',back:'Natrag u igru',body:`
 <p>Yamb Café je igra s kockama koju je napravio Ivan Kostešić, Hrvatska („mi“ na ovoj stranici). Za sve ovdje piši na <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
@@ -196,7 +198,7 @@ hr:{title:'Uvjeti i povrat novca · Yamb Café',h1:'Uvjeti i povrat novca',desc:
 <p>Yamb Café se besplatno igra u pregledniku na bilo kojem uređaju. Stalno je poboljšavamo, pa se dijelovi mogu mijenjati. Trudimo se da radi bez prekida, ali to ne možemo obećati.</p>
 
 <h2>Računi</h2>
-<p>Prijava nije obavezna i namijenjena je osobama od 16 godina naviše, jedan račun po osobi. Odaberi ime koje drugi smiju vidjeti na ljestvici: ime koje nekoga vrijeđa ili se predstavlja kao netko drugi može se promijeniti ili ukloniti. Račun možeš izbrisati u igri kad god želiš. Kako postupamo s podacima, piše na <a href="{{privacy}}">stranici o privatnosti</a>.</p>
+<p>Prijava nije obavezna i namijenjena je osobama od 16 godina naviše, jedan račun po osobi. Odaberi ime koje drugi smiju vidjeti na ljestvici: ime koje nekoga vrijeđa ili se predstavlja kao netko drugi može se promijeniti ili ukloniti. Isto vrijedi za imena stolova prijatelja. Pozivanje prijatelja nikad ne donosi Plus; može donijeti značku šefa sale, koja u igri ništa drugo ne mijenja. Račun možeš izbrisati u igri kad god želiš. Kako postupamo s podacima, piše na <a href="{{privacy}}">stranici o privatnosti</a>.</p>
 
 <h2>Poštena igra</h2>
 <p>Rezultati Dnevnog Jamba provjeravaju se tako da se tvoji potezi odigraju ponovno s kockama tog dana. Rezultati ili računi koji to zaobilaze mogu se ukloniti s ljestvice.</p>

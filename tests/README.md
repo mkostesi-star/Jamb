@@ -24,5 +24,10 @@ in the database gives the same score as the game's own rules engine, the tables 
 devices of one account, no connection, the high scores, deleting an account. Supabase and Google are played by a
 stand-in (`cloud-server.js`) that runs the same script, so nothing touches the live project.
 
+`friends.js` does the same for the friends' tables (Stol prijatelja): setting a table, an invite link opened signed
+out, sitting down after sign-in, the Daily on the table, the Šef sale plaque and the thank-you pin, a gift link, and
+getting up. With `SHOTS=<folder>` it also saves a picture of each page.
+
     node sql.js            # about 10 seconds
     node cloud.js          # about 2 minutes
+    node friends.js        # about 1 minute

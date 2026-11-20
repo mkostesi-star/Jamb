@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v10.4';
+const VERSION='v11.0';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -945,6 +945,7 @@ function renderHome(){
         <h2 class="sec next">${esc(t('atTable'))}</h2>
         ${mline('cpu',t('playChar'),t('cpuD'),bestOf(['cpu']),`<span class="faces" aria-hidden="true">${faces}</span>`)}
         ${mline('friends',t('friends'),t('friendsD'),bestOf(['pp','online','duel','table']))}
+        ${mline('stoli',t('ftTitle'),t('ftLine'),0)}
         <h2 class="sec next">${esc(t('menuSides'))}</h2>
         ${mline('records',t('records'),t('menuRecordsD'),bestOf(null))}
         ${mline('howto',t('howTo'),t('menuHowD'),0)}
@@ -1288,7 +1289,7 @@ function turnFx(){
 /* ---------- pages and sheets ----------
    Everything but a few small sheets opens as a full page with a back arrow; the phone's own back gesture closes it. */
 const SHEETS=['install','scan','rulesIn'];
-const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus'];   /* 'wall' is a cork board of its own */
+const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus','stoli','stol','stolIn','dar'];   /* 'wall' is a cork board of its own */
 const isPage=k=>!!k&&!SHEETS.includes(k);
 window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.backs.length)back();else closeModal();}});
 ui.backs=[];
@@ -1333,6 +1334,7 @@ function renderModal(){
   const P=$('panel');let h='';
   /* keep whatever was typed when the sheet redraws (picking a character, a timer, a preset) */
   {const a=$('acName');if(a&&P.contains(a))m.acName=a.value;}
+  {const a=$('ftName'),b=$('ftCode');if(a&&P.contains(a))m.ftName=a.value;if(b&&P.contains(b))m.ftCode=b.value;}
   {const f=$('fName');if(f&&P.contains(f))m.fName=f.value;if((m.kind==='pp'||m.kind==='table')&&m.players&&P.querySelector('#pl0'))syncPlayers(m);}
   const nameVal=esc(m.fName!=null?m.fName:(prefs.name||''));
   switch(m.kind){
@@ -1411,6 +1413,10 @@ function renderModal(){
     case 'account':h=accountHTML(m);break;
     case 'plus':h=plusHTML(m);break;
     case 'wall':h=wallHTML();break;
+    case 'stoli':h=ftListHTML(m);break;
+    case 'stol':h=ftTableHTML(m);break;
+    case 'stolIn':h=ftInHTML(m);break;
+    case 'dar':h=giftHTML(m);break;
     case 'daily':h=dailyModalHTML(m.day);break;
     case 'scan':
       h=head(t('scanTitle')+' ('+t('beta')+')')+`<p class="fine">${esc(t('scanHint'))}</p><div class="scanbox"><video id="scanV" playsinline muted></video><canvas id="scanC" hidden></canvas></div>
@@ -1496,7 +1502,7 @@ function newsHTML(day){
     h+=`<section class="nlead play"><div class="minidice" role="img" aria-label="${esc(first.join(' '))}">${first.map(mdie).join('')}</div>
       <button type="button" class="btnRed" data-act="daily">${esc(inprog&&!inprog.over&&inprog.daily&&inprog.daily.day===day?t('dailyResume'):t('dailyPlay'))}</button><p class="nsub">${esc(t('dailyHow'))}</p></section>`;
   }
-  h+=`<section class="nboard">${boardHTML(day)}</section>`;
+  h+=`<section class="nboard">${boardHTML(day)}</section>`+ftNewsHTML();
   h+=`<section class="nstreak">${stampCardHTML(streak)}<div><b>${esc(streak>=1?t('streak',{n:streak}):t('streakShort'))}</b><p>${esc(t('dailyNext'))}</p></div></section>`;
   h+=`</article></div>`;
   if(done)h+=`<button type="button" class="btnRed onwood" data-act="sharedaily" data-day="${day}">${esc(t('shareResult'))}</button>`;
@@ -1509,7 +1515,7 @@ function resultHTML(){
   const title=G.players.length===1?t('finalScore',{s:fmt(st[0].score)}):win<0?t('draw'):win===me?t('youWin'):t('wins',{name:name(win)});
   const endTip=ui.guideEnd?`<div class="tipcard inline" role="note"><p>${esc(t('g6end'))}</p></div>`:'';ui.guideEnd=false;
   let a=`<div class="billTitle"><span class="big">${esc(title)}</span></div>`+billHTML(G,st,win),h='';
-  if(G.mode==='daily'){a+=`<button type="button" class="btnRed onwood" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`;h+=`<div class="slip">${boardHTML(G.daily.day)}</div>`;}
+  if(G.mode==='daily'){a+=`<button type="button" class="btnRed onwood" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`;h+=`<div class="slip">${boardHTML(G.daily.day)}${ftNewsHTML()}</div>`;}
   if(G.mode==='duel'){
     const mine=st[0].score;
     if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result slip"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost',{name:G.duel.from.n}):t('draw'))}</p></div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
@@ -1625,8 +1631,8 @@ function recordsHTML(){
   const where=(av?'':`<p class="fine">${esc(t('recPhone'))}</p>`)+(acctOn()||!C||!C.available()?'':`<button type="button" class="btnInk" data-act="open" data-k="account">${esc(t('recSignIn'))}</button>`);
   /* the regulars' pinboard: your portrait as a taped print, every best game on a pinned note */
   const me=acctName()||myName()||t('youName'),games=recs.reduce((a,r)=>a+(r.games||0),0),best=recs.reduce((m,r)=>r.best&&r.best.s>m?r.best.s:m,0);
-  let h=head(t('records'))+`<div class="cork"><div class="pinme"><button type="button" class="print big" data-act="open" data-k="account" aria-label="${esc(t('profile'))}">${portraitHTML(myPortrait(),me,'full')}</button>
-    <div class="pinlabel"><b>${esc(me)}${plusMark()}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
+  let h=head(t('records'))+`<div class="cork"><div class="pinme"><button type="button" class="print big" data-act="open" data-k="account" aria-label="${esc(t('profile'))}">${portraitHTML(myPortrait(),me,'full')}${pinOnPrint(myPin())}</button>
+    <div class="pinlabel">${myHost()?plaque(true):''}<b>${esc(me)}${plusMark()}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
   const modes=['cpu','pp','online','duel','table','daily'],mt={cpu:t('playChar'),pp:t('modePP'),online:t('modeOnline'),duel:t('modeDuel'),table:t('modeTable'),daily:t('daily')};
   if(!recs.length)return h+`<p class="pnote none">${esc(t('recNone'))}</p></div>`+(where?`<div class="slip">${where}</div>`:'');
   modes.forEach(m=>{
@@ -2079,6 +2085,9 @@ function act(el,d){
     case 'boardtab':ui.boardTab=d.v==='w'?'w':'d';renderModal();break;
     case 'signin':case 'signout':case 'acsave':case 'acdel':case 'acdelno':case 'acdelyes':accountAct(d.act);break;
     case 'plusamt':case 'plusbuy':case 'plusWall':plusAct(d);break;
+    case 'ftmake':case 'ftjoin':case 'ftsit':case 'ftleave':case 'ftleaveyes':case 'ftleaveno':case 'ftinvite':ftAct(d);break;
+    case 'ftopen':pushBack();openModal('stol',{id:d.id});break;
+    case 'fttab':ui.ftTab=d.v==='w'?'w':'d';renderModal();break;
     case 'pickava':{
       const v=d.v;if(!ALL_PORTRAITS.includes(v))break;
       if(!okPortrait(v)){pushBack();openModal('plus');break;}
@@ -2236,7 +2245,7 @@ function acctView(){
   return{played,wins,best,maxStreak,recs:Object.values(recs).map(r=>({mode:r.mode,rules:rulesOfKey(r.rk),games:r.games,wins:r.wins,sum:r.sum,best:r.best}))};
 }
 function acctUI(){
-  if(ui.modal&&['account','settings','records','daily','result','plus','wall','cpu'].includes(ui.modal.kind)){
+  if(ui.modal&&['account','settings','records','daily','result','plus','wall','cpu','stoli','stol','stolIn','dar'].includes(ui.modal.kind)){
     const f=document.activeElement;if(!(ui.modal.kind==='account'&&f&&f.id==='acName'))renderModal();
   }
   if(screen==='home')renderHome();
@@ -2325,7 +2334,7 @@ async function sendDailies(){
       try{
         const b=await C.rpc('submit_daily',{p_day:day,p_moves:r.moves});
         if(cloud.uid!==me)return;
-        r.sent=me;saveStats();boards['d'+day]={at:Date.now(),data:b,err:false};delete boards['w'+day];
+        r.sent=me;saveStats();boards['d'+day]={at:Date.now(),data:b,err:false};delete boards['w'+day];ftForget();
         /* a game just finished that takes the day's top place from someone else: the till rings */
         const top=b&&b.top||[];
         if(day===E.localDay()&&Date.now()-(r.at||0)<120000&&b.me&&b.me.rank===1&&top.length>1&&r.score>top[1].score)A.cash();
@@ -2357,7 +2366,7 @@ function boardHTML(day){
   else if(!d.top||!d.top.length)h+=`<p class="fine bnote">${esc(t('boardNone'))}</p>`;
   else{
     const rows=d.top.slice(0,10),mine=d.top.find(x=>x.me);if(mine&&!rows.includes(mine))rows.push(mine);
-    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${(av=>portraitSrc(av)?portraitHTML(av,x.name,'sm'):'')(x.me&&myPortrait()==='photo'?'photo':x.avatar)}${esc(x.name||t('playerAnon'))}${x.plus?' <i class="pmark xs" title="Yamb Café Plus">Plus</i>':''}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
+    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${rowFace(x)}${esc(x.name||t('playerAnon'))}${x.plus?' <i class="pmark xs" title="Yamb Café Plus">Plus</i>':''}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
       <p class="fine bnote">${esc(t('boardCount',{n:d.count}))}${d.me&&!rows.some(x=>x.me)?' · '+esc(t('boardPlace',{r:d.me.rank,n:d.count})):''}</p>`;
   }
   if(!acctOn())h+=`<p class="fine bnote">${esc(t('boardSignIn'))}</p>`+gbtn();
@@ -2374,7 +2383,180 @@ function portraitPicker(){
     ${ph?`<p class="fine rmphoto"><button type="button" class="lnk" data-act="rmphoto">${esc(t('removePhoto'))}</button></p>`:''}`;
 }
 const CAMERA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>';
-function profileTop(name){return `<div class="proftop"><span class="print big">${portraitHTML(myPortrait(),name,'full')}</span><b>${esc(name)}${plusMark()}</b></div>`;}
+function profileTop(name){return `<div class="proftop"><span class="print big">${portraitHTML(myPortrait(),name,'full')}${pinOnPrint(myPin())}</span>${myHost()?plaque():''}<b>${esc(name)}${plusMark()}</b></div>`;}
+/* ---------- friends' tables (Stol prijatelja) and Šef sale ----------
+   A private Daily league: friends at one table play the same Daily and see who got furthest today and this week.
+   Everyone at a table has an invite code of their own (yambcafe.com/?stol=CODE). Bringing three friends who keep
+   playing, three games a week for three weeks in a row, earns the Šef sale badge: a brass plaque under the portrait.
+   Plus is never given for inviting. Gift links (?dar=CODE) put Plus on a tester's account. */
+const FT_MAX=5;
+function ftForget(){delete boards.ft;Object.keys(boards).forEach(k=>{if(k.startsWith('ftb:'))delete boards[k];});}
+function ftRedraw(){if(ui.modal&&['stoli','stol','daily','result'].includes(ui.modal.kind))renderModal();}
+async function loadFT(force){
+  if(!C||!C.available()||!acctOn())return;
+  const b=boards.ft;
+  if(b&&b.loading)return;
+  if(b&&!force&&Date.now()-b.at<(b.err?20000:60000))return;
+  boards.ft={at:b?b.at:0,data:b?b.data:null,loading:true};
+  try{boards.ft={at:Date.now(),data:await C.rpc('my_friend_tables',{p_day:dailyToday().day})};}
+  catch(e){boards.ft={at:Date.now(),data:b?b.data:null,err:true};}
+  ftRedraw();
+}
+async function loadFTB(id,day,force){
+  if(!C||!C.available()||!acctOn())return;
+  const k='ftb:'+id+day,b=boards[k];
+  if(b&&b.loading)return;
+  if(b&&!force&&Date.now()-b.at<(b.err?20000:60000))return;
+  boards[k]={at:b?b.at:0,data:b?b.data:null,loading:true};
+  try{boards[k]={at:Date.now(),data:await C.rpc('friend_table_board',{p_table:id,p_day:day})};}
+  catch(e){boards[k]={at:Date.now(),data:b?b.data:null,err:true,gone:/YC_NOTABLE/.test(String(e&&e.message||e))};}
+  ftRedraw();
+}
+const ftUrl=ref=>location.origin+'/?stol='+ref;
+const ftErr=e=>{const s=String(e&&e.message||e);return /YC_TOOMANY/.test(s)?t('ftTooMany'):/YC_FULL/.test(s)?t('ftFull'):/YC_NOTABLE/.test(s)?t('ftBadCode'):/YC_NAME/.test(s)?t('ftNeedName'):t('acNoNet');};
+const ftStanding=x=>x.mine!=null&&x.place?t('ftPlace',{r:x.place,n:x.played}):t('ftPlayedN',{n:x.played});
+/* the list of your tables: open one, set a new one, sit down with a code; and how far you are from Šef sale */
+function ftListHTML(m){
+  let h=head(t('ftTitle'))+`<p class="fine">${esc(t('ftIntro'))}</p>`;
+  if(!C||!C.available())return h+`<p class="fine">${esc(t('boardOff'))}</p>`;
+  if(!acctOn())return h+`<p class="fine">${esc(t('ftSignIn'))}</p>`+gbtn();
+  loadFT();
+  const d=boards.ft&&boards.ft.data;
+  if(!d)return h+`<p class="fine">${esc(boards.ft&&boards.ft.err?t('boardOff'):t('boardWait'))}</p>`;
+  if(d.tables.length)h+=`<nav class="mlines ftlist">${d.tables.map(x=>`<button type="button" class="mline" data-act="ftopen" data-id="${esc(x.id)}"><span class="ml1"><span class="mt">${esc(x.name)}</span><span class="dots" aria-hidden="true"></span><span class="pr">${ICON.chev}</span></span><span class="md">${esc(t('ftSeats',{n:x.seats}))} · ${esc(ftStanding(x))}</span></button>`).join('')}</nav>`;
+  else h+=`<p class="fine ftnone">${esc(t('ftNone'))}</p>`;
+  if(d.tables.length<FT_MAX)h+=`<h3>${esc(t('ftNew'))}</h3><label class="field"><span>${esc(t('ftNameLabel'))}</span><input id="ftName" maxlength="24" autocomplete="off" autocapitalize="sentences" placeholder="${esc(t('ftNamePh'))}" value="${esc(m.ftName||'')}"></label>
+    <button type="button" class="btnRed" data-act="ftmake"${m.busy?' disabled':''}>${esc(t('ftMake'))}</button>`;
+  h+=`<h3>${esc(t('ftJoinLabel'))}</h3><div class="ftjoin"><input id="ftCode" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7M2QX" value="${esc(m.ftCode||'')}" aria-label="${esc(t('ftJoinLabel'))}"><button type="button" class="btnInk" data-act="ftjoin"${m.busy?' disabled':''}>${esc(t('ftJoin'))}</button></div>`;
+  return h+hostHTML(d.host);
+}
+/* Šef sale: the friends you brought and their weeks in a row (three dots each) */
+function hostHTML(hp){
+  if(!hp)return '';
+  let h=`<div class="slip hostcard">${plaque()}`;
+  if(hp.badge)return h+`<p>${esc(t('hostHave'))}</p></div>`;
+  h+=`<p>${esc(t('hostHow'))}</p>`;
+  if(hp.friends&&hp.friends.length)h+=`<ul class="hostfr">${hp.friends.map(f=>`<li><span>${esc(f.name||t('playerAnon'))}</span><span class="wk" role="img" aria-label="${esc(t('hostWeeks',{w:f.weeks}))}">${[0,1,2].map(i=>`<i${i<f.weeks?' class="on"':''}></i>`).join('')}</span></li>`).join('')}</ul>
+    <p class="fine">${esc(t('hostCount',{n:hp.friends.filter(f=>f.weeks>=3).length}))}</p>`;
+  else h+=`<p class="fine">${esc(t('hostNoOne'))}</p>`;
+  return h+`</div>`;
+}
+/* one table: today's Daily or the week, everyone at it, an invite to share, and a way to get up */
+function ftTableHTML(m){
+  const day=dailyToday().day,k='ftb:'+m.id+day;
+  if(!acctOn())return head(t('ftTitle'))+`<p class="fine">${esc(t('ftSignIn'))}</p>`+gbtn();
+  loadFTB(m.id,day);
+  const b=boards[k],d=b&&b.data;
+  let h=head(d?d.name:t('ftTitle'));
+  if(b&&b.gone)return h+`<p class="fine">${esc(t('ftGone'))}</p>`;
+  if(!d)return h+`<p class="fine">${esc(b&&b.err?t('boardOff'):t('boardWait'))}</p>`;
+  const tab=ui.ftTab==='w'?'w':'d',r=stats.daily.results[day];
+  h+=seg('fttab',[['d',t('boardToday')],['w',t('boardWeek')]],tab);
+  const rows=d.seats.slice();if(tab==='w')rows.sort((a,b)=>(b.week||0)-(a.week||0));
+  let rank=0,prev=null;
+  h+=`<table class="scores board ftboard">${rows.map((x,i)=>{
+    const v=tab==='w'?x.week:x.today;if(v!=null&&v!==prev){rank=i+1;prev=v;}
+    return `<tr${x.me?' class="me"':''}><td class="rk">${v!=null?rank+'.':''}</td><td>${rowFace(x)}<span class="ftn">${esc(x.name||t('playerAnon'))}${x.plus?' <i class="pmark xs">Plus</i>':''}${x.host?plaque(true):''}</span>${tab==='w'&&x.days?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${v!=null?fmt(v):'–'}</td></tr>`;
+  }).join('')}</table>`;
+  if(!(r&&r.done))h+=`<button type="button" class="btnRed" data-act="daily">${esc(t('dailyPlay'))}</button>`;
+  else if(!r.sent&&!r.bad)h+=`<p class="fine">${esc(t('boardPending'))}</p>`;
+  h+=`<button type="button" class="btnInk" data-act="ftinvite">${esc(t('ftInvite'))}</button><p class="fine ftcode">${esc(t('ftCodeLine'))} <b>${esc(d.ref)}</b></p>`;
+  if(m.leave)h+=`<div class="slip"><p>${esc(t('ftLeaveSure',{name:d.name}))}</p><div class="btnRow"><button type="button" class="btnRed" data-act="ftleaveyes"${m.busy?' disabled':''}>${esc(t('ftLeaveYes'))}</button><button type="button" class="btnInk" style="margin-top:0" data-act="ftleaveno">${esc(t('cancel'))}</button></div></div>`;
+  else h+=`<button type="button" class="linkbtn" data-act="ftleave">${esc(t('ftLeave'))}</button>`;
+  return h;
+}
+/* an invite link: whose table it is, then sign in and sit down */
+function ftInHTML(m){
+  let h=head(t('ftTitle'));
+  if(!C||!C.available())return h+`<p class="fine">${esc(t('boardOff'))}</p>`;
+  if(!m.peek&&!m.peeking){
+    m.peeking=true;
+    C.rpc('peek_friend_table',{p_ref:m.ref}).then(p=>{m.peek=p||{none:true};}).catch(()=>{m.peek={err:true};}).finally(()=>{m.peeking=false;if(ui.modal===m)renderModal();});
+  }
+  const p=m.peek;
+  if(!p)return h+`<p class="fine">${esc(t('boardWait'))}</p>`;
+  if(p.none)return h+`<p class="fine">${esc(t('ftBadCode'))}</p><button type="button" class="btnInk" data-act="open" data-k="stoli">${esc(t('ftTitle'))}</button>`;
+  if(p.err)return h+`<p class="fine">${esc(t('boardOff'))}</p>`;
+  h+=`<div class="ftinvite">${p.avatar&&portraitSrc(p.avatar)?`<span class="print">${portraitHTML(p.avatar,p.by,'full')}</span>`:''}
+    <p class="fine">${esc(p.by?t('ftInvited',{name:p.by}):t('ftInvitedNoName'))}</p><h2 class="ftname">${esc(p.name)}</h2>
+    <p class="fine">${esc(t('ftSeats',{n:p.seats}))}</p><p>${esc(t('ftIntro'))}</p></div>`;
+  if(!acctOn())return h+`<p class="fine">${esc(t('ftSignIn'))}</p>`+gbtn();
+  if(m.auto&&!m.tried){m.tried=true;setTimeout(()=>{if(ui.modal===m)ftAct({act:'ftsit'});},0);}
+  return h+`<button type="button" class="btnRed" data-act="ftsit"${m.busy?' disabled':''}>${esc(t('ftSit'))}</button>`;
+}
+/* your tables under the Daily's high scores, in the newspaper and on the Daily's bill */
+function ftNewsHTML(){
+  if(!C||!C.available())return '';
+  if(!acctOn())return `<section class="nfriends"><button type="button" class="nft add" data-act="open" data-k="stoli">${esc(t('ftStart'))}</button></section>`;
+  loadFT();
+  const list=(boards.ft&&boards.ft.data&&boards.ft.data.tables)||[];
+  return `<section class="nfriends"><h3>${esc(t('ftTitle'))}</h3>${list.map(x=>`<button type="button" class="nft" data-act="ftopen" data-id="${esc(x.id)}"><span>${esc(x.name)}</span><b>${esc(ftStanding(x))}</b></button>`).join('')}
+    <button type="button" class="nft add" data-act="open" data-k="stoli">${esc(list.length?t('ftAll'):t('ftStart'))}</button></section>`;
+}
+async function ftAct(d){
+  const m=ui.modal;if(!m||m.busy)return;
+  const day=dailyToday().day;
+  if(d.act==='ftinvite'){
+    const b=boards['ftb:'+m.id+day],x=b&&b.data;if(!x)return;
+    if(C)C.stats([['share','stol',1]]);
+    shareText(t('ftShareText',{name:x.name}),ftUrl(x.ref));return;
+  }
+  if(d.act==='ftleave'||d.act==='ftleaveno'){m.leave=d.act==='ftleave';renderModal();return;}
+  let call=null;
+  if(d.act==='ftmake'){
+    const nm=(($('ftName')||{}).value||'').trim();m.ftName=nm;
+    if(!nm){toast(t('ftNeedName'),true);return;}
+    call=['make_friend_table',{p_name:nm,p_day:day}];
+  }
+  if(d.act==='ftjoin'){
+    const c=String(($('ftCode')||{}).value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');m.ftCode=c;
+    if(c.length!==6){toast(t('ftBadCode'),true);return;}
+    call=['join_friend_table',{p_ref:c,p_day:day}];
+  }
+  if(d.act==='ftsit')call=['join_friend_table',{p_ref:m.ref,p_day:day}];
+  if(d.act==='ftleaveyes')call=['leave_friend_table',{p_table:m.id,p_day:day}];
+  if(!call||!C||!acctOn())return;
+  m.busy=true;renderModal();
+  try{
+    const r=await C.rpc(call[0],call[1]);
+    ftForget();boards.ft={at:Date.now(),data:r};
+    m.busy=false;
+    if(d.act==='ftsit'){delete prefs.stolRef;savePrefs();}
+    const id=r.made||r.joined;
+    if(ui.modal!==m)return;
+    if(id){
+      if(d.act==='ftsit')ui.modal=null;else{m.ftName='';m.ftCode='';pushBack();}
+      openModal('stol',{id});
+      if(d.act!=='ftmake')toast(t('ftJoined'));else A.cash();
+      return;
+    }
+    if(d.act==='ftleaveyes'){back();return;}
+  }catch(e){m.busy=false;toast(ftErr(e),true);}
+  if(ui.modal===m)renderModal();
+}
+/* a gift link: sign in and Plus is put on the account (a tester's thank-you) */
+function giftHTML(m){
+  let h=head(t('giftTitle'))+`<div class="slip plusask"><i class="pmark sm">Plus</i><b>Yamb Café Plus</b><p>${esc(t('giftLead'))}</p></div>`;
+  if(!C||!C.available())return h+`<p class="fine">${esc(t('acNoNet'))}</p>`;
+  if(m.done)return h+`<p class="fine" style="text-align:center">${esc(t('giftDone'))}</p><button type="button" class="btnRed" data-act="open" data-k="plus">${esc(t('giftSee'))}</button>`;
+  if(m.bad)return h+`<p class="fine" style="text-align:center">${esc(t('giftBad'))}</p>`;
+  if(!acctOn())return h+`<p class="fine">${esc(t('giftSignIn'))}</p>`+gbtn();
+  if(!m.tried){m.tried=true;setTimeout(()=>{if(ui.modal===m)giftAct();},0);}
+  if(m.err)return h+`<p class="fine">${esc(t('acNoNet'))}</p>`;
+  return h+`<p class="fine" style="text-align:center">${esc(t('plusWait'))}</p>`;
+}
+async function giftAct(){
+  const m=ui.modal;if(!m||m.kind!=='dar'||m.busy)return;
+  if(!prefs.gift){m.bad=true;renderModal();return;}
+  m.busy=true;
+  try{
+    const p=await C.rpc('redeem_gift',{p_code:prefs.gift});
+    const st=acctState();if(st){st.plus=p;saveCloud();}
+    delete prefs.gift;savePrefs();m.done=true;
+    if(!p.had)setTimeout(()=>FX.confetti(true),200);
+  }catch(e){if(/YC_GIFT/.test(String(e&&e.message||e))){m.bad=true;delete prefs.gift;savePrefs();}else m.err=true;}
+  m.busy=false;if(ui.modal===m)renderModal();acctUI();
+}
 /* ---------- Yamb Café Plus ----------
    A one-time unlock bought through Polar (the merchant of record) and kept on the player's account. While it is being
    tested it shows only after opening the game once with ?plus=test (or on this computer's own test server). */
@@ -2382,7 +2564,17 @@ const PLUS_AMTS=[499,699,899,1299];
 const plusOpen=()=>PLUS_LIVE||!!prefs.plusTest;
 const plusLocked=()=>plusOpen()&&!hasPlus();
 const charLocked=k=>k==='profesor'&&plusLocked();
-const plusMark=()=>hasPlus()?`<i class="pmark xs" title="Yamb Café Plus">Plus</i>${plusOf().pin?'<i class="ppin sm" aria-hidden="true"></i>':''}`:'';
+const plusMark=()=>hasPlus()?`<i class="pmark xs" title="Yamb Café Plus">Plus</i>`:'';
+const pinOnPrint=on=>on?`<i class="ppin onprint" title="${esc(t('plusPinHave'))}"></i>`:'';
+const myPin=()=>hasPlus()&&!!plusOf().pin;
+const myHost=()=>{const d=acctState();return !!(d&&d.host);};
+const KEY='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M11.5 12H21M17.5 12v3.5M20.5 12v2.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+const plaque=sm=>`<span class="plaque${sm?' sm':''}" title="${esc(t('hostName'))}">${KEY}<span>${esc(t('hostName'))}</span></span>`;
+/* a small portrait in a list, with the thank-you pin as a dot on it */
+function rowFace(x){
+  const av=x.me&&myPortrait()==='photo'?'photo':x.avatar;
+  return portraitSrc(av)?`<span class="rface">${portraitHTML(av,x.name,'sm')}${x.pin?'<i class="pdot" aria-hidden="true"></i>':''}</span>`:'';
+}
 const plusOf=()=>{const d=acctState();return d&&d.plus?d.plus:null;};
 const PLUS_LIVE=false;   /* true from the public start: Plus is sold to everyone, and the Professor and the rest need it */
 const hasPlus=()=>!!(plusOf()&&plusOf().plus);
@@ -2405,7 +2597,7 @@ function wallHTML(){
   const w=boards.wall&&boards.wall.data;
   if(!w)h+=`<p class="pnote none">${esc(boards.wall&&boards.wall.err?t('boardOff'):t('boardWait'))}</p>`;
   else if(!w.length)h+=`<p class="pnote none">${esc(t('wallEmpty'))}</p>`;
-  else h+=`<div class="wallgrid">${w.map((x,i)=>`<figure style="--tilt:${((i*37)%7)-3}deg"><span class="print">${portraitHTML(x.avatar,x.name,'full')}</span><figcaption>${esc(x.name||t('playerAnon'))}</figcaption></figure>`).join('')}</div>`;
+  else h+=`<div class="wallgrid">${w.map((x,i)=>`<figure style="--tilt:${((i*37)%7)-3}deg"><span class="print">${portraitHTML(x.avatar,x.name,'full')}${pinOnPrint(x.pin)}</span><figcaption>${esc(x.name||t('playerAnon'))}</figcaption>${x.host?plaque(true):''}</figure>`).join('')}</div>`;
   if(hasPlus()&&!(acctState().profile&&acctState().profile.wall))h+=`<button type="button" class="btnInk" data-act="open" data-k="plus">${esc(t('wallSwitch'))}</button>`;
   return h+`</div>`;
 }
@@ -2494,6 +2686,9 @@ function cloudIn(u,fresh){
     if((after==='daily'||after==='result')&&res&&res.done)openModal('daily',{day:d.day});
     else if(after==='records')openModal('records');
     else if(after==='plus')openModal('plus');
+    else if(after==='stolIn'&&prefs.stolRef)openModal('stolIn',{ref:prefs.stolRef,auto:true});
+    else if(after==='dar'&&prefs.gift)openModal('dar');
+    else if(after==='stoli'||after==='stol')openModal('stoli');
     else if(after)openModal('account');
   }
   acctUI();syncCloud(fresh);
@@ -2502,6 +2697,7 @@ function cloudOut(){
   if(!cloud.uid)return;
   cloud.uid=null;cloud.me=null;cloud.state=null;saveCloud();
   Object.keys(boards).forEach(k=>delete boards[k]);
+  if(ui.modal&&['stol','stoli'].includes(ui.modal.kind))renderModal();
   acctUI();
 }
 function cloudEvent(why){
@@ -2563,6 +2759,7 @@ if(C){
 /* where this visit came from, for the visitor numbers: a game link, a ref= tag on a shared link, another site, or none */
 function visitSource(q,gameCode,duel,rules){
   if(gameCode)return 'link:table';if(duel)return 'link:duel';if(rules)return 'link:rules';
+  if(q.get&&q.get('stol'))return 'link:stol';if(q.get&&q.get('dar'))return 'link:dar';
   const ref=String(q.get&&q.get('ref')||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,40);if(ref)return 'ref:'+ref;
   try{const r=document.referrer&&new URL(document.referrer);if(r&&r.hostname&&r.hostname!==location.hostname)return r.hostname.replace(/^www\./,'').slice(0,60);}catch(e){}
   return 'direct';
@@ -2572,8 +2769,11 @@ function start(){
   let q;try{q=new URLSearchParams(location.search);}catch(e){q=new Map();}
   const gameCode=cleanCode(q.get&&q.get('game')),duel=q.get&&q.get('duel'),rules=q.get&&q.get('rules'),plusQ=q.get&&q.get('plus');
   if(plusQ==='test'){prefs.plusTest=true;savePrefs();}
+  const stolQ=String(q.get&&q.get('stol')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6),darQ=String(q.get&&q.get('dar')||'').toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,32);
   if(C)C.count('game',visitSource(q,gameCode,duel,rules),prefs.lang,isStandalone());
   if(location.search){try{history.replaceState(null,'',location.pathname+location.hash);}catch(e){}}
+  if(stolQ.length===6){prefs.stolRef=stolQ;savePrefs();showScreen('home');openModal('stolIn',{ref:stolQ});return;}
+  if(darQ.length>=6){prefs.gift=darQ;prefs.plusTest=true;savePrefs();showScreen('home');openModal('dar');return;}
   const sess=loadOnline();
   if(gameCode&&gameCode.length===5&&!(sess&&sess.code===gameCode)){showScreen('home');openModal('online',{joinOnly:true,code:gameCode});return;}
   if(gameCode&&sess&&sess.code===gameCode){resumeOnline(sess);return;}

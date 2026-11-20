@@ -234,5 +234,78 @@ function professorMoves(seed){
   await S.as(null,'select public.count_event($1, $2)',['start','dailyp']);
   r=await S.admin(`select count(*)::int as n from yamb.events where ev='start' and mode='dailyp'`);ok(r.rows[0].n===1,'a practice game of the Daily is counted as its own kind');
 
+  // ---- 10. friends' tables: private Daily leagues, invite codes, the Šef sale badge; gift links for testers
+  {
+  const ana=await S.addUser('ana2@example.com','Ana'),ivo=await S.addUser('ivo2@example.com','Ivo'),mia=await S.addUser('mia2@example.com','Mia');
+  await S.as(ana,'select public.save_profile($1, $2)',['Ana','r02']);
+  await S.admin(`insert into public.daily_scores (day, user_id, score, moves) values ($1,$2,260,'[]'),($1,$3,230,'[]')`,[td,ivo,mia]);
+  const fail=async(uid,sql,params,re)=>{let e=null;try{await S.as(uid,sql,params);}catch(x){e=x.message;}return !!(e&&re.test(e));};
+  r=await S.as(ana,'select public.make_friend_table($1, $2::date) as t',['  Kava   kod <Ane>  ',td]);
+  const ft=r.rows[0].t,T1=ft.tables[0];
+  ok(ft.tables.length===1&&T1.name==='Kava kod Ane'&&/^[A-HJ-NP-Z2-9]{6}$/.test(T1.ref)&&T1.owner===true&&Number(T1.seats)===1&&ft.made===T1.id,'Ana sets a table: a clean name, her own invite code, one seat');
+  r=await S.as(null,'select public.peek_friend_table($1) as p',[T1.ref.toLowerCase()]);
+  ok(r.rows[0].p&&r.rows[0].p.name==='Kava kod Ane'&&Number(r.rows[0].p.seats)===1&&!('id' in r.rows[0].p),'an invite link shows the table to anyone, by name only (the code is not case-sensitive)');
+  r=await S.as(null,'select public.peek_friend_table($1) as p',['ZZZZZZ']);ok(r.rows[0].p===null,'a wrong code shows nothing');
+  ok(await fail(null,'select public.join_friend_table($1, $2::date)',[T1.ref,td],/permission denied|YC_SIGNIN/),'a visitor cannot sit down');
+  ok(await fail(ivo,'select public.join_friend_table($1, $2::date)',['ABCDEF',td],/YC_NOTABLE/),'a code that opens no table is refused');
+  r=await S.as(ivo,'select public.join_friend_table($1, $2::date) as t',[T1.ref,td]);const ivoSeat=r.rows[0].t.tables[0];
+  ok(r.rows[0].t.joined===T1.id&&Number(ivoSeat.seats)===2&&ivoSeat.ref!==T1.ref&&ivoSeat.owner===false,'Ivo sits down with Ana\'s code and gets a code of his own');
+  await S.as(ivo,'select public.join_friend_table($1, $2::date)',[T1.ref,td]);
+  r=await S.as(ivo,'select public.my_friend_tables($1::date) as t',[td]);ok(r.rows[0].t.tables.length===1&&Number(r.rows[0].t.tables[0].seats)===2,'sitting down twice changes nothing');
+  await S.as(mia,'select public.join_friend_table($1, $2::date)',[ivoSeat.ref,td]);
+  r=await S.admin('select user_id, invited_by from yamb.invites order by at');
+  ok(r.rows.length===2&&r.rows.find(x=>x.user_id===ivo).invited_by===ana&&r.rows.find(x=>x.user_id===mia).invited_by===ivo,'whoever\'s code brought a player is remembered: Ivo came through Ana, Mia through Ivo');
+  r=await S.as(ana,'select public.friend_table_board($1::uuid, $2::date) as b',[T1.id,td]);const B=r.rows[0].b;
+  ok(B.seats.length===3&&B.ref===T1.ref&&B.seats.filter(x=>x.me).length===1&&!('user_id' in B.seats[0]),'the table shows its three players, names and scores only');
+  const sc=B.seats.map(x=>x.today==null?-1:x.today);ok(sc.every((v,i)=>i===0||sc[i-1]>=v),'ordered by today\'s Daily');
+  ok(await fail(noa,'select public.friend_table_board($1::uuid, $2::date)',[T1.id,td],/YC_NOTABLE/),'someone not at the table cannot see it');
+  ok(await fail(null,'select public.friend_table_board($1::uuid, $2::date)',[T1.id,td],/permission denied|YC_SIGNIN/),'nor can a visitor');
+  await denied('the seats cannot be read directly',ana,'select * from yamb.friend_seats');
+  r=await S.as(ana,'select public.my_friend_tables($1::date) as t',[td]);
+  ok(r.rows[0].t.host.badge===false&&r.rows[0].t.host.friends.length===1&&r.rows[0].t.host.friends[0].weeks===0,'Ana is on her way to Šef sale: one friend brought, no weeks yet');
+  // three friends who keep playing three weeks in a row
+  const fr=[];for(const n of ['f1','f2','f3','f4'])fr.push(await S.addUser(n+'@example.com',n));
+  for(const f of fr)await S.as(f,'select public.join_friend_table($1, $2::date)',[T1.ref,td]);
+  await S.admin(`update yamb.invites set at = now() - interval '35 days' where invited_by = $1`,[ana]);
+  const addGames=async(uid,daysAgo,n)=>{for(let k=0;k<n;k++)await S.admin(`insert into public.results (user_id, game_id, mode, rules, score, finished_at) values ($1, $2, 'cpu', '', 200, now() - make_interval(days => $3))`,[uid,'g'+Math.random().toString(36).slice(2,10),daysAgo]);};
+  for(const f of fr.slice(0,2))for(const d of [28,21,14])await addGames(f,d,3);
+  await addGames(fr[3],28,3);await addGames(fr[3],21,2);await addGames(fr[3],14,3);
+  r=await S.admin(`select yamb.kept_weeks($1, now() - interval '35 days') as a, yamb.kept_weeks($2, now() - interval '35 days') as b`,[fr[0],fr[3]]);
+  ok(r.rows[0].a===3&&r.rows[0].b===1,'weeks in a row are counted only with three games each: '+r.rows[0].a+' and '+r.rows[0].b);
+  await S.as(fr[1],'select public.sync_up(null, null, $1::jsonb)',['[]']);
+  r=await S.as(ana,'select public.my_state() as s');ok(r.rows[0].s.host===false,'two friends who kept playing are not yet enough');
+  for(const d of [28,21,14])await addGames(fr[2],d,3);
+  await S.as(fr[2],'select public.sync_up(null, null, $1::jsonb)',['[]']);
+  r=await S.as(ana,'select public.my_state() as s');ok(r.rows[0].s.host===true,'the third friend\'s games make Ana Šef sale');
+  r=await S.as(ivo,'select public.friend_table_board($1::uuid, $2::date) as b',[T1.id,td]);
+  ok(r.rows[0].b.seats.filter(x=>x.host).length===1,'the table shows her badge to the others');
+  r=await S.as(ivo,'select public.my_state() as s');ok(r.rows[0].s.host===false,'Ivo has not earned it');
+  // getting up, handing over, clearing away; at most five tables each
+  r=await S.as(ana,'select public.leave_friend_table($1::uuid, $2::date) as t',[T1.id,td]);ok(r.rows[0].t.tables.length===0,'Ana gets up from her table');
+  r=await S.admin('select owner from yamb.friend_tables where id = $1',[T1.id]);ok(r.rows[0].owner===ivo,'the oldest player left, Ivo, takes the table over');
+  r=await S.as(ana,'select public.my_state() as s');ok(r.rows[0].s.host===true,'the badge stays once earned');
+  for(let k=0;k<5;k++)await S.as(lea,'select public.make_friend_table($1, $2::date)',['Stol '+k,td]);
+  ok(await fail(lea,'select public.make_friend_table($1, $2::date)',['Stol 6',td],/YC_TOOMANY/),'a sixth table is one too many');
+  ok(await fail(lea,'select public.make_friend_table($1, $2::date)',['   ',td],/YC_NAME|YC_TOOMANY/),'a table needs a name');
+  r=await S.as(lea,'select public.my_friend_tables($1::date) as t',[td]);
+  for(const x of r.rows[0].t.tables)await S.as(lea,'select public.leave_friend_table($1::uuid, $2::date)',[x.id,td]);
+  r=await S.admin(`select count(*)::int as n from yamb.friend_tables where name like 'Stol %'`);ok(r.rows[0].n===0,'an empty table is cleared away');
+  // a player who deletes the account leaves every table and the invite trail
+  await S.as(mia,'select public.delete_my_account()');
+  r=await S.admin('select (select count(*) from yamb.friend_seats where user_id=$1)::int as s, (select count(*) from yamb.invites where user_id=$1 or invited_by=$1)::int as i',[mia]);
+  ok(r.rows[0].s===0&&r.rows[0].i===0,'deleting the account takes the seats and invites with it');
+  // gift links
+  await S.admin(`insert into yamb.gift_codes (code, why, uses_left, until) values ('TEST-GIFT-1', 'tester', 2, current_date + 30), ('OLD-GIFT-1', 'tester', 5, current_date - 1)`);
+  const g1=await S.addUser('g1@example.com','G1'),g2=await S.addUser('g2@example.com','G2'),g3=await S.addUser('g3@example.com','G3');
+  ok(await fail(null,'select public.redeem_gift($1)',['TEST-GIFT-1'],/permission denied|YC_SIGNIN/),'a visitor cannot take a gift');
+  r=await S.as(g1,'select public.redeem_gift($1) as p',[' test-gift-1 ']);ok(r.rows[0].p.plus===true&&r.rows[0].p.gift===true,'a gift link gives Plus');
+  r=await S.as(g1,'select public.redeem_gift($1) as p',['TEST-GIFT-1']);ok(r.rows[0].p.had===true,'opening it again uses nothing up');
+  await S.as(g2,'select public.redeem_gift($1)',['TEST-GIFT-1']);
+  ok(await fail(g3,'select public.redeem_gift($1)',['TEST-GIFT-1'],/YC_GIFT/),'a code runs out after its uses');
+  ok(await fail(g3,'select public.redeem_gift($1)',['OLD-GIFT-1'],/YC_GIFT/),'an expired code gives nothing');
+  ok(await fail(g3,'select public.redeem_gift($1)',['NO-SUCH-CODE'],/YC_GIFT/),'nor does a made-up one');
+  await denied('gift codes cannot be read',g3,'select * from yamb.gift_codes');
+  }
+
   console.log(bad?`\n${bad} problem(s)`:`\nall good (${Math.round((Date.now()-t0)/1000)} s)`);process.exit(bad?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

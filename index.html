@@ -946,6 +946,47 @@ body.atTable::before{background:var(--wood-lo)}
 .plusask{display:grid;justify-items:center;gap:6px;text-align:center;padding:16px}
 .plusask b{font:700 19px var(--f-serif)}
 .plusask p{margin:0;max-width:34ch;color:var(--muted)}
+/* the thank-you pin on a print's corner, a dot on a small portrait; the Šef sale plaque under a portrait */
+.ppin.onprint{position:absolute;z-index:2;top:3%;right:8%;width:22px;height:22px}
+.print.big .ppin.onprint{width:26px;height:26px}
+.wallgrid .ppin.onprint{width:15px;height:15px}
+.rface{position:relative;display:inline-block;vertical-align:middle;line-height:0}
+.pdot{position:absolute;top:-3px;right:3px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#E77B5E,#C25A3C 60%,#8E3A26);box-shadow:0 1px 1px rgba(0,0,0,.35)}
+.plaque{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 4px;border-radius:3px;font:700 13px/1 var(--f-serif);letter-spacing:.03em;color:#3A2A0E;white-space:nowrap;
+  background:linear-gradient(180deg,#F2D98E,#D2AA52 55%,#B98F38);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.18),0 2px 3px rgba(90,60,10,.3)}
+.plaque svg{width:14px;height:14px;flex:none}
+.plaque.sm{padding:2px 6px 3px;font-size:10px;gap:3px;margin-left:.4em;vertical-align:.12em}
+.plaque.sm svg{width:10px;height:10px}
+.proftop .plaque{margin-top:-8px;position:relative;z-index:1}
+.pinlabel .plaque.sm{display:flex;width:max-content;margin:0 auto 5px}
+.wallgrid .plaque.sm{margin:0}
+/* friends' tables */
+.ftjoin{display:flex;gap:8px;margin-top:8px}
+.ftjoin input{flex:1;min-width:0;min-height:46px;font:600 19px var(--f-ui);letter-spacing:.18em;text-transform:uppercase;padding:8px 12px;border:1.5px solid var(--line-strong);border-radius:9px;background:#FFFDF6;color:var(--text)}
+.ftjoin .btnInk{margin:0;width:auto;padding:0 18px}
+.field input::placeholder,.ftjoin input::placeholder{color:#B9AD99;opacity:1}
+.ftcode{text-align:center;margin-top:6px}.ftcode b{font:700 17px var(--f-ui);letter-spacing:.16em;color:var(--text)}
+.ftboard .ftn .pmark.xs,.ftboard .ftn .plaque.sm{margin-left:.35em}
+.ftboard td:nth-child(2){line-height:1.6}
+.hostcard{padding:14px 16px 14px;text-align:center}
+.hostcard p{margin:10px 0 0}
+.hostfr{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px;text-align:left}
+.hostfr li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;background:rgba(42,26,18,.06);font:500 15px var(--f-ui)}
+.wk{display:flex;gap:5px}.wk i{width:11px;height:11px;border-radius:50%;border:1.5px solid #B98F38}.wk i.on{background:#D2AA52}
+.ftinvite{display:grid;justify-items:center;text-align:center;gap:2px;margin:6px 0 10px}
+.ftinvite .print{--pw:104px;margin-bottom:8px}
+.ftinvite .ftname{margin:2px 0;font:800 30px/1.1 var(--f-serif);color:var(--text)}
+.ftinvite p{margin:4px 0 0;max-width:36ch}
+.nfriends{display:grid;gap:6px;margin-top:12px}
+.nfriends h3{margin:0 0 2px}
+.nft{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1.5px solid var(--line-strong);border-radius:9px;background:#FFFDF6;color:var(--text);font:600 16px var(--f-ui);text-align:left}
+.nft b{font:500 14px var(--f-ui);color:var(--muted);white-space:nowrap}
+.nft.add{justify-content:center;border-style:dashed;background:transparent;font-weight:600}
+.news .nfriends{border-top:3px double #2A1A12;margin-top:3cqw;padding-top:2.4cqw;gap:1.4cqw}
+.news .nfriends h3{margin:0 0 .6cqw;font:800 5.4cqw var(--f-serif);letter-spacing:0;color:#2A1A12;text-transform:none;text-align:center}
+.news .nft{min-height:0;padding:1.6cqw 2.4cqw;border:1px solid rgba(42,26,18,.45);border-radius:2px;background:transparent;color:#2A1A12;font:700 4cqw var(--f-serif)}
+.news .nft b{font:500 3.4cqw var(--f-ui);color:#5A4232}
+.news .nft.add{border-style:dashed;font:600 3.6cqw var(--f-ui)}
 .plustop{display:grid;justify-items:center;gap:10px;text-align:center;margin:4px 0 10px}
 .plustop p{margin:0;max-width:34ch}
 .plist{list-style:none;margin:6px 0 4px;padding:0;display:grid;gap:12px}
@@ -998,15 +1039,15 @@ body.atTable::before{background:var(--wood-lo)}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=1040"></script>
-<script src="ai.js?v=1040"></script>
-<script src="i18n.js?v=1040"></script>
-<script src="audio.js?v=1040"></script>
-<script src="music.js?v=1040"></script>
-<script src="fx.js?v=1040"></script>
-<script src="scan.js?v=1040"></script>
-<script src="vendor/supabase.js?v=1040" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=1040"></script>
-<script src="app.js?v=1040"></script>
+<script src="engine.js?v=1100"></script>
+<script src="ai.js?v=1100"></script>
+<script src="i18n.js?v=1100"></script>
+<script src="audio.js?v=1100"></script>
+<script src="music.js?v=1100"></script>
+<script src="fx.js?v=1100"></script>
+<script src="scan.js?v=1100"></script>
+<script src="vendor/supabase.js?v=1100" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=1100"></script>
+<script src="app.js?v=1100"></script>
 </body>
 </html>
