@@ -228,7 +228,11 @@ function professorMoves(seed){
   await S.admin(`insert into public.daily_scores (day, user_id, score, moves) values ($1,$2,250,'[]'),($1,$3,240,'[]')`,[td,tom,lea]);
   r=await S.as(null,'select public.daily_board($1::date) as b',[td]);
   const tb=r.rows[0].b.top,tr=tb.find(x=>x.name==='Tom'),lr=tb.find(x=>x.score===240);
-  ok(tr&&tr.plus===true&&lr&&lr.plus===false,'the high scores show the Plus mark only beside an owner who chose it');
+  ok(tr&&tr.plus===true&&tr.pin===true&&'host' in tr&&lr&&!('user_id' in lr),'the high scores carry Plus and the heart for the portrait card (shown unless hidden)');
+  await S.as(tom,'select public.set_show_plus(false)');
+  r=await S.as(null,'select public.daily_board($1::date) as b',[td]);{const x=r.rows[0].b.top.find(y=>y.name==='Tom');ok(x.plus===false&&x.pin===false,'a player can hide Plus and the heart');}
+  r=await S.as(tom,'select public.my_state() as s');ok(r.rows[0].s.profile.show_plus===false,'and sees that choice');
+  await S.as(tom,'select public.set_show_plus(true)');
   r=await S.as(tom,'select public.my_state() as s');ok(r.rows[0].s.profile.wall===true,'the player sees their own choice');
   await S.as(tom,'select public.set_wall(false)');r=await S.as(null,'select public.regulars_wall() as w');ok(r.rows[0].w.length===0,'and can take it back');
   await S.as(null,'select public.count_event($1, $2)',['start','dailyp']);

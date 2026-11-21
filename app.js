@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v11.0';
+const VERSION='v11.1';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -942,10 +942,10 @@ function renderHome(){
       ${resumes?`<div class="modes">${resumes}</div>`:''}
       <section class="menu"><div class="menuIn">
         ${daily}
+        ${mline('stoli',t('ftTitle'),t('ftLine'),0)}
         <h2 class="sec next">${esc(t('atTable'))}</h2>
         ${mline('cpu',t('playChar'),t('cpuD'),bestOf(['cpu']),`<span class="faces" aria-hidden="true">${faces}</span>`)}
         ${mline('friends',t('friends'),t('friendsD'),bestOf(['pp','online','duel','table']))}
-        ${mline('stoli',t('ftTitle'),t('ftLine'),0)}
         <h2 class="sec next">${esc(t('menuSides'))}</h2>
         ${mline('records',t('records'),t('menuRecordsD'),bestOf(null))}
         ${mline('howto',t('howTo'),t('menuHowD'),0)}
@@ -1289,7 +1289,7 @@ function turnFx(){
 /* ---------- pages and sheets ----------
    Everything but a few small sheets opens as a full page with a back arrow; the phone's own back gesture closes it. */
 const SHEETS=['install','scan','rulesIn'];
-const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus','stoli','stol','stolIn','dar'];   /* 'wall' is a cork board of its own */
+const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus','stoli','stol','stolIn','dar','who'];   /* 'wall' is a cork board of its own */
 const isPage=k=>!!k&&!SHEETS.includes(k);
 window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.backs.length)back();else closeModal();}});
 ui.backs=[];
@@ -1417,6 +1417,7 @@ function renderModal(){
     case 'stol':h=ftTableHTML(m);break;
     case 'stolIn':h=ftInHTML(m);break;
     case 'dar':h=giftHTML(m);break;
+    case 'who':h=whoHTML(m);break;
     case 'daily':h=dailyModalHTML(m.day);break;
     case 'scan':
       h=head(t('scanTitle')+' ('+t('beta')+')')+`<p class="fine">${esc(t('scanHint'))}</p><div class="scanbox"><video id="scanV" playsinline muted></video><canvas id="scanC" hidden></canvas></div>
@@ -1632,7 +1633,7 @@ function recordsHTML(){
   /* the regulars' pinboard: your portrait as a taped print, every best game on a pinned note */
   const me=acctName()||myName()||t('youName'),games=recs.reduce((a,r)=>a+(r.games||0),0),best=recs.reduce((m,r)=>r.best&&r.best.s>m?r.best.s:m,0);
   let h=head(t('records'))+`<div class="cork"><div class="pinme"><button type="button" class="print big" data-act="open" data-k="account" aria-label="${esc(t('profile'))}">${portraitHTML(myPortrait(),me,'full')}${pinOnPrint(myPin())}</button>
-    <div class="pinlabel">${myHost()?plaque(true):''}<b>${esc(me)}${plusMark()}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
+    <div class="pinlabel"><b>${esc(me)}</b><span>${esc(t('recGames'))}: ${games}${best?` · ${esc(t('menuBest',{s:fmt(best)}))}`:''}</span></div></div>`;
   const modes=['cpu','pp','online','duel','table','daily'],mt={cpu:t('playChar'),pp:t('modePP'),online:t('modeOnline'),duel:t('modeDuel'),table:t('modeTable'),daily:t('daily')};
   if(!recs.length)return h+`<p class="pnote none">${esc(t('recNone'))}</p></div>`+(where?`<div class="slip">${where}</div>`:'');
   modes.forEach(m=>{
@@ -2084,9 +2085,10 @@ function act(el,d){
     case 'sharedaily':if(C)C.stats([['share','daily',1]]);shareDaily(d.day);break;
     case 'boardtab':ui.boardTab=d.v==='w'?'w':'d';renderModal();break;
     case 'signin':case 'signout':case 'acsave':case 'acdel':case 'acdelno':case 'acdelyes':accountAct(d.act);break;
-    case 'plusamt':case 'plusbuy':case 'plusWall':plusAct(d);break;
+    case 'plusamt':case 'plusbuy':case 'plusWall':case 'plusShow':plusAct(d);break;
     case 'ftmake':case 'ftjoin':case 'ftsit':case 'ftleave':case 'ftleaveyes':case 'ftleaveno':case 'ftinvite':ftAct(d);break;
     case 'ftopen':pushBack();openModal('stol',{id:d.id});break;
+    case 'who':{const f=d.f||'';pushBack();openModal('who',{p:{name:d.n||'',avatar:d.a||null,plus:f.includes('p'),heart:f.includes('h'),host:f.includes('s')}});break;}
     case 'fttab':ui.ftTab=d.v==='w'?'w':'d';renderModal();break;
     case 'pickava':{
       const v=d.v;if(!ALL_PORTRAITS.includes(v))break;
@@ -2366,7 +2368,7 @@ function boardHTML(day){
   else if(!d.top||!d.top.length)h+=`<p class="fine bnote">${esc(t('boardNone'))}</p>`;
   else{
     const rows=d.top.slice(0,10),mine=d.top.find(x=>x.me);if(mine&&!rows.includes(mine))rows.push(mine);
-    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${rowFace(x)}${esc(x.name||t('playerAnon'))}${x.plus?' <i class="pmark xs" title="Yamb Café Plus">Plus</i>':''}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
+    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${whoBtn(x)}${x.plus?' <i class="pmark xs" title="Yamb Café Plus">Plus</i>':''}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
       <p class="fine bnote">${esc(t('boardCount',{n:d.count}))}${d.me&&!rows.some(x=>x.me)?' · '+esc(t('boardPlace',{r:d.me.rank,n:d.count})):''}</p>`;
   }
   if(!acctOn())h+=`<p class="fine bnote">${esc(t('boardSignIn'))}</p>`+gbtn();
@@ -2383,7 +2385,7 @@ function portraitPicker(){
     ${ph?`<p class="fine rmphoto"><button type="button" class="lnk" data-act="rmphoto">${esc(t('removePhoto'))}</button></p>`:''}`;
 }
 const CAMERA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>';
-function profileTop(name){return `<div class="proftop"><span class="print big">${portraitHTML(myPortrait(),name,'full')}${pinOnPrint(myPin())}</span>${myHost()?plaque():''}<b>${esc(name)}${plusMark()}</b></div>`;}
+function profileTop(name){return `<div class="proftop"><span class="print big">${portraitHTML(myPortrait(),name,'full')}${pinOnPrint(myPin())}${plusOnPrint(hasPlus())}</span>${myHost()?plaque():''}<b>${esc(name)}</b></div>`;}
 /* ---------- friends' tables (Stol prijatelja) and Šef sale ----------
    A private Daily league: friends at one table play the same Daily and see who got furthest today and this week.
    Everyone at a table has an invite code of their own (yambcafe.com/?stol=CODE). Bringing three friends who keep
@@ -2435,7 +2437,7 @@ function hostHTML(hp){
   if(!hp)return '';
   let h=`<div class="slip hostcard">${plaque()}`;
   if(hp.badge)return h+`<p>${esc(t('hostHave'))}</p></div>`;
-  h+=`<p>${esc(t('hostHow'))}</p>`;
+  h+=`<div class="h333" role="img" aria-label="${esc(t('whoHost'))}">${['host3a','host3b','host3c'].map(k=>`<span><b>3</b><small>${esc(t(k))}</small></span>`).join('')}</div><p class="hgoal">${esc(t('hostGoal'))}</p>`;
   if(hp.friends&&hp.friends.length)h+=`<ul class="hostfr">${hp.friends.map(f=>`<li><span>${esc(f.name||t('playerAnon'))}</span><span class="wk" role="img" aria-label="${esc(t('hostWeeks',{w:f.weeks}))}">${[0,1,2].map(i=>`<i${i<f.weeks?' class="on"':''}></i>`).join('')}</span></li>`).join('')}</ul>
     <p class="fine">${esc(t('hostCount',{n:hp.friends.filter(f=>f.weeks>=3).length}))}</p>`;
   else h+=`<p class="fine">${esc(t('hostNoOne'))}</p>`;
@@ -2456,7 +2458,7 @@ function ftTableHTML(m){
   let rank=0,prev=null;
   h+=`<table class="scores board ftboard">${rows.map((x,i)=>{
     const v=tab==='w'?x.week:x.today;if(v!=null&&v!==prev){rank=i+1;prev=v;}
-    return `<tr${x.me?' class="me"':''}><td class="rk">${v!=null?rank+'.':''}</td><td>${rowFace(x)}<span class="ftn">${esc(x.name||t('playerAnon'))}${x.plus?' <i class="pmark xs">Plus</i>':''}${x.host?plaque(true):''}</span>${tab==='w'&&x.days?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${v!=null?fmt(v):'–'}</td></tr>`;
+    return `<tr${x.me?' class="me"':''}><td class="rk">${v!=null?rank+'.':''}</td><td>${whoBtn(x,x.host?plaque(true):'')}${tab==='w'&&x.days?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${v!=null?fmt(v):'–'}</td></tr>`;
   }).join('')}</table>`;
   if(!(r&&r.done))h+=`<button type="button" class="btnRed" data-act="daily">${esc(t('dailyPlay'))}</button>`;
   else if(!r.sent&&!r.bad)h+=`<p class="fine">${esc(t('boardPending'))}</p>`;
@@ -2564,8 +2566,8 @@ const PLUS_AMTS=[499,699,899,1299];
 const plusOpen=()=>PLUS_LIVE||!!prefs.plusTest;
 const plusLocked=()=>plusOpen()&&!hasPlus();
 const charLocked=k=>k==='profesor'&&plusLocked();
-const plusMark=()=>hasPlus()?`<i class="pmark xs" title="Yamb Café Plus">Plus</i>`:'';
-const pinOnPrint=on=>on?`<i class="ppin onprint" title="${esc(t('plusPinHave'))}"></i>`:'';
+const pinOnPrint=on=>on?`<i class="ppin onprint" title="${esc(t('whoHeart'))}"></i>`:'';
+const plusOnPrint=on=>on?'<i class="pmark xs onprint" title="Yamb Café Plus">Plus</i>':'';
 const myPin=()=>hasPlus()&&!!plusOf().pin;
 const myHost=()=>{const d=acctState();return !!(d&&d.host);};
 const KEY='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7.5" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M11.5 12H21M17.5 12v3.5M20.5 12v2.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
@@ -2575,6 +2577,20 @@ function rowFace(x){
   const av=x.me&&myPortrait()==='photo'?'photo':x.avatar;
   return portraitSrc(av)?`<span class="rface">${portraitHTML(av,x.name,'sm')}${x.pin?'<i class="pdot" aria-hidden="true"></i>':''}</span>`:'';
 }
+/* a player in a list: portrait and name as one button that opens their card; extra marks go after the name */
+function whoBtn(x,extra){
+  const av=x.me&&myPortrait()==='photo'?'photo':(x.avatar||'');
+  const f=(x.plus?'p':'')+(x.pin?'h':'')+(x.host?'s':'');
+  return `<button type="button" class="who" data-act="who" data-n="${esc(x.name||'')}" data-a="${esc(av)}" data-f="${f}">${rowFace(x)}<span class="wn">${esc(x.name||t('playerAnon'))}</span>${extra||''}</button>`;
+}
+/* the player's card: the portrait as a print, the heart and Plus on it, Šef sale under it */
+function whoHTML(m){
+  const p=m.p||{};
+  const marks=[p.plus?`<li><i class="pmark xs">Plus</i><span>Yamb Café Plus</span></li>`:'',p.heart?`<li><i class="ppin inl" aria-hidden="true"></i><span>${esc(t('whoHeart'))}</span></li>`:'',
+    p.host?`<li>${plaque(true)}<span>${esc(t('whoHost'))}</span></li>`:''].join('');
+  return head(p.name||t('playerAnon'))+`<div class="whocard"><span class="print big">${portraitHTML(p.avatar||null,p.name||'?','full')}${pinOnPrint(p.heart)}${plusOnPrint(p.plus)}</span>${p.host?plaque():''}
+    <b class="whoname">${esc(p.name||t('playerAnon'))}</b>${marks?`<ul class="whomarks">${marks}</ul>`:''}</div>`;
+}
 const plusOf=()=>{const d=acctState();return d&&d.plus?d.plus:null;};
 const PLUS_LIVE=false;   /* true from the public start: Plus is sold to everyone, and the Professor and the rest need it */
 const hasPlus=()=>!!(plusOf()&&plusOf().plus);
@@ -2582,8 +2598,8 @@ const eur=c=>{try{return new Intl.NumberFormat(I.locale(prefs.lang),{style:'curr
 const PLUS_ITEMS=[['plusProf','plusProfD','<img src="art/cast/profesor.webp" alt="">'],
   ['plusDaily','plusDailyD','<img src="art/daily-800.webp" alt="" style="object-position:50% 30%">'],
   ['plusFaces','plusFacesD','<img src="art/plus/01.webp" alt="">'],
-  ['plusWall','plusWallD','<i class="ppin" aria-hidden="true"></i>'],
-  ['plusMark','plusMarkD','<i class="pmark sm" aria-hidden="true">Plus</i>']];
+  ['plusWall','plusWallD','<i class="wpin" aria-hidden="true"></i>'],
+  ['plusMark','plusMarkD','<span class="pmarks"><i class="pmark sm" aria-hidden="true">Plus</i><i class="ppin inl" aria-hidden="true"></i></span>']];
 async function loadWall(){
   const b=boards.wall;if(b&&(b.busy||Date.now()-b.at<60000))return;
   boards.wall={busy:true,at:Date.now(),data:b&&b.data};
@@ -2597,7 +2613,7 @@ function wallHTML(){
   const w=boards.wall&&boards.wall.data;
   if(!w)h+=`<p class="pnote none">${esc(boards.wall&&boards.wall.err?t('boardOff'):t('boardWait'))}</p>`;
   else if(!w.length)h+=`<p class="pnote none">${esc(t('wallEmpty'))}</p>`;
-  else h+=`<div class="wallgrid">${w.map((x,i)=>`<figure style="--tilt:${((i*37)%7)-3}deg"><span class="print">${portraitHTML(x.avatar,x.name,'full')}${pinOnPrint(x.pin)}</span><figcaption>${esc(x.name||t('playerAnon'))}</figcaption>${x.host?plaque(true):''}</figure>`).join('')}</div>`;
+  else h+=`<div class="wallgrid">${w.map((x,i)=>`<figure style="--tilt:${((i*37)%7)-3}deg"><button type="button" class="who wallwho" data-act="who" data-n="${esc(x.name||'')}" data-a="${esc(x.avatar||'')}" data-f="p${x.pin?'h':''}${x.host?'s':''}"><span class="print">${portraitHTML(x.avatar,x.name,'full')}${pinOnPrint(x.pin)}</span><figcaption>${esc(x.name||t('playerAnon'))}</figcaption></button></figure>`).join('')}</div>`;
   if(hasPlus()&&!(acctState().profile&&acctState().profile.wall))h+=`<button type="button" class="btnInk" data-act="open" data-k="plus">${esc(t('wallSwitch'))}</button>`;
   return h+`</div>`;
 }
@@ -2608,8 +2624,9 @@ function plusHTML(m){
     <ul class="plist">${PLUS_ITEMS.map(([a,b,ic])=>`<li><span class="pic">${ic}</span><span><b>${esc(t(a))}</b><small>${esc(t(b))}</small></span></li>`).join('')}</ul>
     <div class="pfaces" aria-hidden="true">${[2,5,8,11,4,9].map(i=>`<img src="art/plus/${String(i).padStart(2,'0')}.webp" alt="" loading="lazy">`).join('')}</div>`;
   const wallLink=`<button type="button" class="btnInk" data-act="open" data-k="wall">${esc(t('wallTitle'))}</button>`;
-  if(p&&p.plus){const st=acctState(),on=!!(st&&st.profile&&st.profile.wall);
+  if(p&&p.plus){const st=acctState(),on=!!(st&&st.profile&&st.profile.wall),shown=!(st&&st.profile&&st.profile.show_plus===false);
     return h+`<div class="slip plusyes"><b>${esc(t('plusYours'))}</b><span>${esc(t('plusSince',{date:dateLabel(String(p.since||'').slice(0,10))}))}${p.pin?' · '+esc(t('plusPinHave')):''}</span></div>
+      <div class="toggle"><span>${esc(t('showSwitch'))}<small>${esc(t('showSwitchD'))}</small></span><button type="button" class="sw" role="switch" data-act="plusShow" aria-checked="${shown}" aria-label="${esc(t('showSwitch'))}"${m.busy?' disabled':''}></button></div>
       <div class="toggle"><span>${esc(t('wallSwitch'))}<small>${esc(t('wallSwitchD'))}</small></span><button type="button" class="sw" role="switch" data-act="plusWall" aria-checked="${on}" aria-label="${esc(t('wallSwitch'))}"${m.busy?' disabled':''}></button></div>`+wallLink;}
   if(m.waiting)return h+`<div class="slip plusyes wait"><b>${esc(t('plusWait'))}</b><span>${esc(t('plusWaitD'))}</span></div>`;
   h+=`<h3>${esc(t('plusPrice'))}</h3><div class="pamts">${PLUS_AMTS.map(c=>`<button type="button" data-act="plusamt" data-v="${c}" aria-pressed="${c===amt}">${esc(eur(c))}</button>`).join('')}</div>
@@ -2621,6 +2638,13 @@ function plusHTML(m){
 async function plusAct(d){
   const m=ui.modal;if(!m||m.kind!=='plus')return;
   if(d.act==='plusamt'){const v=+d.v;if(PLUS_AMTS.includes(v)){m.amt=v;renderModal();}return;}
+  if(d.act==='plusShow'){
+    const st=acctState();if(!st||m.busy)return;const on=st.profile&&st.profile.show_plus===false;
+    m.busy=true;renderModal();
+    try{const r=await C.rpc('set_show_plus',{p_on:on});st.profile=Object.assign({},st.profile||{},{show_plus:r&&r.show_plus!==false});saveCloud();Object.keys(boards).forEach(k=>delete boards[k]);}
+    catch(e){toast(t('acFail'),true);}
+    m.busy=false;renderModal();return;
+  }
   if(d.act==='plusWall'){
     const st=acctState();if(!st||m.busy)return;const on=!(st.profile&&st.profile.wall);
     m.busy=true;renderModal();

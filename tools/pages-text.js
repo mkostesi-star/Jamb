@@ -2,7 +2,7 @@
 // {{game}}, {{privacy}}, {{terms}} and {{rules}} become links to those pages in the same language.
 module.exports={
 privacy:{
-en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about you, where, and why.',date:'Yamb Café · updated 20 November 2026',back:'Back to the game',body:`
+en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about you, where, and why.',date:'Yamb Café · updated 21 November 2026',back:'Back to the game',body:`
 <p>Yamb Café is a dice game made by Ivan Kostešić, Croatia. This page says what the game keeps about you, where, and why. For questions or requests, write to <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
@@ -29,7 +29,7 @@ en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about
 <li>the records this device had before you first signed in, so they are not lost;</li>
 <li>for the Daily Yamb, your moves, so that the server can check your score is possible with that day's dice.</li>
 </ul>
-<p>On the high scores, other players see the name you chose, the painted portrait you picked (never your own photo) and your Daily Yamb scores. If you have Plus and switch on the regulars' wall, your name and portrait are also pinned on a wall that anyone who opens the game can see, and a Plus mark shows beside your name; switch it off and both come down at once. At a friends' table, only the people sitting there see each other's names, portraits and Daily Yamb scores for the day and the week, and the Šef sale badge of anyone who earned it. The friends who sat down with your code see their own progress towards your badge only as part of yours: you see their names and how many weeks in a row they have played. Your email address is never shown.</p>
+<p>On the high scores, other players see the name you chose, the painted portrait you picked (never your own photo) and your Daily Yamb scores. Tapping a player opens their portrait card: if they have Plus, it shows Plus, and the thank-you heart if they paid more than the lowest price (a tiny heart also sits on their small portrait), unless they hid them on the Plus page; and the Šef sale badge if they earned it. If you have Plus and switch on the regulars' wall, your name and portrait are also pinned on a wall that anyone who opens the game can see; switch it off and they come down at once. At a friends' table, only the people sitting there see each other's names, portraits and Daily Yamb scores for the day and the week. The friends who sat down with your code see their own progress towards your badge only as part of yours: you see their names and how many weeks in a row they have played. Your email address is never shown.</p>
 <p>We use this to run the game you signed in for. The legal basis is providing the service you asked for (Article 6(1)(b) of the GDPR).</p>
 
 <h2>Games on several devices</h2>
@@ -70,7 +70,7 @@ en:{title:'Privacy · Yamb Café',h1:'Privacy',desc:'What Yamb Café keeps about
 <h2>Changes</h2>
 <p>If anything here changes, we update this page and the date at the top. The <a href="{{terms}}">terms and refunds</a> are on their own page.</p>`},
 
-hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva o tebi, gdje i zašto.',date:'Yamb Café · ažurirano 20. studenoga 2026.',back:'Natrag u igru',body:`
+hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva o tebi, gdje i zašto.',date:'Yamb Café · ažurirano 21. studenoga 2026.',back:'Natrag u igru',body:`
 <p>Yamb Café je igra s kockama koju je napravio Ivan Kostešić, Hrvatska. Ova stranica govori što igra čuva o tebi, gdje i zašto. Za pitanja i zahtjeve piši na <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a>.</p>
 
 <div class="short">
@@ -97,7 +97,7 @@ hr:{title:'Privatnost · Yamb Café',h1:'Privatnost',desc:'Što Yamb Café čuva
 <li>rekorde koje je ovaj uređaj imao prije prve prijave, da se ne izgube;</li>
 <li>za Dnevni Jamb tvoje poteze, da poslužitelj provjeri je li rezultat moguć s kockama tog dana.</li>
 </ul>
-<p>Na ljestvici drugi igrači vide ime koje si odabrao, naslikani portret koji si izabrao (nikad tvoju fotografiju) i tvoje rezultate Dnevnog Jamba. Ako imaš Plus i uključiš zid stalnih gostiju, tvoje ime i portret prikvačeni su i na zid koji vidi svatko tko otvori igru, a uz tvoje ime stoji oznaka Plus; kad ga isključiš, oboje se odmah skida. Za stolom prijatelja samo oni koji za njim sjede vide međusobno imena, portrete i rezultate Dnevnog Jamba za dan i tjedan te značku šefa sale onoga tko ju je zaslužio. Kad prijatelji sjednu s tvojim kodom, ti vidiš njihova imena i koliko su tjedana zaredom igrali, kao dio svog puta do značke. Tvoja adresa e-pošte nikad se ne prikazuje.</p>
+<p>Na ljestvici drugi igrači vide ime koje si odabrao, naslikani portret koji si izabrao (nikad tvoju fotografiju) i tvoje rezultate Dnevnog Jamba. Dodir na igrača otvara njegov portret: ako ima Plus, na njemu piše Plus, a ako je platio više od najniže cijene i srce zahvale (malo srce stoji i na njegovom malom portretu), osim ako ih je sakrio na stranici Plus; tu je i značka šefa sale ako ju je zaslužio. Ako imaš Plus i uključiš zid stalnih gostiju, tvoje ime i portret prikvačeni su i na zid koji vidi svatko tko otvori igru; kad ga isključiš, odmah se skidaju. Za stolom prijatelja samo oni koji za njim sjede vide međusobno imena, portrete i rezultate Dnevnog Jamba za dan i tjedan. Kad prijatelji sjednu s tvojim kodom, ti vidiš njihova imena i koliko su tjedana zaredom igrali, kao dio svog puta do značke. Tvoja adresa e-pošte nikad se ne prikazuje.</p>
 <p>To koristimo za igru za koju si se prijavio. Pravna osnova je pružanje usluge koju si zatražio (članak 6. stavak 1. točka (b) GDPR-a).</p>
 
 <h2>Igre na više uređaja</h2>

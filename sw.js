@@ -1,7 +1,7 @@
 /* Keeps Yamb Café working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v11.0';
+const CACHE = 'jamb-v11.1';
 const CORE = [
-  './', 'index.html', 'engine.js?v=1100', 'ai.js?v=1100', 'i18n.js?v=1100', 'audio.js?v=1100', 'music.js?v=1100', 'fx.js?v=1100', 'scan.js?v=1100', 'vendor/supabase.js?v=1100', 'cloud.js?v=1100', 'app.js?v=1100', 'manifest.webmanifest',
+  './', 'index.html', 'engine.js?v=1110', 'ai.js?v=1110', 'i18n.js?v=1110', 'audio.js?v=1110', 'music.js?v=1110', 'fx.js?v=1110', 'scan.js?v=1110', 'vendor/supabase.js?v=1110', 'cloud.js?v=1110', 'app.js?v=1110', 'manifest.webmanifest',
   'icons/v10/icon-192.png', 'icons/v10/apple-touch-icon.png', 'icons/v10/favicon-64.png',
   'art/shop/phone-768.webp', 'art/shop/wide-1376.webp', 'art/table-teal.webp', 'art/tray.webp', 'art/saucer.webp', 'art/daily-800.webp',
   'fonts/caveat-latin-ext.woff2', 'fonts/caveat-latin.woff2', 'fonts/courier-prime-latin-400.woff2', 'fonts/courier-prime-latin-700.woff2', 'fonts/courier-prime-latin-ext-400.woff2', 'fonts/courier-prime-latin-ext-700.woff2', 'fonts/fraunces-latin-ext.woff2', 'fonts/fraunces-latin.woff2', 'fonts/instrument-sans-latin-ext.woff2', 'fonts/instrument-sans-latin.woff2',

@@ -190,10 +190,11 @@ begin
     'count', (select count(*) from public.daily_scores s where s.day = p_day),
     'top', coalesce((
       select jsonb_agg(jsonb_build_object('rank', r.rnk, 'name', r.name, 'avatar', r.avatar, 'score', r.score,
-                                          'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.wall, false) and yamb.has_plus(r.user_id),
-                                          'pin', coalesce(r.wall, false) and coalesce((yamb.plus_of(r.user_id) ->> 'pin')::boolean, false))
+                                          'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.show_plus, true) and yamb.has_plus(r.user_id),
+                                          'pin', coalesce(r.show_plus, true) and coalesce((yamb.plus_of(r.user_id) ->> 'pin')::boolean, false),
+                                          'host', exists (select 1 from yamb.badges b where b.user_id = r.user_id and b.badge = 'host'))
                        order by r.score desc, r.created_at)
-      from (select s.user_id, s.score, s.created_at, coalesce(p.name, '') as name, p.avatar, p.wall,
+      from (select s.user_id, s.score, s.created_at, coalesce(p.name, '') as name, p.avatar, p.wall, p.show_plus,
                    rank() over (order by s.score desc) as rnk
             from public.daily_scores s left join public.profiles p on p.id = s.user_id
             where s.day = p_day
@@ -214,10 +215,11 @@ begin
     'count', (select count(distinct s.user_id) from public.daily_scores s where s.day between mon and mon + 6),
     'top', coalesce((
       select jsonb_agg(jsonb_build_object('rank', r.rnk, 'name', r.name, 'avatar', r.avatar, 'score', r.total,
-                                          'days', r.days, 'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.wall, false) and yamb.has_plus(r.user_id),
-                                          'pin', coalesce(r.wall, false) and coalesce((yamb.plus_of(r.user_id) ->> 'pin')::boolean, false))
+                                          'days', r.days, 'me', coalesce(r.user_id = me, false), 'plus', coalesce(r.show_plus, true) and yamb.has_plus(r.user_id),
+                                          'pin', coalesce(r.show_plus, true) and coalesce((yamb.plus_of(r.user_id) ->> 'pin')::boolean, false),
+                                          'host', exists (select 1 from yamb.badges b where b.user_id = r.user_id and b.badge = 'host'))
                        order by r.total desc, r.last_at)
-      from (select w.user_id, w.total, w.days, w.last_at, coalesce(p.name, '') as name, p.avatar, p.wall,
+      from (select w.user_id, w.total, w.days, w.last_at, coalesce(p.name, '') as name, p.avatar, p.wall, p.show_plus,
                    rank() over (order by w.total desc) as rnk
             from (select s.user_id, sum(s.score)::integer as total, count(*)::integer as days, max(s.created_at) as last_at
                   from public.daily_scores s where s.day between mon and mon + 6 group by s.user_id) w
@@ -241,7 +243,7 @@ begin
   if me is null then raise exception 'YC_SIGNIN'; end if;
   return jsonb_build_object(
     'id', me,
-    'profile', (select jsonb_build_object('name', p.name, 'avatar', p.avatar, 'since', p.created_at, 'wall', p.wall)
+    'profile', (select jsonb_build_object('name', p.name, 'avatar', p.avatar, 'since', p.created_at, 'wall', p.wall, 'show_plus', p.show_plus)
                 from public.profiles p where p.id = me),
     'carried', coalesce((select jsonb_agg(c.stats order by c.created_at) from public.carried c where c.user_id = me), '[]'::jsonb),
     'totals', (select jsonb_build_object('games', count(*),
@@ -304,7 +306,7 @@ begin
   if av ~ '^p[0-9]+$' and not yamb.has_plus(me) then av := null; end if;
   insert into public.profiles (id, name, avatar) values (me, nm, av)
   on conflict (id) do update set name = excluded.name, avatar = excluded.avatar, updated_at = now();
-  return (select jsonb_build_object('name', p.name, 'avatar', p.avatar, 'since', p.created_at, 'wall', p.wall) from public.profiles p where p.id = me);
+  return (select jsonb_build_object('name', p.name, 'avatar', p.avatar, 'since', p.created_at, 'wall', p.wall, 'show_plus', p.show_plus) from public.profiles p where p.id = me);
 end $$;
 
 -- a Daily Yamb result: checked by playing the moves again; the first result of the day stands
@@ -559,6 +561,8 @@ create table if not exists yamb.orders (
 create index if not exists orders_user on yamb.orders (user_id);
 -- the regulars' wall and the Plus mark on the high scores: shown only when the owner switches it on
 alter table public.profiles add column if not exists wall boolean not null default false;
+-- whether other players see Plus and the thank-you heart on this player's portrait (part of what Plus is; can be hidden)
+alter table public.profiles add column if not exists show_plus boolean not null default true;
 create table if not exists yamb.plus_gifts (
   user_id     uuid primary key references auth.users (id) on delete cascade,
   why         text not null default '',
@@ -636,13 +640,24 @@ begin
   return jsonb_build_object('wall', coalesce(p_on, false));
 end $$;
 
+-- on or off: Plus and the thank-you heart on the player's portrait, for other players to see
+create or replace function public.set_show_plus(p_on boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  insert into public.profiles (id, show_plus) values (me, coalesce(p_on, true))
+  on conflict (id) do update set show_plus = excluded.show_plus, updated_at = now();
+  return jsonb_build_object('show_plus', coalesce(p_on, true));
+end $$;
+
 -- the regulars' wall: Plus owners who chose to be on it, oldest first (names and portraits only)
 create or replace function public.regulars_wall() returns jsonb
 language sql stable security definer set search_path = '' as $$
   select coalesce(jsonb_agg(jsonb_build_object('name', w.name, 'avatar', w.avatar, 'since', w.since, 'me', w.id = auth.uid(),
                                                'pin', w.pin, 'host', w.host) order by w.since), '[]'::jsonb)
   from (select p.id, coalesce(nullif(p.name, ''), '') as name, p.avatar, (x.p ->> 'since')::timestamptz as since,
-               coalesce((x.p ->> 'pin')::boolean, false) as pin,
+               coalesce((x.p ->> 'pin')::boolean, false) and coalesce(p.show_plus, true) as pin,
                exists (select 1 from yamb.badges b where b.user_id = p.id and b.badge = 'host') as host
         from public.profiles p cross join lateral (select yamb.plus_of(p.id) as p) x
         where p.wall and yamb.has_plus(p.id)
@@ -681,8 +696,8 @@ end $$;
 
 revoke all on function yamb.plus_of(uuid) from public, anon, authenticated;
 revoke all on function yamb.has_plus(uuid) from public, anon, authenticated;
-revoke all on function public.my_plus(), public.yamb_order(jsonb, text), public.set_wall(boolean), public.regulars_wall() from public, anon, authenticated;
-grant execute on function public.my_plus(), public.set_wall(boolean) to authenticated;
+revoke all on function public.my_plus(), public.yamb_order(jsonb, text), public.set_wall(boolean), public.set_show_plus(boolean), public.regulars_wall() from public, anon, authenticated;
+grant execute on function public.my_plus(), public.set_wall(boolean), public.set_show_plus(boolean) to authenticated;
 grant execute on function public.regulars_wall() to anon, authenticated;
 grant execute on function public.yamb_order(jsonb, text) to service_role;
 -- ---------------------------------------------------------------- friends' tables (Stol prijatelja) and the Šef sale badge
@@ -819,8 +834,8 @@ begin
       select jsonb_agg(jsonb_build_object('name', coalesce(nullif(p.name, ''), ''), 'avatar', p.avatar, 'me', s.user_id = me,
                'today', d.score, 'week', w.total, 'days', coalesce(w.days, 0),
                'host', exists (select 1 from yamb.badges b where b.user_id = s.user_id and b.badge = 'host'),
-               'plus', coalesce(p.wall, false) and yamb.has_plus(s.user_id),
-               'pin', coalesce(p.wall, false) and coalesce((yamb.plus_of(s.user_id) ->> 'pin')::boolean, false))
+               'plus', coalesce(p.show_plus, true) and yamb.has_plus(s.user_id),
+               'pin', coalesce(p.show_plus, true) and coalesce((yamb.plus_of(s.user_id) ->> 'pin')::boolean, false))
              order by d.score desc nulls last, w.total desc nulls last, s.joined_at)
       from yamb.friend_seats s
       left join public.profiles p on p.id = s.user_id

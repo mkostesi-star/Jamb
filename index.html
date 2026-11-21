@@ -951,7 +951,7 @@ body.atTable::before{background:var(--wood-lo)}
 .print.big .ppin.onprint{width:26px;height:26px}
 .wallgrid .ppin.onprint{width:15px;height:15px}
 .rface{position:relative;display:inline-block;vertical-align:middle;line-height:0}
-.pdot{position:absolute;top:-3px;right:3px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#E77B5E,#C25A3C 60%,#8E3A26);box-shadow:0 1px 1px rgba(0,0,0,.35)}
+.pdot{position:absolute;top:-4px;right:2px;width:11px;height:11px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3CradialGradient id='g' cx='.36' cy='.32' r='.85'%3E%3Cstop offset='0' stop-color='%23F2947A'/%3E%3Cstop offset='.5' stop-color='%23C9452E'/%3E%3Cstop offset='1' stop-color='%23842718'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' stroke='%236E1F13' stroke-width='.8' d='M12 21.2s-7.7-4.7-9.7-9.4C.9 8.5 3 4.8 6.7 4.8c2.2 0 3.8 1.2 5.3 3.2 1.5-2 3.1-3.2 5.3-3.2 3.7 0 5.8 3.7 4.4 7-2 4.7-9.7 9.4-9.7 9.4z'/%3E%3Cpath fill='%23fff' fill-opacity='.5' d='M6.3 7.3c-1.5.3-2.4 1.8-2 3.3.4-1.2 1.2-2.1 2.6-2.5z'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 1px .6px rgba(60,20,10,.4))}
 .plaque{display:inline-flex;align-items:center;gap:5px;padding:3px 10px 4px;border-radius:3px;font:700 13px/1 var(--f-serif);letter-spacing:.03em;color:#3A2A0E;white-space:nowrap;
   background:linear-gradient(180deg,#F2D98E,#D2AA52 55%,#B98F38);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.18),0 2px 3px rgba(90,60,10,.3)}
 .plaque svg{width:14px;height:14px;flex:none}
@@ -960,6 +960,28 @@ body.atTable::before{background:var(--wood-lo)}
 .proftop .plaque{margin-top:-8px;position:relative;z-index:1}
 .pinlabel .plaque.sm{display:flex;width:max-content;margin:0 auto 5px}
 .wallgrid .plaque.sm{margin:0}
+.pmark.onprint{position:absolute;z-index:2;left:10%;bottom:4%;margin:0}
+.print.big .pmark.onprint{font-size:11px;padding:3px 8px 4px}
+/* a player in a list opens their card */
+button.who{display:inline-flex;align-items:center;gap:0;max-width:100%;padding:2px 4px 2px 0;margin:-2px 0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:6px}
+button.who:focus-visible{outline:2px solid var(--accent,#C25A3C);outline-offset:2px}
+button.who{flex-wrap:wrap;row-gap:2px}
+button.who .wn{white-space:nowrap}
+button.who .plaque.sm{flex:none}
+button.wallwho{display:grid;justify-items:center;gap:6px;padding:0;margin:0}
+.whocard{display:grid;justify-items:center;text-align:center;gap:6px;padding:6px 0 4px}
+.whocard .print.big{--pw:190px}
+.whocard .plaque{margin-top:-10px;position:relative;z-index:1}
+.whoname{font:800 26px/1.1 var(--f-serif);color:var(--text);margin-top:4px}
+.whomarks{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px;justify-items:start}
+.whomarks li{display:flex;align-items:center;gap:10px;font:500 15px var(--f-ui);color:var(--text)}
+.whomarks li .pmark,.whomarks li .plaque{margin:0}
+/* 3 · 3 · 3 */
+.h333{display:flex;justify-content:center;gap:10px;margin:12px 0 4px}
+.h333 span{display:grid;justify-items:center;min-width:76px;padding:6px 6px 8px;border-radius:10px;background:rgba(42,26,18,.06)}
+.h333 b{font:800 34px/1 var(--f-serif);color:#8E6A1E}
+.h333 small{font:600 12px/1.2 var(--f-ui);color:var(--muted);text-align:center;margin-top:2px}
+.hgoal{font:600 16px var(--f-ui);color:var(--text)}
 /* friends' tables */
 .ftjoin{display:flex;gap:8px;margin-top:8px}
 .ftjoin input{flex:1;min-width:0;min-height:46px;font:600 19px var(--f-ui);letter-spacing:.18em;text-transform:uppercase;padding:8px 12px;border:1.5px solid var(--line-strong);border-radius:9px;background:#FFFDF6;color:var(--text)}
@@ -995,7 +1017,11 @@ body.atTable::before{background:var(--wood-lo)}
 .plist .pic img{width:100%;height:100%;object-fit:cover}
 .plist b{display:block;font:600 17px/1.25 var(--f-serif)}
 .plist small{display:block;font:400 14px/1.35 var(--f-ui);color:var(--muted)}
-.ppin{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#E77B5E,#C25A3C 60%,#8E3A26);box-shadow:0 2px 2px rgba(0,0,0,.3)}
+.wpin{display:block;width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#E77B5E,#C25A3C 60%,#8E3A26);box-shadow:0 2px 2px rgba(0,0,0,.3)}
+/* the thank-you heart: an enamel heart on the portrait, a tiny one on small portraits */
+.ppin{display:inline-block;width:20px;height:20px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3CradialGradient id='g' cx='.36' cy='.32' r='.85'%3E%3Cstop offset='0' stop-color='%23F2947A'/%3E%3Cstop offset='.5' stop-color='%23C9452E'/%3E%3Cstop offset='1' stop-color='%23842718'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' stroke='%236E1F13' stroke-width='.8' d='M12 21.2s-7.7-4.7-9.7-9.4C.9 8.5 3 4.8 6.7 4.8c2.2 0 3.8 1.2 5.3 3.2 1.5-2 3.1-3.2 5.3-3.2 3.7 0 5.8 3.7 4.4 7-2 4.7-9.7 9.4-9.7 9.4z'/%3E%3Cpath fill='%23fff' fill-opacity='.5' d='M6.3 7.3c-1.5.3-2.4 1.8-2 3.3.4-1.2 1.2-2.1 2.6-2.5z'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 1.5px 1px rgba(60,20,10,.35))}
+.ppin.inl{width:16px;height:16px;vertical-align:-3px}
+.pmarks{display:flex;align-items:center;gap:4px}
 .pfaces{display:flex;justify-content:center;margin:14px 0 4px}
 .pfaces img{width:46px;height:46px;border-radius:50%;object-fit:cover;margin-left:-8px;box-shadow:0 0 0 2px var(--paperw),0 2px 4px rgba(60,40,20,.25)}
 .pfaces img:first-child{margin-left:0}
@@ -1039,15 +1065,15 @@ body.atTable::before{background:var(--wood-lo)}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=1100"></script>
-<script src="ai.js?v=1100"></script>
-<script src="i18n.js?v=1100"></script>
-<script src="audio.js?v=1100"></script>
-<script src="music.js?v=1100"></script>
-<script src="fx.js?v=1100"></script>
-<script src="scan.js?v=1100"></script>
-<script src="vendor/supabase.js?v=1100" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=1100"></script>
-<script src="app.js?v=1100"></script>
+<script src="engine.js?v=1110"></script>
+<script src="ai.js?v=1110"></script>
+<script src="i18n.js?v=1110"></script>
+<script src="audio.js?v=1110"></script>
+<script src="music.js?v=1110"></script>
+<script src="fx.js?v=1110"></script>
+<script src="scan.js?v=1110"></script>
+<script src="vendor/supabase.js?v=1110" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=1110"></script>
+<script src="app.js?v=1110"></script>
 </body>
 </html>
