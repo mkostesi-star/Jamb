@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v11.2';
+const VERSION='v11.3';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -2369,7 +2369,7 @@ function boardHTML(day){
   else if(!d.top||!d.top.length)h+=`<p class="fine bnote">${esc(t('boardNone'))}</p>`;
   else{
     const rows=d.top.slice(0,10),mine=d.top.find(x=>x.me);if(mine&&!rows.includes(mine))rows.push(mine);
-    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${whoBtn(x)}${x.plus?' <i class="pmark xs" title="Yamb Café Plus">Plus</i>':''}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
+    h+=`<table class="scores board">${rows.map(x=>`<tr${x.me?' class="me"':''}><td class="rk">${x.rank}.</td><td>${whoBtn(x)}${tab==='w'?` <small>${esc(t('boardDays',{n:x.days}))}</small>`:''}</td><td class="n">${fmt(x.score)}</td></tr>`).join('')}</table>
       <p class="fine bnote">${esc(t('boardCount',{n:d.count}))}${d.me&&!rows.some(x=>x.me)?' · '+esc(t('boardPlace',{r:d.me.rank,n:d.count})):''}</p>`;
   }
   if(!acctOn())h+=`<p class="fine bnote">${esc(t('boardSignIn'))}</p>`+gbtn();

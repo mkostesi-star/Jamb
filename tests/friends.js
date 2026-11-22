@@ -97,6 +97,11 @@ const post=(url,body)=>fetch(url,{method:'POST',headers:{'content-type':'applica
     ok(await a.$('.proftop .plaque')!==null&&await a.$('.proftop .ppin.onprint')!==null&&await a.$('.proftop .pmark')!==null,'Ana\'s profile: the heart and Plus on her print, the Šef sale plaque under it');
     await shot(a,'f08_profile');
     await home(a);await a.click('[data-act=open][data-k=records]');await waitKind(a,'records');await shot(a,'f09_records');
+    await home(a);await a.click('[data-act=daily]');await waitKind(a,'daily');
+    await a.evaluate(()=>{Object.keys(window.__jamb.boards).forEach(k=>delete window.__jamb.boards[k]);});await a.click('[data-act=boardtab][data-v=w]').catch(()=>{});await a.click('[data-act=boardtab][data-v=d]').catch(()=>{});
+    await a.waitForSelector('.nboard .pdot',{timeout:15000}).catch(()=>{});
+    ok(await a.$('.nboard .pmark')===null&&await a.$('.nboard .pdot')!==null,'the Daily\'s high scores: no Plus beside Ana\'s name, only the tiny heart on her portrait');
+    await shot(a,'f09b_news');
     await i.evaluate(()=>{Object.keys(window.__jamb.boards).forEach(k=>delete window.__jamb.boards[k]);window.__jamb.ui.modal&&0;});
     await i.click('[data-act=fttab][data-v=d]').catch(()=>{});
     await i.waitForSelector('.ftboard .plaque',{timeout:15000});
