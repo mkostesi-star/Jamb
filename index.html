@@ -1040,6 +1040,8 @@ button.wallwho{display:grid;justify-items:center;gap:6px;padding:0;margin:0}
 .paper{--slate:var(--inkslate);background-color:var(--slate);
   box-shadow:0 0 0 1.5px #B8923F,0 0 0 3px rgba(0,0,0,.35),inset 0 0 34px rgba(0,0,0,.55),0 22px 30px -12px rgba(0,0,0,.7)}
 .gtop .ibtn{background:var(--paperw);box-shadow:0 3px 0 rgba(0,0,0,.35),0 6px 10px rgba(0,0,0,.3)}
+.homefoot{margin:14px auto calc(18px + env(safe-area-inset-bottom,0px));width:max-content;max-width:94%;padding:5px 14px;border-radius:999px;background:rgba(255,253,246,.88);text-align:center;font:500 13px var(--f-ui);color:#5A4A3A}
+.homefoot a{color:inherit}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.die.flip{animation:flip .3s ease!important}}
 </style>
 </head>
@@ -1049,7 +1051,12 @@ button.wallwho{display:grid;justify-items:center;gap:6px;padding:0;margin:0}
 <section class="tray" id="tray" hidden></section>
 <div id="modal" class="modal" hidden><div class="scrim" data-act="close"></div><div class="panel" id="panel" role="dialog" aria-modal="true"></div></div>
 <div id="toast" class="toast" role="status" hidden></div>
-<noscript><p style="padding:24px">Yamb Café needs JavaScript to run.</p></noscript>
+<noscript><div style="padding:24px;font:16px/1.5 system-ui,sans-serif;max-width:40em">
+<h1 style="font-size:28px;margin:0 0 8px">Yamb Café</h1>
+<p>Yamb (Jamb), the classic dice game: the Daily Yamb with the same dice for everyone, games against characters, with friends at one table or online, and house rules. Free to play; Yamb Café Plus is an optional one-time purchase.</p>
+<p>Yamb Café needs JavaScript to run.</p>
+<p><a href="privacy/">Privacy policy</a> · <a href="terms/">Terms of use</a> · <a href="rules/">How to play</a> · <a href="mailto:hello@yambcafe.com">hello@yambcafe.com</a></p>
+</div></noscript>
 
 <script>
 (function(){
@@ -1065,15 +1072,15 @@ button.wallwho{display:grid;justify-items:center;gap:6px;padding:0;margin:0}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=1110"></script>
-<script src="ai.js?v=1110"></script>
-<script src="i18n.js?v=1110"></script>
-<script src="audio.js?v=1110"></script>
-<script src="music.js?v=1110"></script>
-<script src="fx.js?v=1110"></script>
-<script src="scan.js?v=1110"></script>
-<script src="vendor/supabase.js?v=1110" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=1110"></script>
-<script src="app.js?v=1110"></script>
+<script src="engine.js?v=1120"></script>
+<script src="ai.js?v=1120"></script>
+<script src="i18n.js?v=1120"></script>
+<script src="audio.js?v=1120"></script>
+<script src="music.js?v=1120"></script>
+<script src="fx.js?v=1120"></script>
+<script src="scan.js?v=1120"></script>
+<script src="vendor/supabase.js?v=1120" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=1120"></script>
+<script src="app.js?v=1120"></script>
 </body>
 </html>
