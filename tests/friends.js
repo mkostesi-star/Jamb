@@ -146,6 +146,20 @@ const post=(url,body)=>fetch(url,{method:'POST',headers:{'content-type':'applica
     const seats=await sql(`select count(*)::int as n from yamb.friend_seats`);
     ok(seats[0].n===1,'Ivo gets up and is back on his empty list; Ana keeps the table');
     await shot(i,'f14_after_leave');
+    // ---- 7. feedback from the game, and the testers' guide
+    await home(a);await a.click('[data-act=open][data-k=dojam]');await waitKind(a,'dojam');
+    await a.click('[data-act=fbkind][data-v=bug]');await a.fill('#fbText','Kocke su zapele na drugom bacanju');await a.click('[data-act=fbstar][data-v="4"]');
+    await shot(a,'f15_feedback');
+    await a.click('[data-act=fbsend]');await a.waitForFunction(()=>window.__jamb.ui.modal&&window.__jamb.ui.modal.sent,null,{timeout:15000});
+    const fb=await sql(`select f.kind, f.stars, f.body, f.version, f.device, (select email from auth.users where id=f.user_id) as who from yamb.feedback f`);
+    ok(fb.length===1&&fb[0].kind==='bug'&&fb[0].stars===4&&fb[0].body==='Kocke su zapele na drugom bacanju'&&/^v\d/.test(fb[0].version)&&fb[0].device&&fb[0].who==='ana@example.com','Ana sends feedback: kind, stars, text, version and device reach the database');
+    await shot(a,'f16_feedback_sent');
+    await home(a);
+    ok(await a.$('[data-act=open][data-k=testeri]')!==null,'before launch, an account with Plus sees the testers\' guide on the menu');
+    await a.click('[data-act=open][data-k=testeri]');await waitKind(a,'testeri');
+    ok((await a.$$('.tsweek')).length===4&&(await a.$$('.tsweek[open]')).length===1,'four weeks, one open');
+    await shot(a,'f17_testers');
+    await home(i);ok(await i.$('[data-act=open][data-k=testeri]')===null&&await i.$('[data-act=open][data-k=dojam]')!==null,'Ivo, without Plus, sees feedback but not the testers\' guide');
     ok(T.errs.length===0,'no errors on any device'+(T.errs.length?': '+T.errs.slice(0,4).join(' | '):''));
   }catch(e){bad++;console.log('  FAIL  stopped: '+(e&&e.message||e).split('\n')[0]+' '+(((e&&e.stack)||'').match(/friends\.js:\d+/)||[''])[0]);for(const x of T.errs.slice(0,6))console.log('        '+x);}
   await T.close();await browser.close();cs.close();srv.close();

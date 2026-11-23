@@ -1042,6 +1042,20 @@ button.wallwho{display:grid;justify-items:center;gap:6px;padding:0;margin:0}
 .gtop .ibtn{background:var(--paperw);box-shadow:0 3px 0 rgba(0,0,0,.35),0 6px 10px rgba(0,0,0,.3)}
 .homefoot{margin:14px auto calc(18px + env(safe-area-inset-bottom,0px));width:max-content;max-width:94%;padding:5px 14px;border-radius:999px;background:rgba(255,253,246,.88);text-align:center;font:500 13px var(--f-ui);color:#5A4A3A}
 .homefoot a{color:inherit}
+/* feedback */
+.fbkinds{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.fbkinds button{min-height:40px;padding:6px 14px;border-radius:999px;border:1.5px solid var(--line-strong);background:#FFFDF6;color:var(--text);font:600 15px var(--f-ui)}
+.fbkinds button[aria-pressed=true]{background:#2A1A12;border-color:#2A1A12;color:#FFF8EC}
+.field textarea{width:100%;box-sizing:border-box;min-height:130px;padding:10px 12px;border:1.5px solid var(--line-strong);border-radius:9px;background:#FFFDF6;color:var(--text);font:400 16px/1.45 var(--f-ui);resize:vertical}
+.fbstars{display:flex;gap:4px;margin:2px 0 8px}
+.fbstars button{width:44px;height:44px;border:0;background:none;font-size:32px;line-height:1;color:#D8CDB8;cursor:pointer}
+.fbstars button[aria-pressed=true]{color:#D2AA52}
+/* the testers' guide */
+.tsweek{border:1.5px solid var(--line-strong);border-radius:10px;background:#FFFDF6;margin:8px 0;padding:0 12px}
+.tsweek summary{display:flex;align-items:baseline;gap:8px;min-height:44px;padding:10px 0;cursor:pointer;font:600 16px var(--f-ui);list-style-position:inside}
+.tsweek summary small{color:var(--muted);font-weight:500}
+.tsnow{margin-left:auto;font:700 11px var(--f-ui);letter-spacing:.06em;text-transform:uppercase;color:#8E6A1E;font-style:normal}
+.tsweek ul{margin:0 0 12px;padding-left:20px;display:grid;gap:6px;font:400 15px/1.4 var(--f-ui)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.die.flip{animation:flip .3s ease!important}}
 </style>
 </head>
@@ -1072,15 +1086,15 @@ button.wallwho{display:grid;justify-items:center;gap:6px;padding:0;margin:0}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=1150"></script>
-<script src="ai.js?v=1150"></script>
-<script src="i18n.js?v=1150"></script>
-<script src="audio.js?v=1150"></script>
-<script src="music.js?v=1150"></script>
-<script src="fx.js?v=1150"></script>
-<script src="scan.js?v=1150"></script>
-<script src="vendor/supabase.js?v=1150" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=1150"></script>
-<script src="app.js?v=1150"></script>
+<script src="engine.js?v=1160"></script>
+<script src="ai.js?v=1160"></script>
+<script src="i18n.js?v=1160"></script>
+<script src="audio.js?v=1160"></script>
+<script src="music.js?v=1160"></script>
+<script src="fx.js?v=1160"></script>
+<script src="scan.js?v=1160"></script>
+<script src="vendor/supabase.js?v=1160" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=1160"></script>
+<script src="app.js?v=1160"></script>
 </body>
 </html>

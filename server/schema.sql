@@ -338,6 +338,7 @@ begin
   perform public.leave_friend_table(s.table_id, current_date) from yamb.friend_seats s where s.user_id = me;
   delete from yamb.invites where user_id = me or invited_by = me;
   delete from yamb.badges where user_id = me;
+  update yamb.feedback set user_id = null where user_id = me;   -- what they wrote stays, without a name
   delete from public.profiles where id = me;
   begin
     delete from auth.users where id = me;
@@ -885,6 +886,56 @@ grant execute on function public.my_friend_tables(date), public.make_friend_tabl
 grant execute on function public.peek_friend_table(text) to anon, authenticated;
 -- a gift link for testers (pick your own code; the link is then yambcafe.com/?dar=THE-CODE):
 --   insert into yamb.gift_codes (code, why, uses_left, until) values ('THE-CODE', 'tester', 25, '2027-01-10');
+-- ---------------------------------------------------------------- feedback from players ("Pošalji dojam") for the Numbers page
+-- A message, its kind, optional stars, the game's version, language and device type; the account if signed in.
+-- Kept for up to a year. Only admins read it (feedback_list).
+create table if not exists yamb.feedback (
+  id        bigint generated always as identity primary key,
+  at        timestamptz not null default now(),
+  user_id   uuid references auth.users (id) on delete set null,
+  kind      text not null default 'other' check (kind in ('bug', 'idea', 'like', 'other')),
+  stars     smallint check (stars between 1 and 5),
+  body      text not null check (char_length(body) between 1 and 2000),
+  version   text, lang text, device text, screen text
+);
+create index if not exists feedback_at on yamb.feedback (at desc);
+revoke all on yamb.feedback from public, anon, authenticated;
+
+create or replace function public.send_feedback(p jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); b text := btrim(coalesce(p ->> 'body', '')); k text := coalesce(p ->> 'kind', 'other'); s integer;
+begin
+  if b = '' then raise exception 'YC_EMPTY'; end if;
+  if k not in ('bug', 'idea', 'like', 'other') then k := 'other'; end if;
+  begin s := nullif(p ->> 'stars', '')::integer; exception when others then s := null; end;
+  if s is not null and (s < 1 or s > 5) then s := null; end if;
+  -- at most 20 a day from one account, and 300 a day from everyone signed out together
+  if me is not null and (select count(*) from yamb.feedback f where f.user_id = me and f.at > now() - interval '1 day') >= 20 then raise exception 'YC_LIMIT'; end if;
+  if me is null and (select count(*) from yamb.feedback f where f.user_id is null and f.at > now() - interval '1 day') >= 300 then raise exception 'YC_LIMIT'; end if;
+  delete from yamb.feedback where at < now() - interval '1 year';
+  insert into yamb.feedback (user_id, kind, stars, body, version, lang, device, screen)
+  values (me, k, s, left(b, 2000), left(p ->> 'version', 20), left(p ->> 'lang', 8), left(p ->> 'device', 60), left(p ->> 'screen', 20));
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function public.feedback_list(p_limit integer) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null or not exists (select 1 from yamb.admins x where x.user_id = me) then raise exception 'YC_ADMIN'; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('at', f.at, 'kind', f.kind, 'stars', f.stars, 'body', f.body, 'version', f.version,
+             'lang', f.lang, 'device', f.device, 'screen', f.screen, 'signed', f.user_id is not null,
+             'name', coalesce(nullif(p.name, ''), ''),
+             'tester', f.user_id is not null and exists (select 1 from yamb.plus_gifts g where g.user_id = f.user_id)) order by f.at desc)
+    from (select * from yamb.feedback order by at desc limit least(greatest(coalesce(p_limit, 100), 1), 500)) f
+    left join public.profiles p on p.id = f.user_id), '[]'::jsonb);
+end $$;
+
+revoke all on function public.send_feedback(jsonb), public.feedback_list(integer) from public, anon, authenticated;
+grant execute on function public.send_feedback(jsonb) to anon, authenticated;
+grant execute on function public.feedback_list(integer) to authenticated;
+
 -- to give a tester Plus (their account id is on the Numbers page or in Authentication → Users):
 --   insert into yamb.plus_gifts (user_id, why) values ('<account id>', 'tester') on conflict do nothing;
 

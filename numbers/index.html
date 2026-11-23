@@ -144,12 +144,24 @@ function render(N){
   h+=`<div class="cols">${list('Where visitors came from',N.sources,'src')}${simple('Countries','country','Visitors',country)}${simple('Devices','device','Visitors')}${list('Pages',N.pages,'page')}${modeT}${simple('Rules chosen','rules','Games')}${simple('Players in a game','players','Games')}${simple('Computer opponents','opp','Games',v=>CH[v]||v)}${lenT}${useT}${otherT}${weekT}</div>`;
   out.innerHTML=h;
 }
+/* what players wrote from the game's "Send feedback" page, newest first */
+async function feedback(){
+  let box=document.getElementById('fb');
+  if(!box){box=document.createElement('div');box.id='fb';out.prepend(box);}
+  box.innerHTML='<h2>Feedback</h2><p class="msg">Loading…</p>';
+  try{
+    const L=await C.rpc('feedback_list',{p_limit:200});
+    const KIND={bug:'Something\'s wrong',idea:'An idea',like:'I like it',other:'Other'};
+    const when=s=>{const d=new Date(s);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+d.toTimeString().slice(0,5);};
+    box.innerHTML=`<h2>Feedback (${L.length})</h2>`+(L.length?`<div class="wrap"><table class="fbt"><tr><th>When</th><th>From</th><th>Kind</th><th>Stars</th><th>Message</th><th>Version · device</th></tr>${L.map(x=>`<tr><td>${when(x.at)}</td><td>${x.signed?esc(x.name||'(no name)')+(x.tester?' · tester':''):'signed out'}</td><td>${KIND[x.kind]||x.kind}</td><td>${x.stars?'★'.repeat(x.stars):''}</td><td style="white-space:pre-wrap;min-width:16em">${esc(x.body)}</td><td>${esc([x.version,x.lang,x.device,x.screen].filter(Boolean).join(' · '))}</td></tr>`).join('')}</table></div>`:'<p class="msg">Nothing yet.</p>');
+  }catch(e){box.innerHTML='<h2>Feedback</h2><p class="msg">Could not load: '+esc(String(e&&e.message||e))+'</p>';}
+}
 async function load(){
   if(!C||!C.available()){msg('The account library did not load. Check the connection and reload.');return;}
   if(!C.user){msg('Sign in to the game first, then open this page again. <a href="../">Go to the game</a>');return;}
   msg('Loading…');
   const to=new Date(),from=new Date(Date.now()-(span-1)*864e5);
-  try{render(await C.rpc('numbers',{p_from:day(from),p_to:day(to)}));}
+  try{render(await C.rpc('numbers',{p_from:day(from),p_to:day(to)}));feedback();}
   catch(e){
     const m=String(e&&e.message||e);
     if(/YC_ADMIN/.test(m))msg('This page is only for the café\'s owner.');

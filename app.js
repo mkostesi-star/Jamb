@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v11.5';
+const VERSION='v11.6';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -949,6 +949,8 @@ function renderHome(){
         <h2 class="sec next">${esc(t('menuSides'))}</h2>
         ${mline('records',t('records'),t('menuRecordsD'),bestOf(null))}
         ${mline('howto',t('howTo'),t('menuHowD'),0)}
+        ${testerOn()?mline('testeri',t('tsTitle'),t('tsLine'),0):''}
+        ${mline('dojam',t('fbTitle'),t('fbLine'),0)}
         ${plusOpen()?mline('plus','Yamb Café Plus',hasPlus()?t('plusHave'):t('plusLine'),0):''}
       </div></section>${nudgeHTML()}
       <p class="homefoot">Yamb Café · ${siteLinks()}</p>
@@ -1290,7 +1292,7 @@ function turnFx(){
 /* ---------- pages and sheets ----------
    Everything but a few small sheets opens as a full page with a back arrow; the phone's own back gesture closes it. */
 const SHEETS=['install','scan','rulesIn'];
-const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus','stoli','stol','stolIn','dar','who'];   /* 'wall' is a cork board of its own */
+const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus','stoli','stol','stolIn','dar','who','dojam','testeri'];   /* 'wall' is a cork board of its own */
 const isPage=k=>!!k&&!SHEETS.includes(k);
 window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.backs.length)back();else closeModal();}});
 ui.backs=[];
@@ -1336,6 +1338,7 @@ function renderModal(){
   /* keep whatever was typed when the sheet redraws (picking a character, a timer, a preset) */
   {const a=$('acName');if(a&&P.contains(a))m.acName=a.value;}
   {const a=$('ftName'),b=$('ftCode');if(a&&P.contains(a))m.ftName=a.value;if(b&&P.contains(b))m.ftCode=b.value;}
+  {const a=$('fbText');if(a&&P.contains(a)&&m.kind==='dojam')m.text=a.value;}
   {const f=$('fName');if(f&&P.contains(f))m.fName=f.value;if((m.kind==='pp'||m.kind==='table')&&m.players&&P.querySelector('#pl0'))syncPlayers(m);}
   const nameVal=esc(m.fName!=null?m.fName:(prefs.name||''));
   switch(m.kind){
@@ -1400,7 +1403,7 @@ function renderModal(){
         `<h3>${esc(t('sSoundG'))}</h3>`+sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+
         `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
-        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION}<br>${siteLinks()}</p>`;
+        `<button type="button" class="btnInk" data-act="open" data-k="howto">${esc(t('howTo'))}</button><button type="button" class="btnInk" data-act="open" data-k="dojam">${esc(t('fbTitle'))}</button><p class="fine" style="margin-top:14px">Yamb Café ${VERSION}<br>${siteLinks()}</p>`;
       break;
     case 'lang':
       h=head(t('language'))+`<div class="langlist">${I.list().map(l=>`<button type="button" data-act="setlang" data-v="${l.code}" aria-pressed="${l.code===prefs.lang}"><span>${esc(l.name)}</span><span>${esc(l.short)}</span></button>`).join('')}</div>`;
@@ -1419,6 +1422,8 @@ function renderModal(){
     case 'stolIn':h=ftInHTML(m);break;
     case 'dar':h=giftHTML(m);break;
     case 'who':h=whoHTML(m);break;
+    case 'dojam':h=feedbackHTML(m);break;
+    case 'testeri':h=testersHTML();break;
     case 'daily':h=dailyModalHTML(m.day);break;
     case 'scan':
       h=head(t('scanTitle')+' ('+t('beta')+')')+`<p class="fine">${esc(t('scanHint'))}</p><div class="scanbox"><video id="scanV" playsinline muted></video><canvas id="scanC" hidden></canvas></div>
@@ -2090,6 +2095,7 @@ function act(el,d){
     case 'ftmake':case 'ftjoin':case 'ftsit':case 'ftleave':case 'ftleaveyes':case 'ftleaveno':case 'ftinvite':ftAct(d);break;
     case 'ftopen':pushBack();openModal('stol',{id:d.id});break;
     case 'who':{const f=d.f||'';pushBack();openModal('who',{p:{name:d.n||'',avatar:d.a||null,plus:f.includes('p'),heart:f.includes('h'),host:f.includes('s')}});break;}
+    case 'fbkind':case 'fbstar':case 'fbsend':case 'fbagain':fbAct(d);break;
     case 'fttab':ui.ftTab=d.v==='w'?'w':'d';renderModal();break;
     case 'pickava':{
       const v=d.v;if(!ALL_PORTRAITS.includes(v))break;
@@ -2541,7 +2547,7 @@ async function ftAct(d){
 function giftHTML(m){
   let h=head(t('giftTitle'))+`<div class="slip plusask"><i class="pmark sm">Plus</i><b>Yamb Café Plus</b><p>${esc(t('giftLead'))}</p></div>`;
   if(!C||!C.available())return h+`<p class="fine">${esc(t('acNoNet'))}</p>`;
-  if(m.done)return h+`<p class="fine" style="text-align:center">${esc(t('giftDone'))}</p><button type="button" class="btnRed" data-act="open" data-k="plus">${esc(t('giftSee'))}</button>`;
+  if(m.done)return h+`<p class="fine" style="text-align:center">${esc(t('giftDone'))}</p>${testerOn()?`<button type="button" class="btnRed" data-act="open" data-k="testeri">${esc(t('tsLine'))}</button>`:''}<button type="button" class="btnInk" data-act="open" data-k="plus">${esc(t('giftSee'))}</button>`;
   if(m.bad)return h+`<p class="fine" style="text-align:center">${esc(t('giftBad'))}</p>`;
   if(!acctOn())return h+`<p class="fine">${esc(t('giftSignIn'))}</p>`+gbtn();
   if(!m.tried){m.tried=true;setTimeout(()=>{if(ui.modal===m)giftAct();},0);}
@@ -2559,6 +2565,58 @@ async function giftAct(){
     if(!p.had)setTimeout(()=>FX.confetti(true),200);
   }catch(e){if(/YC_GIFT/.test(String(e&&e.message||e))){m.bad=true;delete prefs.gift;savePrefs();}else m.err=true;}
   m.busy=false;if(ui.modal===m)renderModal();acctUI();
+}
+/* ---------- feedback ("Pošalji dojam") and the testers' guide ----------
+   Feedback goes to the database with the game's version, language and device type (and the account, if signed in);
+   the café's owner reads it on the Numbers page. Testers get a four-week guide, one week open at a time. */
+const FB_KINDS=[['bug','fbBug'],['idea','fbIdea'],['like','fbLike'],['other','fbOther']];
+function devLabel(){
+  const u=navigator.userAgent||'';
+  const os=/iPhone/.test(u)?'iPhone':/iPad|Macintosh.*Mobile/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)?'iPad':/Android/.test(u)?'Android':/Mac OS X|Macintosh/.test(u)?'Mac':/Windows/.test(u)?'Windows':/Linux/.test(u)?'Linux':'other';
+  const br=/SamsungBrowser/.test(u)?'Samsung':/Edg\//.test(u)?'Edge':/Firefox|FxiOS/.test(u)?'Firefox':/CriOS|Chrome/.test(u)?'Chrome':/Safari/.test(u)?'Safari':'other';
+  const app=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone?' · app':'';
+  return os+' · '+br+app;
+}
+function feedbackHTML(m){
+  let h=head(t('fbTitle'))+`<p class="fine">${esc(t('fbLead'))}</p>`;
+  if(m.sent)return h+`<div class="slip plusask"><b>${esc(t('fbThanks'))}</b><p>${esc(t('fbThanksD'))}</p></div><button type="button" class="btnInk" data-act="fbagain">${esc(t('fbAgain'))}</button>`;
+  h+=`<div class="fbkinds" role="group" aria-label="${esc(t('fbTitle'))}">${FB_KINDS.map(([k,l])=>`<button type="button" data-act="fbkind" data-v="${k}" aria-pressed="${(m.fk||'')===k}">${esc(t(l))}</button>`).join('')}</div>
+    <label class="field"><span>${esc(t('fbText'))}</span><textarea id="fbText" rows="6" maxlength="2000" placeholder="${esc(t('fbPh'))}">${esc(m.text||'')}</textarea></label>
+    <p class="fine">${esc(t('fbStars'))}</p><div class="fbstars">${[1,2,3,4,5].map(n=>`<button type="button" data-act="fbstar" data-v="${n}" aria-pressed="${(m.stars||0)>=n}" aria-label="${n}/5">★</button>`).join('')}</div>
+    <button type="button" class="btnRed" data-act="fbsend"${m.busy?' disabled':''}>${esc(t('fbSend'))}</button>
+    <p class="fine">${esc(acctOn()?t('fbWho'):t('fbAnon'))}</p>`;
+  return h;
+}
+async function fbAct(d){
+  const m=ui.modal;if(!m||m.kind!=='dojam'||m.busy)return;
+  const ta=$('fbText');if(ta)m.text=ta.value;
+  if(d.act==='fbkind'){m.fk=m.fk===d.v?'':d.v;renderModal();return;}
+  if(d.act==='fbstar'){const n=+d.v;m.stars=m.stars===n?0:n;renderModal();return;}
+  if(d.act==='fbagain'){m.sent=false;m.fk='';m.stars=0;m.text='';renderModal();return;}
+  const body=(m.text||'').trim();
+  if(!body){toast(t('fbNeedText'),true);return;}
+  if(!C||!C.available()){toast(t('acNoNet'),true);return;}
+  m.busy=true;renderModal();
+  try{
+    await C.rpc('send_feedback',{p:{kind:m.fk||'other',stars:m.stars||null,body,version:VERSION,lang:prefs.lang,device:devLabel(),screen:innerWidth+'x'+innerHeight}});
+    m.sent=true;m.text='';
+  }catch(e){toast(/YC_LIMIT/.test(String(e&&e.message||e))?t('fbLimit'):t('acNoNet'),true);}
+  m.busy=false;if(ui.modal===m)renderModal();
+}
+/* the testers' four weeks, from the public start */
+const TEST_START='2026-12-14',TEST_END='2027-01-10';
+const testerOn=()=>{const p=plusOf();return !!(p&&p.plus&&(p.gift||!PLUS_LIVE))&&E.localDay()<=TEST_END;};
+function testWeek(){const d=Math.floor((Date.parse(E.localDay()+'T12:00:00')-Date.parse(TEST_START+'T12:00:00'))/864e5);return d<0?0:Math.min(4,Math.floor(d/7)+1);}
+function testersHTML(){
+  const w=testWeek(),loc=prefs.lang==='en'?'en-GB':prefs.lang;
+  const dd=k=>{const x=new Date(Date.parse(TEST_START+'T12:00:00')+k*864e5);try{return x.toLocaleDateString(loc,{day:'numeric',month:'short'});}catch(e){return x.getDate()+'.'+(x.getMonth()+1)+'.';}};
+  let h=head(t('tsTitle'))+`<p class="fine">${esc(t('tsLead'))}</p>`;
+  for(let i=1;i<=4;i++){
+    const open=i===Math.max(1,w);
+    h+=`<details class="tsweek"${open?' open':''}><summary><b>${esc(t('tsWeek',{n:i}))}</b><small>${esc(dd((i-1)*7))} – ${esc(dd(i*7-1))}</small>${i===w?`<i class="tsnow">${esc(t('tsNow'))}</i>`:''}</summary>
+      <ul>${t('tsW'+i).split('|').map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>`;
+  }
+  return h+`<button type="button" class="btnRed" data-act="open" data-k="dojam">${esc(t('fbTitle'))}</button>`;
 }
 /* ---------- Yamb Café Plus ----------
    A one-time unlock bought through Polar (the merchant of record) and kept on the player's account. While it is being

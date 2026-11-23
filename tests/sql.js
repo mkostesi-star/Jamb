@@ -310,6 +310,25 @@ function professorMoves(seed){
   ok(await fail(g3,'select public.redeem_gift($1)',['NO-SUCH-CODE'],/YC_GIFT/),'nor does a made-up one');
   await denied('gift codes cannot be read',g3,'select * from yamb.gift_codes');
   }
+  // ---- 11. feedback from players, read only on the Numbers page
+  {
+  const fail=async(uid,sql,params,re)=>{let e=null;try{await S.as(uid,sql,params);}catch(x){e=x.message;}return !!(e&&re.test(e));};
+  const u=await S.addUser('fb@example.com','Fb');await S.as(u,'select public.save_profile($1, $2)',['Fran','r01']);
+  r=await S.as(u,'select public.send_feedback($1::jsonb) as r',[JSON.stringify({kind:'bug',stars:4,body:'  The dice froze on my phone  ',version:'v11.6',lang:'hr',device:'iPhone · Safari',screen:'390x844'})]);
+  ok(r.rows[0].r.ok===true,'a signed-in player sends feedback');
+  await S.as(null,'select public.send_feedback($1::jsonb)',[JSON.stringify({kind:'nonsense',stars:9,body:'Lovely game'})]);
+  ok(await fail(null,'select public.send_feedback($1::jsonb)',[JSON.stringify({body:'   '})],/YC_EMPTY/),'an empty message is refused');
+  r=await S.admin('select kind, stars, body, user_id from yamb.feedback order by id');
+  ok(r.rows.length===2&&r.rows[0].body==='The dice froze on my phone'&&r.rows[0].stars===4&&r.rows[1].kind==='other'&&r.rows[1].stars===null&&r.rows[1].user_id===null,'kinds and stars are checked; signed-out feedback has no account');
+  await denied('players cannot read feedback',u,'select * from yamb.feedback');
+  ok(await fail(u,'select public.feedback_list(50)',[],/YC_ADMIN/),'only admins can list it');
+  await S.admin('insert into yamb.admins (user_id) values ($1) on conflict do nothing',[u]);
+  r=await S.as(u,'select public.feedback_list(50) as l');
+  ok(r.rows[0].l.length===2&&r.rows[0].l[0].body==='Lovely game'&&r.rows[0].l[1].name==='Fran'&&!('user_id' in r.rows[0].l[0]),'an admin reads it newest first, with names but no account ids');
+  for(let k=0;k<19;k++)await S.as(u,'select public.send_feedback($1::jsonb)',[JSON.stringify({body:'again '+k})]);
+  ok(await fail(u,'select public.send_feedback($1::jsonb)',[JSON.stringify({body:'one too many'})],/YC_LIMIT/),'twenty a day from one account is the limit');
+  await S.admin('delete from yamb.admins where user_id = $1',[u]);
+  }
 
   console.log(bad?`\n${bad} problem(s)`:`\nall good (${Math.round((Date.now()-t0)/1000)} s)`);process.exit(bad?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});
