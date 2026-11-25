@@ -339,6 +339,9 @@ begin
   delete from yamb.invites where user_id = me or invited_by = me;
   delete from yamb.badges where user_id = me;
   update yamb.feedback set user_id = null where user_id = me;   -- what they wrote stays, without a name
+  delete from yamb.duels where owner = me;
+  delete from yamb.duel_answers where user_id = me;
+  delete from yamb.push_subs where user_id = me;
   delete from public.profiles where id = me;
   begin
     delete from auth.users where id = me;
@@ -569,6 +572,8 @@ create table if not exists yamb.plus_gifts (
   why         text not null default '',
   created_at  timestamptz not null default now()
 );
+-- a gift can start later: testers play the free game first and get Plus from the third week
+alter table yamb.plus_gifts add column if not exists starts date;
 revoke all on yamb.orders, yamb.plus_gifts from public, anon, authenticated;
 -- friends' tables, invites, badges and gift links (described further down, with their functions)
 create table if not exists yamb.friend_tables (
@@ -606,6 +611,7 @@ create table if not exists yamb.gift_codes (
   until       date,
   created_at  timestamptz not null default now()
 );
+alter table yamb.gift_codes add column if not exists starts date;   -- Plus from this day (null: at once)
 revoke all on yamb.friend_tables, yamb.friend_seats, yamb.invites, yamb.badges, yamb.gift_codes from public, anon, authenticated;
 
 -- whether a player has Plus, since when, and the thank-you pin (paid more than the €4.99 minimum; a buyer in Europe
@@ -614,18 +620,21 @@ revoke all on yamb.friend_tables, yamb.friend_seats, yamb.invites, yamb.badges, 
 create or replace function yamb.plus_of(p_user uuid) returns jsonb
 language sql stable security definer set search_path = '' as $$
   select case
-    when g.user_id is null and o.since is null then jsonb_build_object('plus', false)
-    else jsonb_build_object('plus', true, 'since', least(g.created_at, o.since), 'pin', coalesce(o.pin, false), 'gift', g.user_id is not null)
+    when not coalesce(ga.act, false) and o.since is null then
+      jsonb_build_object('plus', false) || case when g.user_id is not null then jsonb_build_object('gift', true, 'from', g.starts) else '{}'::jsonb end
+    else jsonb_build_object('plus', true, 'since', least(ga.since, o.since), 'pin', coalesce(o.pin, false), 'gift', coalesce(ga.act, false))
   end
   from (select 1) one
   left join yamb.plus_gifts g on g.user_id = p_user
+  left join lateral (select g.user_id is not null and (g.starts is null or g.starts <= (now() at time zone 'utc')::date) as act,
+                            case when g.user_id is not null then greatest(g.created_at, g.starts::timestamp at time zone 'utc') end as since) ga on true
   left join lateral (select min(x.paid_at) as since, bool_or(x.net - x.refunded >= 520) as pin from yamb.orders x
                      where x.user_id = p_user and x.status in ('paid', 'partially_refunded') and x.net - x.refunded > 0) o on true
 $$;
 
 create or replace function yamb.has_plus(p_user uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
-  select exists (select 1 from yamb.plus_gifts g where g.user_id = p_user)
+  select exists (select 1 from yamb.plus_gifts g where g.user_id = p_user and (g.starts is null or g.starts <= (now() at time zone 'utc')::date))
       or exists (select 1 from yamb.orders x where x.user_id = p_user and x.status in ('paid', 'partially_refunded') and x.net - x.refunded > 0)
 $$;
 
@@ -863,16 +872,16 @@ end $$;
 -- a gift link: Plus for the account that opens it, while the code has uses left and has not run out
 create or replace function public.redeem_gift(p_code text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
-declare me uuid := auth.uid(); c text := upper(btrim(coalesce(p_code, ''))); w text;
+declare me uuid := auth.uid(); c text := upper(btrim(coalesce(p_code, ''))); w text; st date;
 begin
   if me is null then raise exception 'YC_SIGNIN'; end if;
-  if yamb.has_plus(me) then return yamb.plus_of(me) || jsonb_build_object('had', true); end if;
+  if yamb.has_plus(me) or exists (select 1 from yamb.plus_gifts g where g.user_id = me) then return yamb.plus_of(me) || jsonb_build_object('had', true); end if;
   update yamb.gift_codes g set uses_left = g.uses_left - 1
   where g.code = c and g.uses_left > 0 and (g.until is null or g.until >= (now() at time zone 'utc')::date)
-  returning g.why into w;
+  returning g.why, g.starts into w, st;
   if w is null then raise exception 'YC_GIFT'; end if;
   insert into public.profiles (id) values (me) on conflict do nothing;
-  insert into yamb.plus_gifts (user_id, why) values (me, left('gift ' || c || ': ' || w, 80)) on conflict do nothing;
+  insert into yamb.plus_gifts (user_id, why, starts) values (me, left('gift ' || c || ': ' || w, 80), st) on conflict do nothing;
   return yamb.plus_of(me);
 end $$;
 
@@ -885,7 +894,8 @@ grant execute on function public.my_friend_tables(date), public.make_friend_tabl
   public.friend_table_board(uuid, date), public.leave_friend_table(uuid, date), public.redeem_gift(text) to authenticated;
 grant execute on function public.peek_friend_table(text) to anon, authenticated;
 -- a gift link for testers (pick your own code; the link is then yambcafe.com/?dar=THE-CODE):
---   insert into yamb.gift_codes (code, why, uses_left, until) values ('THE-CODE', 'tester', 25, '2027-01-10');
+--   insert into yamb.gift_codes (code, why, uses_left, until, starts) values ('THE-CODE', 'tester', 25, '2027-01-10', '2026-12-28');
+-- (starts: the day Plus switches on; leave it out for Plus at once)
 -- ---------------------------------------------------------------- feedback from players ("Pošalji dojam") for the Numbers page
 -- A message, its kind, optional stars, the game's version, language and device type; the account if signed in.
 -- Kept for up to a year. Only admins read it (feedback_list).
@@ -936,8 +946,254 @@ revoke all on function public.send_feedback(jsonb), public.feedback_list(integer
 grant execute on function public.send_feedback(jsonb) to anon, authenticated;
 grant execute on function public.feedback_list(integer) to authenticated;
 
+-- ---------------------------------------------------------------- duels, kept here so the challenger hears the result
+-- A signed-in player's duel (the random id in its link, their score and the rules) is kept for 30 days. Whoever plays it
+-- from the link, signed in or not, leaves a name and a score under it, which the challenger sees in the game (and, with
+-- notifications on, as a message). Of a signed-out friend nothing else is kept: they are told apart only by the game's
+-- random device code, so that playing the same duel twice counts once.
+create table if not exists yamb.duels (
+  id          text primary key check (id ~ '^[a-z0-9]{8,24}$'),
+  owner       uuid not null references auth.users (id) on delete cascade,
+  score       integer not null check (score between 0 and 20000),
+  rules       text not null check (char_length(rules) <= 400),
+  created_at  timestamptz not null default now()
+);
+create index if not exists duels_owner on yamb.duels (owner, created_at desc);
+create table if not exists yamb.duel_answers (
+  duel_id     text not null references yamb.duels (id) on delete cascade,
+  who         text not null check (char_length(who) between 3 and 64),   -- the account, or 'd:' and the device code
+  user_id     uuid references auth.users (id) on delete cascade,
+  name        text not null default '' check (char_length(name) <= 16),
+  score       integer not null check (score between 0 and 20000),
+  at          timestamptz not null default now(),
+  seen        boolean not null default false,     -- the challenger has looked
+  pushed      boolean not null default false,     -- handed to the notifications (or there were none to hand it to)
+  primary key (duel_id, who)
+);
+create index if not exists duel_answers_new on yamb.duel_answers (duel_id) where not pushed;
+revoke all on yamb.duels, yamb.duel_answers from public, anon, authenticated;
+
+-- the challenger, when the duel is finished or sent: keep it (at most 50 a day)
+create or replace function public.duel_post(p_id text, p_score integer, p_rules text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); o uuid;
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  if coalesce(p_id, '') !~ '^[a-z0-9]{8,24}$' or p_score is null or p_score < 0 or p_score > 20000 then raise exception 'YC_DUEL'; end if;
+  select d.owner into o from yamb.duels d where d.id = p_id;
+  if o is not null then return jsonb_build_object('kept', o = me); end if;
+  if (select count(*) from yamb.duels d where d.owner = me and d.created_at > now() - interval '1 day') >= 50 then raise exception 'YC_LIMIT'; end if;
+  delete from yamb.duels where created_at < now() - interval '30 days';
+  insert into public.profiles (id) values (me) on conflict do nothing;
+  insert into yamb.duels (id, owner, score, rules) values (p_id, me, p_score, left(coalesce(p_rules, ''), 400)) on conflict do nothing;
+  return jsonb_build_object('kept', true);
+end $$;
+
+-- a friend who played it from the link (signed in or not); a duel takes up to 30 answers, one from each account or device
+create or replace function public.duel_answer(p_id text, p_device text, p_name text, p_score integer) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); did text; o uuid; w text;
+begin
+  if p_score is null or p_score < 0 or p_score > 20000 then raise exception 'YC_DUEL'; end if;
+  select d.id, d.owner into did, o from yamb.duels d where d.id = p_id and d.created_at > now() - interval '30 days';
+  if did is null then return jsonb_build_object('kept', false); end if;
+  if me is not null and me = o then return jsonb_build_object('kept', false, 'own', true); end if;
+  if me is null and coalesce(p_device, '') !~ '^[a-z0-9]{8,40}$' then raise exception 'YC_DUEL'; end if;
+  w := case when me is not null then me::text else 'd:' || p_device end;
+  if exists (select 1 from yamb.duel_answers a where a.duel_id = did and a.who = w) then return jsonb_build_object('kept', true, 'had', true); end if;
+  if (select count(*) from yamb.duel_answers a where a.duel_id = did) >= 30 then return jsonb_build_object('kept', false, 'full', true); end if;
+  insert into yamb.duel_answers (duel_id, who, user_id, name, score)
+  values (did, w, me, coalesce(yamb.clean_name(p_name), ''), p_score) on conflict do nothing;
+  return jsonb_build_object('kept', true);
+end $$;
+
+-- the challenger's duels of the last 30 days (the newest 20), each with who played it
+create or replace function public.my_duels() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('id', d.id, 'score', d.score, 'rules', d.rules, 'at', d.created_at,
+             'answers', coalesce((select jsonb_agg(jsonb_build_object('name', a.name, 'score', a.score, 'at', a.at, 'seen', a.seen) order by a.at)
+                                  from yamb.duel_answers a where a.duel_id = d.id), '[]'::jsonb)) order by d.created_at desc)
+    from (select * from yamb.duels x where x.owner = me and x.created_at > now() - interval '30 days' order by x.created_at desc limit 20) d), '[]'::jsonb);
+end $$;
+
+-- the challenger has looked at the answers (all of them, or one duel's)
+create or replace function public.duels_seen(p_id text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); n integer;
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  update yamb.duel_answers a set seen = true from yamb.duels d
+  where a.duel_id = d.id and d.owner = me and (p_id is null or d.id = p_id) and not a.seen;
+  get diagnostics n = row_count;
+  return jsonb_build_object('seen', n);
+end $$;
+
+revoke all on function public.duel_post(text, integer, text), public.duel_answer(text, text, text, integer), public.my_duels(),
+  public.duels_seen(text) from public, anon, authenticated;
+grant execute on function public.duel_post(text, integer, text), public.my_duels(), public.duels_seen(text) to authenticated;
+grant execute on function public.duel_answer(text, text, text, integer) to anon, authenticated;
+
+-- ---------------------------------------------------------------- notifications (web push), for those who switch them on
+-- One line for each device a signed-in player switched notifications on: the address their browser gave for messages
+-- and its two keys, the language, the time zone, the hour of the Daily Yamb reminder (none: no reminder) and whether to
+-- tell them when a friend has played their duel. At most 5 devices an account. A device whose address stops working
+-- (the player switched notifications off in the phone's settings) is dropped. The Edge Function push sends the messages:
+-- every minute the database checks whether anything is due (yamb.push_kick, run by pg_cron) and only then calls it.
+create table if not exists yamb.push_subs (
+  endpoint    text primary key check (char_length(endpoint) between 20 and 1000 and endpoint ~ '^https://[!-~]+$'),
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  p256dh      text not null check (p256dh ~ '^[A-Za-z0-9_=-]{80,100}$'),
+  auth        text not null check (auth ~ '^[A-Za-z0-9_=-]{16,32}$'),
+  lang        text not null default 'hr' check (lang ~ '^[a-z]{2}$'),
+  tz          text not null default 'UTC' check (char_length(tz) between 1 and 64),
+  daily_at    smallint check (daily_at between 0 and 23),
+  duels       boolean not null default true,
+  last_daily  date,                                -- the player's own day the last reminder was for
+  test        boolean not null default false,      -- a test message asked for
+  fails       smallint not null default 0,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists push_subs_user on yamb.push_subs (user_id);
+revoke all on yamb.push_subs from public, anon, authenticated;
+
+-- this device: switch on or change (the browser's subscription as JSON, plus lang, tz, daily_at, duels, test)
+create or replace function public.push_save(p jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid(); z text := left(coalesce(nullif(p ->> 'tz', ''), 'UTC'), 64); h smallint; lt timestamp; l text := lower(left(coalesce(p ->> 'lang', ''), 2));
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  begin lt := now() at time zone z; exception when others then z := 'UTC'; lt := now() at time zone 'UTC'; end;
+  begin h := nullif(p ->> 'daily_at', '')::smallint; exception when others then h := null; end;
+  if h is not null and (h < 0 or h > 23) then h := null; end if;
+  if l !~ '^[a-z]{2}$' then l := 'hr'; end if;
+  insert into yamb.push_subs as s (endpoint, user_id, p256dh, auth, lang, tz, daily_at, duels, last_daily, test)
+  values (p ->> 'endpoint', me, p ->> 'p256dh', p ->> 'auth', l, z, h, coalesce(p ->> 'duels', 'true') <> 'false',
+          -- a reminder hour that has already passed today starts tomorrow
+          case when h is not null and extract(hour from lt) >= h then lt::date end, coalesce(p ->> 'test', '') = 'true')
+  on conflict (endpoint) do update set user_id = me, p256dh = excluded.p256dh, auth = excluded.auth, lang = excluded.lang, tz = excluded.tz,
+    daily_at = excluded.daily_at, duels = excluded.duels, last_daily = greatest(s.last_daily, excluded.last_daily),
+    test = excluded.test or (s.test and s.user_id = me), fails = 0, updated_at = now();
+  delete from yamb.push_subs s where s.user_id = me and s.endpoint not in
+    (select x.endpoint from yamb.push_subs x where x.user_id = me order by x.updated_at desc limit 5);
+  return jsonb_build_object('ok', true, 'daily_at', h, 'duels', coalesce(p ->> 'duels', 'true') <> 'false');
+end $$;
+
+-- this device: switch off
+create or replace function public.push_drop(p_endpoint text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'YC_SIGNIN'; end if;
+  delete from yamb.push_subs s where s.endpoint = p_endpoint and s.user_id = me;
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- this device: what is switched on (null when nothing, e.g. after the phone's settings blocked the game)
+create or replace function public.push_mine(p_endpoint text) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('daily_at', s.daily_at, 'duels', s.duels) from yamb.push_subs s where s.endpoint = p_endpoint and s.user_id = auth.uid()
+$$;
+
+-- days in a row with a Daily Yamb before this day
+create or replace function yamb.streak_before(p_user uuid, p_day date) returns integer
+language plpgsql stable security definer set search_path = '' as $$
+declare n integer := 0;
+begin
+  while n < 400 and exists (select 1 from public.daily_scores s where s.user_id = p_user and s.day = p_day - n - 1) loop n := n + 1; end loop;
+  return n;
+end $$;
+
+-- is anything to send? (asked every minute, so the Edge Function is called only when there is)
+create or replace function yamb.push_has_work() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from yamb.push_subs s where s.test)
+      or exists (select 1 from yamb.push_subs s where s.daily_at is not null and s.fails < 5
+                   and extract(hour from now() at time zone s.tz) = s.daily_at
+                   and (s.last_daily is null or s.last_daily < (now() at time zone s.tz)::date))
+      or exists (select 1 from yamb.duel_answers a join yamb.duels d on d.id = a.duel_id
+                   join yamb.push_subs s on s.user_id = d.owner and s.duels and s.fails < 5 where not a.pushed)
+$$;
+
+-- what is due now, each marked as handed over so it goes only once: test messages; the Daily reminders whose hour it is
+-- where the player lives (one a day, and only while today's Daily is not played); duels played since the last time
+-- (only those of the last day: older ones are just marked). For the Edge Function push alone.
+create or replace function public.push_due() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare a jsonb; b jsonb; c jsonb;
+begin
+  with t as (update yamb.push_subs s set test = false where s.test returning s.endpoint, s.p256dh, s.auth, s.lang)
+  select coalesce(jsonb_agg(jsonb_build_object('endpoint', t.endpoint, 'p256dh', t.p256dh, 'auth', t.auth, 'lang', t.lang, 'kind', 'test')), '[]'::jsonb)
+  into a from t;
+  with due as (
+    update yamb.push_subs s set last_daily = (now() at time zone s.tz)::date
+    where s.daily_at is not null and s.fails < 5
+      and extract(hour from now() at time zone s.tz) = s.daily_at
+      and (s.last_daily is null or s.last_daily < (now() at time zone s.tz)::date)
+    returning s.endpoint, s.user_id, s.p256dh, s.auth, s.lang, (now() at time zone s.tz)::date as day)
+  select coalesce(jsonb_agg(jsonb_build_object('endpoint', d.endpoint, 'p256dh', d.p256dh, 'auth', d.auth, 'lang', d.lang, 'kind', 'daily',
+           'day', d.day, 'streak', yamb.streak_before(d.user_id, d.day))), '[]'::jsonb)
+  into b from due d
+  where not exists (select 1 from public.daily_scores x where x.user_id = d.user_id and x.day = d.day);
+  -- one message for each device of the challenger: the newest answer, and how many came since the last time
+  with got as (update yamb.duel_answers x set pushed = true where not x.pushed returning x.duel_id, x.name, x.score, x.at),
+  per as (select d.owner, count(*) as n,
+                 (array_agg(jsonb_build_object('id', d.id, 'name', g.name, 'score', g.score, 'mine', d.score) order by g.at desc))[1] as last
+          from got g join yamb.duels d on d.id = g.duel_id where g.at > now() - interval '1 day' group by d.owner)
+  select coalesce(jsonb_agg(jsonb_build_object('endpoint', s.endpoint, 'p256dh', s.p256dh, 'auth', s.auth, 'lang', s.lang, 'kind', 'duel', 'n', p.n) || p.last), '[]'::jsonb)
+  into c from per p join yamb.push_subs s on s.user_id = p.owner and s.duels and s.fails < 5;
+  return a || b || c;
+end $$;
+
+-- how the sending went: addresses that are gone (the browser no longer takes messages) are dropped, failures counted
+create or replace function public.push_result(p jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  delete from yamb.push_subs s where s.endpoint in (select jsonb_array_elements_text(coalesce(p -> 'gone', '[]'::jsonb)));
+  get diagnostics n = row_count;
+  update yamb.push_subs s set fails = least(s.fails + 1, 100) where s.endpoint in (select jsonb_array_elements_text(coalesce(p -> 'failed', '[]'::jsonb)));
+  update yamb.push_subs s set fails = 0 where s.fails > 0 and s.endpoint in (select jsonb_array_elements_text(coalesce(p -> 'ok', '[]'::jsonb)));
+  return jsonb_build_object('dropped', n);
+end $$;
+
+-- run every minute by pg_cron: when something is due, ask the Edge Function push to send it (through pg_net)
+create or replace function yamb.push_kick() returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if yamb.push_has_work() then
+    perform net.http_post(url := 'https://ovyoybgtoaahkrcylrkw.supabase.co/functions/v1/push', body := '{}'::jsonb,
+                          headers := '{"Content-Type": "application/json"}'::jsonb, timeout_milliseconds := 25000);
+  end if;
+end $$;
+
+revoke all on function yamb.streak_before(uuid, date), yamb.push_has_work(), yamb.push_kick() from public, anon, authenticated;
+revoke all on function public.push_save(jsonb), public.push_drop(text), public.push_mine(text), public.push_due(), public.push_result(jsonb)
+  from public, anon, authenticated;
+grant execute on function public.push_save(jsonb), public.push_drop(text), public.push_mine(text) to authenticated;
+grant execute on function public.push_due(), public.push_result(jsonb) to service_role;
+
+-- the minute timer (Supabase has pg_cron and pg_net; a database without them, like the tests', skips this part)
+do $$
+begin
+  if exists (select 1 from pg_available_extensions where name = 'pg_cron') and exists (select 1 from pg_available_extensions where name = 'pg_net') then
+    create extension if not exists pg_net with schema extensions;
+    create extension if not exists pg_cron with schema pg_catalog;
+    perform cron.schedule('yamb-push', '* * * * *', 'select yamb.push_kick()');
+    -- the timer's own log keeps a line for every run: three days are plenty
+    perform cron.schedule('yamb-cron-tidy', '17 3 * * *', $q$delete from cron.job_run_details where end_time < now() - interval '3 days'$q$);
+  end if;
+exception when others then
+  raise warning 'minute timer not set: %', sqlerrm;   -- everything else still goes in; the last line below says so
+end $$;
+
 -- to give a tester Plus (their account id is on the Numbers page or in Authentication → Users):
 --   insert into yamb.plus_gifts (user_id, why) values ('<account id>', 'tester') on conflict do nothing;
 
 notify pgrst, 'reload schema';
-select 'Yamb Café database is ready' as result;
+select 'Yamb Café database is ready' || case when to_regclass('cron.job') is null
+  then ' (but without the minute timer for notifications: Database → Extensions, switch on pg_cron and pg_net, then run this again)' else '' end as result;

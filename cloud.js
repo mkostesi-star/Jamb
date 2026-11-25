@@ -59,6 +59,7 @@ function post(fn,body){
 function device(){
   try{const sc=root.screen||{},m=Math.min(sc.width||0,sc.height||0),touch=(root.navigator.maxTouchPoints||0)>0;return !touch?'desktop':m&&m<600?'phone':'tablet';}catch(e){return 'other';}
 }
+let pushKey=null;
 const API={
   available:()=>!!sb,
   /* a page opened: which page, where the visitor came from, the game's language, installed or not */
@@ -101,6 +102,16 @@ const API={
     if(!res.ok||!j||!j.url)throw new Error(j&&j.error||('checkout '+res.status));
     return j;
   },
+  /* notifications: the public key a browser needs to switch them on (from the Edge Function push), and a nudge to send
+     what is due right away (a test message) instead of at the database's next minute */
+  async pushKey(){
+    if(pushKey)return pushKey;
+    const res=await root.fetch(CFG.url+'/functions/v1/push');
+    let j={};try{j=await res.json();}catch(e){}
+    if(!res.ok||!j||!j.key)throw new Error('notready');
+    return pushKey=j.key;
+  },
+  pushKick(){try{root.fetch(CFG.url+'/functions/v1/push',{method:'POST'}).catch(()=>{});}catch(e){}},
   /* one call to a database function; throws with the database's own short message (YC_...) when it refuses */
   async rpc(fn,args){
     if(!sb)throw new Error('offline');

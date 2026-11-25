@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v11.7';
+const VERSION='v11.8';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -523,10 +523,11 @@ function finishGame(){
   if(G.mode==='daily')finishDaily();
   if(G.mode==='dailyp')finishPractice();
   /* Plus is offered once, on the bill after the 10th finished game, and never again */
-  if(plusLocked()&&!prefs.plusAsked&&stats.played>=10){prefs.plusAsked=true;savePrefs();ui.plusAsk=G.id;}
+  if(plusLocked()&&plusBuy()&&!prefs.plusAsked&&stats.played>=10){prefs.plusAsked=true;savePrefs();ui.plusAsk=G.id;}
   recordGame(G);
   if(G.mode==='duel'){stats.duels[G.duel.id]={score:E.total(G.rules,G.players[0].sheet),at:Date.now(),from:G.duel.from||null};}
   saveStats();
+  if(G.mode==='duel'){if(G.duel.from)duelAnswer(G);else duelPost(G);}
   const g=G,gid=G.id;
   setTimeout(()=>{if(G===g&&G.id===gid&&G.over&&screen==='game')openModal('result');},1300);
   startReview(g);
@@ -736,11 +737,78 @@ function startDuel(quick){
 function duelLink(){
   const me=E.total(G.rules,G.players[0].sheet),o={i:G.duel.id,r:E.encodeRules(G.rules),n:myName()||t('player',{n:1}),s:me};
   if(G.duel.from)o.vs={n:G.duel.from.n||G.duel.from.name,s:G.duel.from.s!=null?G.duel.from.s:G.duel.from.score};
+  else if(stats.duels[G.duel.id]&&stats.duels[G.duel.id].kept)o.c=1;   /* the result will come back by itself */
   return baseUrl()+'?duel='+E.encodeObj(o);
 }
 function acceptDuel(o){
   const rules=E.decodeRules(o.r)||prefs.rules;
-  openGame(makeGame('duel',rules,[{name:myName()||null,kind:'human'}],{seed:'duel:'+o.i,duel:{id:o.i,quick:rules.cols.length===1,from:{n:o.n,s:o.s}}}));
+  openGame(makeGame('duel',rules,[{name:myName()||null,kind:'human'}],{seed:'duel:'+o.i,duel:{id:o.i,quick:rules.cols.length===1,from:{n:o.n,s:o.s,c:!!o.c}}}));
+}
+/* A signed-in challenger's duel is kept in the database (duel_post), and its link says so (c:1). Whoever plays it from
+   the link leaves a name and a score there (duel_answer, signed in or not), which the challenger sees on the home screen,
+   in "Your duels" and, with notifications on, as a message. Links keep working as before for everyone else. */
+const DUEL_DAYS=30*864e5;
+async function duelPost(g){
+  if(!C||!C.available()||!acctOn()||!g||!g.duel||g.duel.from)return false;
+  const id=g.duel.id;if(stats.duels[id]&&stats.duels[id].kept)return true;
+  try{
+    const x=await C.rpc('duel_post',{p_id:id,p_score:E.total(g.rules,g.players[0].sheet),p_rules:E.encodeRules(g.rules)});
+    if(x&&x.kept){if(stats.duels[id]){stats.duels[id].kept=true;saveStats();}prefs.duelOut=Date.now();savePrefs();if(ui.modal&&ui.modal.kind==='result')renderModal();return true;}
+  }catch(e){}
+  return false;
+}
+async function duelAnswer(g){
+  if(!C||!C.available()||!g||!g.duel||!g.duel.from||!g.duel.from.c)return false;
+  const id=g.duel.id;if(stats.duels[id]&&stats.duels[id].told)return true;
+  try{
+    const x=await C.rpc('duel_answer',{p_id:id,p_device:prefs.cid,p_name:myName()||'',p_score:E.total(g.rules,g.players[0].sheet)});
+    if(x&&x.kept){if(stats.duels[id]){stats.duels[id].told=true;saveStats();}return true;}
+  }catch(e){}
+  return false;
+}
+/* the challenger's duels with their answers; asked on the home screen (each minute at most while duels are out) */
+async function loadDuels(force){
+  if(!C||!C.available()||!acctOn())return;
+  const b=boards.duels,out=prefs.duelOut&&Date.now()-prefs.duelOut<DUEL_DAYS;
+  if(b&&b.loading)return;
+  if(b&&!force&&Date.now()-b.at<(out?60000:600000))return;
+  const before=duelNews().length;
+  boards.duels={at:b?b.at:0,data:b?b.data:null,loading:true};
+  try{boards.duels={at:Date.now(),data:await C.rpc('my_duels',{})};}catch(e){boards.duels={at:Date.now(),data:b?b.data:null,err:true};}
+  if(ui.modal&&['dvoboji','duel'].includes(ui.modal.kind))renderModal();
+  if(screen==='home'&&duelNews().length!==before)renderHome();
+}
+function duelNews(){
+  const d=boards.duels&&boards.duels.data,out=[];if(!d||!acctOn())return out;
+  for(const x of d)for(const a of x.answers||[])if(!a.seen)out.push({id:x.id,mine:x.score,name:a.name,score:a.score,at:a.at});
+  return out.sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
+}
+function duelNewsHTML(){
+  const n=duelNews();if(!n.length)return '';
+  const a=n[0],more=n.length>1?' '+t('duelMore',{n:n.length-1}):'';
+  return `<div class="tagcard duelnews"><span class="tt"><span class="tl">${esc(t('duelNewT'))}</span><span class="tm">${esc(a.name||t('duelFriend'))} ${fmt(a.score)} · ${esc(t('dnYou'))} ${fmt(a.mine)}${esc(more)}</span></span>
+    <span class="tb"><button type="button" class="sbtn" data-act="open" data-k="dvoboji">${esc(t('duelSee'))}</button><button type="button" class="sbtn ghost" data-act="duelsok" aria-label="${esc(t('close'))}">×</button></span></div>`;
+}
+async function duelsSeen(){
+  const d=boards.duels&&boards.duels.data;if(d)for(const x of d)for(const a of x.answers||[])a.seen=true;
+  try{await C.rpc('duels_seen',{p_id:null});}catch(e){}
+}
+function duelsHTML(m){
+  let h=head(t('duelMine'));
+  if(!acctOn())return h+`<p class="fine">${esc(t('duelMineSignIn'))}</p>`+gbtn();
+  if(!m.asked){m.asked=true;loadDuels(true);}
+  const d=boards.duels&&boards.duels.data;
+  if(!d)return h+`<p class="fine">${esc(boards.duels&&boards.duels.err?t('boardOff'):t('boardWait'))}</p>`;
+  if(!m.fresh){m.fresh=new Set(duelNews().map(a=>a.id+'|'+a.at));if(m.fresh.size)setTimeout(()=>{duelsSeen();if(screen==='home')renderHome();},400);}
+  if(!d.length)return h+`<p class="fine">${esc(t('duelMineNone'))}</p><button type="button" class="btnRed" data-act="open" data-k="duel">${esc(t('startDuel'))}</button>`;
+  h+=`<p class="fine">${esc(t('duelDays'))}</p>`+d.map(x=>{
+    const r=E.decodeRules(x.rules),ans=x.answers||[];
+    return `<div class="slip duelcard"><div class="dch"><b>${esc(dateLabel(E.localDay(new Date(x.at))))}</b>${r?`<small>${esc(rulesBrief(r))}</small>`:''}<span class="dcme">${esc(t('dcMine'))} <b>${fmt(x.score)}</b></span></div>`+
+      (ans.length?`<ul class="dcans">${ans.map(a=>{const w=x.score>a.score?'won':x.score<a.score?'lost':'draw';
+        return `<li class="${w}${m.fresh.has(x.id+'|'+a.at)?' new':''}"><span>${esc(a.name||t('duelFriend'))}</span><b>${fmt(a.score)}</b><i>${esc(t('dn_'+w))}</i></li>`;}).join('')}</ul>`
+        :`<p class="fine">${esc(t('duelNobody'))}</p>`)+`</div>`;
+  }).join('');
+  return h;
 }
 
 /* ---------- screens ---------- */
@@ -930,6 +998,7 @@ function renderHome(){
       <p class="note">${esc(t('dailyHow'))}</p>${!acctOn()&&C&&C.available()?`<button type="button" class="lnk dsign" data-act="open" data-k="account">${esc(t('homeSignIn'))}</button>`:''}`;
   }
   const faces=CHAR_ORDER.map(k=>`<span class="cmini" style="--ring:${CHARS[k].ring}">${avatar(k)}</span>`).join('');
+  loadDuels();const news=duelNewsHTML();
   $('home').innerHTML=`
     <div class="hero">
       <div class="shop" aria-hidden="true"><picture><source media="(min-width:600px)" srcset="art/shop/wide-900.webp 900w, art/shop/wide-1376.webp 1376w" sizes="100vw"><img class="pic" src="art/shop/phone-768.webp" srcset="art/shop/phone-480.webp 480w, art/shop/phone-768.webp 768w" sizes="100vw" alt="" decoding="async"></picture><span class="sign">Yamb Café</span><img class="cupSign" src="art/cup/1.webp" alt="" width="192" height="169" decoding="async"></div>
@@ -939,7 +1008,7 @@ function renderHome(){
       </header></div>
     </div>
     <div class="wrap"><main class="homeIn">
-      ${resumes?`<div class="modes">${resumes}</div>`:''}
+      ${resumes||news?`<div class="modes">${news}${resumes}</div>`:''}
       <section class="menu"><div class="menuIn">
         <div class="special">${daily}
         ${mline('stoli',t('ftTitle'),t('ftLine'),0)}</div>
@@ -1294,7 +1363,7 @@ function turnFx(){
 /* ---------- pages and sheets ----------
    Everything but a few small sheets opens as a full page with a back arrow; the phone's own back gesture closes it. */
 const SHEETS=['install','scan','rulesIn'];
-const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus','stoli','stol','stolIn','dar','who','dojam','testeri'];   /* 'wall' is a cork board of its own */
+const MENUCARD=['friends','settings','howto','lang','rules','cpu','pp','table','duel','duelIn','online','account','plus','stoli','stol','stolIn','dar','who','dojam','testeri','dvoboji','obavijesti'];   /* 'wall' is a cork board of its own */
 const isPage=k=>!!k&&!SHEETS.includes(k);
 window.addEventListener('popstate',()=>{if(ui.modal&&isPage(ui.modal.kind)){if(ui.backs.length)back();else closeModal();}});
 ui.backs=[];
@@ -1374,6 +1443,7 @@ function renderModal(){
         ((m.fmt||'quick')==='quick'?`<p class="fine" style="margin-top:8px">${esc(t('quickD'))}</p>`:rulesRow())+`
         ${nameField(nameVal)}
         <button type="button" class="btnRed" data-act="startduel">${esc(t('startDuel'))}</button>
+        ${acctOn()?`<button type="button" class="btnInk" data-act="open" data-k="dvoboji">${esc(t('duelMine'))}${duelNews().length?` · ${duelNews().length}`:''}</button>`:''}
         <h3>${esc(t('duelPaste'))}</h3><div class="pl"><input id="duelCode" class="linkbox" placeholder="${esc(t('duelPasteHint'))}" autocomplete="off"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="pasteduel">${esc(t('open'))}</button></div>`;
       break;
     case 'duelIn':{
@@ -1384,7 +1454,7 @@ function renderModal(){
           <button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`;
       }else{
         const played=stats.duels[o.i];
-        h=head(t('duelFrom',{name:o.n}))+`<p>${esc(t('duelSame'))}</p><p class="fine">${esc(rulesBrief(rules))} · ${esc(t('duelHidden'))}</p>`+
+        h=head(t('duelFrom',{name:o.n}))+`<p>${esc(t('duelSame'))}</p><p class="fine">${esc(rulesBrief(rules))} · ${esc(t('duelHidden'))}</p>`+(o.c&&!played?`<p class="fine">${esc(t('duelAutoIn',{name:o.n}))}</p>`:'')+
           (played?`<p><b>${esc(t('duelAlready',{s:fmt(played.score)}))}</b></p><button type="button" class="btnInk" data-act="close">${esc(t('close'))}</button>`:
           `${nameField(nameVal)}<button type="button" class="btnRed" data-act="acceptduel" data-autofocus>${esc(t('startDuel'))}</button>`);
       }
@@ -1402,6 +1472,7 @@ function renderModal(){
       {const av=acctView()||stats;m.line=t('statsLine',{p:av.played||0,w:av.wins||0,b:fmt(av.best||0)});}
       h=head(t('settings'))+`<div class="toggle"><span>${esc(t('account'))}<small>${esc(acctOn()?t('acSignedAs',{name:acctName()||(cloud.me&&cloud.me.email)||''}):t('acSignedOut'))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="account">${esc(acctOn()?t('change'):t('signIn'))}</button></div>`+
         `<div class="toggle"><span>${esc(t('language'))}</span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="lang">${esc(I.name(prefs.lang))}</button></div>`+
+        `<div class="toggle"><span>${esc(t('ntTitle'))}<small>${esc(prefs.notif?t('ntOnShort'):t('ntOffShort'))}</small></span><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="open" data-k="obavijesti">${esc(t('change'))}</button></div>`+
         `<h3>${esc(t('sSoundG'))}</h3>`+sw('sound',t('sSound'))+sw('music',t('sMusic'),t('sMusicD'))+sw('ambience',t('sAmb'),t('sAmbD'))+
         `<h3>${esc(t('sPlayG'))}</h3>`+sw('haptics',t('sHap'))+sw('shake',t('sShake'),t('sShakeD'))+sw('hints',t('sHints'),t('sHintsD'))+sw('emotes',t('sEmotes'),t('sEmotesD'))+
         (isStandalone()?'':`<button type="button" class="btnInk" data-act="install">${esc(t('installT'))}</button>`)+
@@ -1426,6 +1497,8 @@ function renderModal(){
     case 'who':h=whoHTML(m);break;
     case 'dojam':h=feedbackHTML(m);break;
     case 'testeri':h=testersHTML();break;
+    case 'dvoboji':h=duelsHTML(m);break;
+    case 'obavijesti':h=notifHTML(m);break;
     case 'daily':h=dailyModalHTML(m.day);break;
     case 'scan':
       h=head(t('scanTitle')+' ('+t('beta')+')')+`<p class="fine">${esc(t('scanHint'))}</p><div class="scanbox"><video id="scanV" playsinline muted></video><canvas id="scanC" hidden></canvas></div>
@@ -1524,11 +1597,14 @@ function resultHTML(){
   const title=G.players.length===1?t('finalScore',{s:fmt(st[0].score)}):win<0?t('draw'):win===me?t('youWin'):t('wins',{name:name(win)});
   const endTip=ui.guideEnd?`<div class="tipcard inline" role="note"><p>${esc(t('g6end'))}</p></div>`:'';ui.guideEnd=false;
   let a=`<div class="billTitle"><span class="big">${esc(title)}</span></div>`+billHTML(G,st,win),h='';
-  if(G.mode==='daily'){a+=`<button type="button" class="btnRed onwood" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`;h+=`<div class="slip">${boardHTML(G.daily.day)}${ftNewsHTML()}</div>`;}
+  if(G.mode==='daily'){a+=`<button type="button" class="btnRed onwood" data-act="sharedaily" data-day="${G.daily.day}">${esc(t('shareResult'))}</button>`;h+=`<div class="slip">${boardHTML(G.daily.day)}${ftNewsHTML()}</div>`+ntAskDailyHTML();}
   if(G.mode==='duel'){
     const mine=st[0].score;
-    if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result slip"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost',{name:G.duel.from.n}):t('draw'))}</p></div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
-    else a+=`<p class="onwoodp">${esc(t('duelSendD'))}</p><button type="button" class="btnRed onwood" data-act="shareduel">${esc(t('duelSend'))}</button>`;
+    if(G.duel.from){const th=G.duel.from.s;h+=`<div class="result slip"><p style="font-size:20px">${esc(t('duelResult',{a:fmt(mine),b:fmt(th),name:G.duel.from.n}))}</p><p>${esc(mine>th?t('duelWon'):mine<th?t('duelLost',{name:G.duel.from.n}):t('draw'))}</p>${G.duel.from.c?`<p class="fine">${esc(t('duelTold',{name:G.duel.from.n}))}</p>`:''}</div><button type="button" class="btnRed" data-act="shareduel">${esc(t('duelSendBack'))}</button>`;}
+    else{
+      a+=`<p class="onwoodp">${esc(t('duelSendD'))}</p><button type="button" class="btnRed onwood" data-act="shareduel">${esc(t('duelSend'))}</button>`;
+      if(acctOn())a+=`<p class="onwoodp">${esc(t('duelAuto'))}</p>`+(prefs.notif&&prefs.notif.duels?'':`<button type="button" class="lnk onwood ntask" data-act="ntduelask">${esc(t('ntAskDuel'))}</button>`);
+    }
   }
   let more=gameStatsHTML(G);
   G.players.forEach((p,i)=>{if(p.kind==='human'&&G.log.some(ev=>ev.p===i))more+=reviewHTML(i);});
@@ -2098,6 +2174,9 @@ function act(el,d){
     case 'ftopen':pushBack();openModal('stol',{id:d.id});break;
     case 'who':{const f=d.f||'';pushBack();openModal('who',{p:{name:d.n||'',avatar:d.a||null,plus:f.includes('p'),heart:f.includes('h'),host:f.includes('s')}});break;}
     case 'fbkind':case 'fbstar':case 'fbsend':case 'fbagain':fbAct(d);break;
+    case 'duelsok':duelsSeen().then(()=>{if(screen==='home')renderHome();});renderHome();break;
+    case 'ntdaily':case 'nthour':case 'ntduels':case 'nttest':case 'ntduelask':notifAct(d);break;
+    case 'ntaskno':prefs.ntAskNo=true;savePrefs();renderModal();break;
     case 'fttab':ui.ftTab=d.v==='w'?'w':'d';renderModal();break;
     case 'pickava':{
       const v=d.v;if(!ALL_PORTRAITS.includes(v))break;
@@ -2125,7 +2204,7 @@ function act(el,d){
     case 'nudgeyes':prefs.nudged=true;savePrefs();renderHome();doInstall();break;
     case 'nudgeno':prefs.nudged=true;savePrefs();renderHome();break;
     case 'pref':{const k=d.k;prefs[k]=!prefs[k];savePrefs();applyAudio();if(k==='shake'){ui.motionAsked=false;if(prefs.shake)askMotion();else A.motion.stop();}if(k==='sound'&&prefs.sound)A.tap();renderModal();break;}
-    case 'setlang':prefs.lang=d.v;savePrefs();document.documentElement.lang=I.locale(prefs.lang);closeModal();if(screen==='home')renderHome();else render();break;
+    case 'setlang':prefs.lang=d.v;savePrefs();notifRefresh(true);document.documentElement.lang=I.locale(prefs.lang);closeModal();if(screen==='home')renderHome();else render();break;
     case 'preset':ui.draft=E.presetRules(d.v);renderModal();break;
     case 'togcol':{const c=d.v,cols=ui.draft.cols.slice();const i=cols.indexOf(c);if(i>=0){if(cols.length>1)cols.splice(i,1);}else cols.push(c);ui.draft.cols=cols;renderModal();break;}
     case 'rdice':ui.draft.dice=+d.v;renderModal();break;
@@ -2256,7 +2335,7 @@ function acctView(){
   return{played,wins,best,maxStreak,recs:Object.values(recs).map(r=>({mode:r.mode,rules:rulesOfKey(r.rk),games:r.games,wins:r.wins,sum:r.sum,best:r.best}))};
 }
 function acctUI(){
-  if(ui.modal&&['account','settings','records','daily','result','plus','wall','cpu','stoli','stol','stolIn','dar'].includes(ui.modal.kind)){
+  if(ui.modal&&['account','settings','records','daily','result','plus','wall','cpu','stoli','stol','stolIn','dar','dvoboji','obavijesti','duel'].includes(ui.modal.kind)){
     const f=document.activeElement;if(!(ui.modal.kind==='account'&&f&&f.id==='acName'))renderModal();
   }
   if(screen==='home')renderHome();
@@ -2549,7 +2628,7 @@ async function ftAct(d){
 function giftHTML(m){
   let h=head(t('giftTitle'))+`<div class="slip plusask"><i class="pmark sm">Plus</i><b>Yamb Café Plus</b><p>${esc(t('giftLead'))}</p></div>`;
   if(!C||!C.available())return h+`<p class="fine">${esc(t('acNoNet'))}</p>`;
-  if(m.done)return h+`<p class="fine" style="text-align:center">${esc(t('giftDone'))}</p>${testerOn()?`<button type="button" class="btnRed" data-act="open" data-k="testeri">${esc(t('tsLine'))}</button>`:''}<button type="button" class="btnInk" data-act="open" data-k="plus">${esc(t('giftSee'))}</button>`;
+  if(m.done)return h+`<p class="fine" style="text-align:center">${esc(plusPending()?t('giftLater',{date:dateLabel(String(plusOf().from).slice(0,10))}):t('giftDone'))}</p>${testerOn()?`<button type="button" class="btnRed" data-act="open" data-k="testeri">${esc(t('tsLine'))}</button>`:''}<button type="button" class="btnInk" data-act="open" data-k="plus">${esc(t('giftSee'))}</button>`;
   if(m.bad)return h+`<p class="fine" style="text-align:center">${esc(t('giftBad'))}</p>`;
   if(!acctOn())return h+`<p class="fine">${esc(t('giftSignIn'))}</p>`+gbtn();
   if(!m.tried){m.tried=true;setTimeout(()=>{if(ui.modal===m)giftAct();},0);}
@@ -2607,7 +2686,8 @@ async function fbAct(d){
 }
 /* the testers' four weeks, from the public start */
 const TEST_START='2026-12-14',TEST_END='2027-01-10';
-const testerOn=()=>{const p=plusOf();return !!(p&&p.plus&&(p.gift||!PLUS_LIVE))&&E.localDay()<=TEST_END;};
+/* a tester: given Plus by a gift link (it may start later, in the third week), or, before the sale, anyone with Plus */
+const testerOn=()=>{const p=plusOf();return !!(p&&(p.gift||(p.plus&&!PLUS_LIVE)))&&E.localDay()<=TEST_END;};
 function testWeek(){const d=Math.floor((Date.parse(E.localDay()+'T12:00:00')-Date.parse(TEST_START+'T12:00:00'))/864e5);return d<0?0:Math.min(4,Math.floor(d/7)+1);}
 function testersHTML(){
   const w=testWeek(),loc=prefs.lang==='en'?'en-GB':prefs.lang;
@@ -2620,12 +2700,115 @@ function testersHTML(){
   }
   return h+`<button type="button" class="btnRed" data-act="open" data-k="dojam">${esc(t('fbTitle'))}</button>`;
 }
+/* ---------- notifications (web push) ----------
+   Switched on for one device by a signed-in player: a Daily Yamb reminder at the hour they pick (sent only while that
+   day's Daily is not played yet) and a note when a friend has played their duel. The browser gives an address for the
+   messages; the database keeps it (push_save) and the Edge Function push sends them, also when the game is closed.
+   On an iPhone this works only in the game added to the home screen (iOS 16.4 and newer). */
+const NOTIF_HOURS=[8,12,17,20];
+const notifOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&typeof Notification!=='undefined';
+const notifHome=()=>isIOS()&&!isStandalone();          /* an iPhone tab: first the home screen */
+const tzName=()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}catch(e){return 'UTC';}};
+const b64uOf=a=>btoa(String.fromCharCode.apply(null,Array.from(a))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+function b64uBytes(s){const x=String(s).replace(/-/g,'+').replace(/_/g,'/').replace(/=+$/,'');const b=atob(x+'==='.slice((x.length+3)%4));return Uint8Array.from(b,c=>c.charCodeAt(0));}
+const hourLabel=h=>{try{return new Date(2026,0,1,h).toLocaleTimeString(I.locale(prefs.lang),{hour:'numeric',minute:'2-digit'});}catch(e){return h+':00';}};
+async function notifReg(){
+  let r=await navigator.serviceWorker.getRegistration();
+  if(!r)r=await navigator.serviceWorker.register('sw.js');
+  if(!r.active)r=await navigator.serviceWorker.ready;
+  return r;
+}
+/* this browser's subscription, made with the game's current public key */
+async function notifSub(){
+  const reg=await notifReg(),key=await C.pushKey();
+  let s=await reg.pushManager.getSubscription();
+  if(s){const k=s.options&&s.options.applicationServerKey;if(k&&b64uOf(new Uint8Array(k))!==String(key).replace(/=+$/,'')){try{await s.unsubscribe();}catch(e){}s=null;}}
+  if(!s)s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(key)});
+  return s;
+}
+/* switch on or change; both off switches this device off. The browser asks for permission the first time. */
+async function notifSet(want){
+  if(want.daily_at==null&&!want.duels)return notifOff();
+  if(!acctOn())throw new Error('signin');
+  if(!notifOK()||!C||!C.available())throw new Error('nosupport');
+  const perm=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+  if(perm!=='granted')throw new Error('denied');
+  const s=await notifSub(),j=s.toJSON();
+  await C.rpc('push_save',{p:{endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth,lang:prefs.lang,tz:tzName(),daily_at:want.daily_at==null?null:+want.daily_at,duels:!!want.duels,test:!!want.test}});
+  prefs.notif={daily_at:want.daily_at==null?null:+want.daily_at,duels:!!want.duels,ep:j.endpoint,at:Date.now(),lang:prefs.lang};savePrefs();
+}
+async function notifOff(){
+  const n=prefs.notif;
+  try{const reg=await navigator.serviceWorker.getRegistration();const s=reg&&await reg.pushManager.getSubscription();if(s)await s.unsubscribe();}catch(e){}
+  if(n&&n.ep&&acctOn()&&C)try{await C.rpc('push_drop',{p_endpoint:n.ep});}catch(e){}
+  delete prefs.notif;savePrefs();
+}
+/* kept fresh without asking: the language, the time zone, a new address from the browser; dropped when the phone's
+   settings took the permission away */
+async function notifRefresh(now){
+  const n=prefs.notif;if(!n||!acctOn()||!notifOK()||!C||!C.available())return;
+  if(Notification.permission!=='granted'){delete prefs.notif;savePrefs();return;}
+  if(!now&&n.lang===prefs.lang&&Date.now()-(n.at||0)<7*864e5)return;
+  try{await notifSet({daily_at:n.daily_at,duels:n.duels});}catch(e){}
+}
+async function notifCheck(m){
+  const n=prefs.notif;if(!n||!n.ep||!C||!C.available())return;
+  if(Notification.permission!=='granted'){delete prefs.notif;savePrefs();}
+  else try{const r=await C.rpc('push_mine',{p_endpoint:n.ep});if(r==null)delete prefs.notif;else{n.daily_at=r.daily_at;n.duels=!!r.duels;}savePrefs();}catch(e){}
+  if(ui.modal===m)renderModal();
+}
+function notifHTML(m){
+  let h=head(t('ntTitle'))+`<p class="fine">${esc(t('ntLead'))}</p>`;
+  if(notifHome())return h+`<div class="slip ntios"><b>${esc(t('ntIOS'))}</b><span>${esc(t('ntIOSD'))}</span></div><button type="button" class="btnRed" data-act="open" data-k="install">${esc(t('installT'))}</button>`;
+  if(!notifOK()||!C||!C.available())return h+`<p>${esc(t('ntNo'))}</p>`;
+  if(!acctOn())return h+`<p>${esc(t('ntSignIn'))}</p>`+gbtn();
+  if(!m.checked){m.checked=true;prefs.ntAskNo=true;savePrefs();setTimeout(()=>notifCheck(m),0);}
+  const n=prefs.notif||{},dOn=n.daily_at!=null,dis=m.busy?' disabled':'';
+  if(!prefs.notif&&Notification.permission==='denied')h+=`<p class="ntwarn">${esc(t('ntBlocked'))}</p>`;
+  h+=`<div class="toggle"><span>${esc(t('ntDaily'))}<small>${esc(t('ntDailyD'))}</small></span><button type="button" class="sw" role="switch" data-act="ntdaily" aria-checked="${dOn}" aria-label="${esc(t('ntDaily'))}"${dis}></button></div>`;
+  if(dOn)h+=`<div class="nthours">${seg('nthour',NOTIF_HOURS.map(x=>[x,hourLabel(x)]),n.daily_at)}</div>`;
+  h+=`<div class="toggle"><span>${esc(t('ntDuels'))}<small>${esc(t('ntDuelsD'))}</small></span><button type="button" class="sw" role="switch" data-act="ntduels" aria-checked="${!!n.duels}" aria-label="${esc(t('ntDuels'))}"${dis}></button></div>`;
+  if(prefs.notif)h+=`<button type="button" class="btnInk" data-act="nttest"${dis}>${esc(t('ntTest'))}</button>`;
+  return h+`<p class="fine" style="margin-top:12px">${esc(t('ntFine'))}</p>`;
+}
+async function notifAct(d){
+  const m=ui.modal&&ui.modal.kind==='obavijesti'?ui.modal:null;if(m&&m.busy)return;
+  if(d.act==='ntduelask'&&(notifHome()||!notifOK())){openModal('obavijesti');return;}
+  const n=prefs.notif||{daily_at:null,duels:false};
+  const want=d.act==='ntdaily'?{daily_at:n.daily_at!=null?null:20,duels:!!n.duels}
+    :d.act==='nthour'?{daily_at:+d.v,duels:!!n.duels}
+    :d.act==='ntduels'?{daily_at:n.daily_at,duels:!n.duels}
+    :d.act==='nttest'?{daily_at:n.daily_at,duels:!!n.duels,test:true}
+    :{daily_at:n.daily_at,duels:true};
+  if(m){m.busy=true;renderModal();}
+  try{
+    await notifSet(want);
+    if(want.test){C.pushKick();toast(t('ntTestSent'));}
+    else if(d.act==='ntduelask'){toast(t('ntOnToast'));if(ui.modal&&ui.modal.kind==='result')renderModal();}
+  }catch(e){const x=String(e&&e.message||e);toast(t(/denied/.test(x)?'ntDenied':/signin/.test(x)?'ntSignIn':/nosupport/.test(x)?'ntNo':'ntFail'),true);}
+  if(m){m.busy=false;if(ui.modal===m)renderModal();}
+}
+/* offered on the Daily's newspaper until it is set up or declined */
+function ntAskDailyHTML(){
+  if(!acctOn()||prefs.ntAskNo||(prefs.notif&&prefs.notif.daily_at!=null)||!(notifOK()||notifHome()))return '';
+  return `<div class="slip ntask"><b>${esc(t('ntAskDailyT'))}</b><p>${esc(t('ntAskDailyD'))}</p><div class="btnRow"><button type="button" class="btnInk" data-act="open" data-k="obavijesti">${esc(t('ntAskYes'))}</button><button type="button" class="btnInk ghost" data-act="ntaskno">${esc(t('notNow'))}</button></div></div>`;
+}
+/* a tap on a notification while the game is open: the service worker passes it here */
+if('serviceWorker' in navigator)try{navigator.serviceWorker.addEventListener('message',e=>{
+  const x=e.data;if(!x||x.yamb!=='open')return;
+  if(x.d==='duels'){if(ui.modal&&ui.modal.kind!=='dvoboji')pushBack();openModal('dvoboji');}
+  else if(x.d==='daily'&&screen!=='game'){if(ui.modal)closeModal();startDaily();}
+});}catch(e){}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&screen==='home')loadDuels();});
 /* ---------- Yamb Café Plus ----------
    A one-time unlock bought through Polar (the merchant of record) and kept on the player's account. While it is being
    tested it shows only after opening the game once with ?plus=test (or on this computer's own test server). */
 const PLUS_AMTS=[499,699,899,1299];
-/* before launch Plus shows only for an account that already has Plus, on every device, and on a device opened once with ?plus=test */
-const plusOpen=()=>PLUS_LIVE||!!prefs.plusTest||hasPlus();
+/* Plus is shown to everyone (locked where it is not bought); it can be bought once it is on sale (PLUS_LIVE), and before
+   that only on a device opened once with ?plus=test (the test shop). Until then the button says it is coming soon. */
+const plusOpen=()=>true;
+const plusBuy=()=>PLUS_LIVE||!!prefs.plusTest;
+const plusPending=()=>{const p=plusOf();return !!(p&&!p.plus&&p.gift&&p.from);};
 const plusLocked=()=>plusOpen()&&!hasPlus();
 const charLocked=k=>k==='profesor'&&plusLocked();
 const pinOnPrint=on=>on?`<i class="ppin onprint" title="${esc(t('whoHeart'))}"></i>`:'';
@@ -2654,7 +2837,7 @@ function whoHTML(m){
     <b class="whoname">${esc(p.name||t('playerAnon'))}</b>${marks?`<ul class="whomarks">${marks}</ul>`:''}</div>`;
 }
 const plusOf=()=>{const d=acctState();return d&&d.plus?d.plus:null;};
-const PLUS_LIVE=false;   /* true from the public start: Plus is sold to everyone, and the Professor and the rest need it */
+const PLUS_LIVE=false;   /* true once live payments are on: Plus is on sale to everyone */
 const hasPlus=()=>!!(plusOf()&&plusOf().plus);
 const eur=c=>{try{return new Intl.NumberFormat(I.locale(prefs.lang),{style:'currency',currency:'EUR'}).format(c/100);}catch(e){return (c/100).toFixed(2)+' €';}};
 const PLUS_ITEMS=[['plusProf','plusProfD','<img src="art/cast/profesor.webp" alt="">'],
@@ -2691,9 +2874,11 @@ function plusHTML(m){
       <div class="toggle"><span>${esc(t('showSwitch'))}<small>${esc(t('showSwitchD'))}</small></span><button type="button" class="sw" role="switch" data-act="plusShow" aria-checked="${shown}" aria-label="${esc(t('showSwitch'))}"${m.busy?' disabled':''}></button></div>
       <div class="toggle"><span>${esc(t('wallSwitch'))}<small>${esc(t('wallSwitchD'))}</small></span><button type="button" class="sw" role="switch" data-act="plusWall" aria-checked="${on}" aria-label="${esc(t('wallSwitch'))}"${m.busy?' disabled':''}></button></div>`+wallLink;}
   if(m.waiting)return h+`<div class="slip plusyes wait"><b>${esc(t('plusWait'))}</b><span>${esc(t('plusWaitD'))}</span></div>`;
+  if(plusPending())return h+`<div class="slip plusyes wait"><b>${esc(t('plusComing',{date:dateLabel(String(p.from).slice(0,10))}))}</b><span>${esc(t('plusComingD'))}</span></div>`+wallLink;
   h+=`<h3>${esc(t('plusPrice'))}</h3><div class="pamts">${PLUS_AMTS.map(c=>`<button type="button" data-act="plusamt" data-v="${c}" aria-pressed="${c===amt}">${esc(eur(c))}</button>`).join('')}</div>
     <p class="fine">${esc(t('plusPinNote',{min:eur(PLUS_AMTS[0])}))}</p>`;
-  if(acctOn())h+=`<button type="button" class="btnRed" data-act="plusbuy"${m.busy?' disabled':''}>${esc(t('plusBuy',{price:eur(amt)}))}</button>`;
+  if(!plusBuy())h+=`<button type="button" class="btnRed soon" disabled>${esc(t('plusSoon'))}</button><p class="fine" style="text-align:center">${esc(t('plusSoonD'))}</p>`;
+  else if(acctOn())h+=`<button type="button" class="btnRed" data-act="plusbuy"${m.busy?' disabled':''}>${esc(t('plusBuy',{price:eur(amt)}))}</button>`;
   else h+=`<p>${esc(t('plusSignIn'))}</p>`+gbtn();
   return h+wallLink+`<p class="fine" style="margin-top:12px">${esc(t('plusFine'))} ${siteLinks()}</p>`;
 }
@@ -2714,7 +2899,7 @@ async function plusAct(d){
       Object.keys(boards).forEach(k=>delete boards[k]);}catch(e){toast(t('acFail'),true);}
     m.busy=false;renderModal();return;
   }
-  if(m.busy)return;
+  if(m.busy||!plusBuy())return;
   if(!acctOn()){accountAct('signin');return;}
   m.busy=true;renderModal();
   try{const j=await C.buyPlus(m.amt||PLUS_AMTS[0],prefs.lang);location.href=j.url;}
@@ -2775,9 +2960,10 @@ function cloudIn(u,fresh){
     else if(after==='stolIn'&&prefs.stolRef)openModal('stolIn',{ref:prefs.stolRef,auto:true});
     else if(after==='dar'&&prefs.gift)openModal('dar');
     else if(after==='stoli'||after==='stol')openModal('stoli');
+    else if(after==='dvoboji'||after==='obavijesti')openModal(after);
     else if(after)openModal('account');
   }
-  acctUI();syncCloud(fresh);
+  acctUI();syncCloud(fresh);notifRefresh();
 }
 function cloudOut(){
   if(!cloud.uid)return;
@@ -2807,7 +2993,7 @@ async function accountAct(act){
     try{await C.signIn();}catch(e){store.del('jamb4-after');toast(t('acNoNet'),true);}
     return;
   }
-  if(act==='signout'){if(C)await C.signOut();cloudOut();closeModal();toast(t('acBye'));return;}
+  if(act==='signout'){if(prefs.notif)await notifOff();if(C)await C.signOut();cloudOut();closeModal();toast(t('acBye'));return;}
   if(!m||m.kind!=='account')return;
   if(act==='acdel'){m.del=true;renderModal();return;}
   if(act==='acdelno'){m.del=false;renderModal();return;}
@@ -2844,6 +3030,7 @@ if(C){
 /* ---------- start ---------- */
 /* where this visit came from, for the visitor numbers: a game link, a ref= tag on a shared link, another site, or none */
 function visitSource(q,gameCode,duel,rules){
+  if(q.get&&q.get('d'))return 'push';
   if(gameCode)return 'link:table';if(duel)return 'link:duel';if(rules)return 'link:rules';
   if(q.get&&q.get('stol'))return 'link:stol';if(q.get&&q.get('dar'))return 'link:dar';
   const ref=String(q.get&&q.get('ref')||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,40);if(ref)return 'ref:'+ref;
@@ -2859,12 +3046,15 @@ function start(){
   if(C)C.count('game',visitSource(q,gameCode,duel,rules),prefs.lang,isStandalone());
   if(location.search){try{history.replaceState(null,'',location.pathname+location.hash);}catch(e){}}
   if(stolQ.length===6){prefs.stolRef=stolQ;savePrefs();showScreen('home');openModal('stolIn',{ref:stolQ});return;}
-  if(darQ.length>=6){prefs.gift=darQ;prefs.plusTest=true;savePrefs();showScreen('home');openModal('dar');return;}
+  if(darQ.length>=6){prefs.gift=darQ;savePrefs();showScreen('home');openModal('dar');return;}
   const sess=loadOnline();
   if(gameCode&&gameCode.length===5&&!(sess&&sess.code===gameCode)){showScreen('home');openModal('online',{joinOnly:true,code:gameCode});return;}
   if(gameCode&&sess&&sess.code===gameCode){resumeOnline(sess);return;}
   if(duel){const o=E.decodeObj(duel);showScreen('home');if(o&&o.i&&o.r!=null)openModal('duelIn',{o});else toast(t('badLink'),true);return;}
   if(rules){const r=E.decodeRules(rules);showScreen('home');if(r)openModal('rulesIn',{rules:r});return;}
+  const dQ=q.get&&q.get('d');   /* opened from a notification */
+  if(dQ==='duels'){showScreen('home');openModal('dvoboji');return;}
+  if(dQ==='daily'){showScreen('home');startDaily();return;}
   if(plusQ==='done'||plusQ==='back'||plusQ==='test'){showScreen('home');openModal('plus',{waiting:plusQ==='done'});if(plusQ==='done')plusWait();return;}
   if(prefs.screen==='game'&&prefs.mode){
     if(prefs.mode==='online'&&sess){resumeOnline(sess);return;}
@@ -2882,5 +3072,5 @@ if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventLis
   }).catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had||ui.fresh)return;ui.fresh=true;if(screen==='home'&&!ui.modal)location.reload();});
 });
-window.__jamb={get G(){return G;},get online(){return online;},net,ui,prefs,stats,get cloud(){return cloud;},boards};
+window.__jamb={duelLinkForTest:()=>duelLink(),get G(){return G;},get online(){return online;},net,ui,prefs,stats,get cloud(){return cloud;},boards};
 })();

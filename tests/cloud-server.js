@@ -5,6 +5,7 @@ const http=require('http'),crypto=require('crypto');
 const {open}=require('./pgdb.js');
 const b64u=b=>Buffer.from(b).toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const unb64u=s=>Buffer.from(String(s).replace(/-/g,'+').replace(/_/g,'/'),'base64').toString('utf8');
+const VAPID=(()=>{const e=crypto.createECDH('prime256v1');e.generateKeys();return b64u(e.getPublicKey());})();
 async function start(port){
   const S=await open();
   const codes=new Map(),refresh=new Map(),calls=[];
@@ -45,6 +46,11 @@ async function start(port){
       if(p==='/__test/calls'){send(res,200,calls);return;}
       if(p==='/__test/sql'){const b=await readBody(req);const r=await S.admin(b.sql,b.params||[]);send(res,200,r.rows);return;}
       if(down){res.destroy();return;}
+      // the notifications Edge Function: its public key, and a nudge to send what is due (counted, nothing sent)
+      if(p==='/functions/v1/push'){
+        if(req.method==='GET'){send(res,200,{key:VAPID});return;}
+        calls.push('push-kick');send(res,200,{due:0});return;
+      }
       if(!req.headers.apikey&&!p.startsWith('/auth/v1/authorize')){send(res,401,{message:'No API key found in request'});return;}
       // ---- sign-in
       if(p==='/auth/v1/authorize'){

@@ -1,7 +1,7 @@
 /* Keeps Yamb Café working offline: the app shell is cached, and the latest version is fetched whenever there is a connection. */
-const CACHE = 'jamb-v11.7';
+const CACHE = 'jamb-v11.8';
 const CORE = [
-  './', 'index.html', 'engine.js?v=1170', 'ai.js?v=1170', 'i18n.js?v=1170', 'audio.js?v=1170', 'music.js?v=1170', 'fx.js?v=1170', 'scan.js?v=1170', 'vendor/supabase.js?v=1170', 'cloud.js?v=1170', 'app.js?v=1170', 'manifest.webmanifest',
+  './', 'index.html', 'engine.js?v=1180', 'ai.js?v=1180', 'i18n.js?v=1180', 'audio.js?v=1180', 'music.js?v=1180', 'fx.js?v=1180', 'scan.js?v=1180', 'vendor/supabase.js?v=1180', 'cloud.js?v=1180', 'app.js?v=1180', 'manifest.webmanifest',
   'icons/v10/icon-192.png', 'icons/v10/apple-touch-icon.png', 'icons/v10/favicon-64.png',
   'art/shop/phone-768.webp', 'art/shop/wide-1376.webp', 'art/table-teal.webp', 'art/tray.webp', 'art/saucer.webp', 'art/daily-800.webp',
   'fonts/caveat-latin-ext.woff2', 'fonts/caveat-latin.woff2', 'fonts/courier-prime-latin-400.woff2', 'fonts/courier-prime-latin-700.woff2', 'fonts/courier-prime-latin-ext-400.woff2', 'fonts/courier-prime-latin-ext-700.woff2', 'fonts/fraunces-latin-ext.woff2', 'fonts/fraunces-latin.woff2', 'fonts/instrument-sans-latin-ext.woff2', 'fonts/instrument-sans-latin.woff2',
@@ -58,4 +58,25 @@ self.addEventListener('fetch', e => {
       }))
     );
   }
+});
+
+/* Notifications: a Daily Yamb reminder or a duel result, sent by the Edge Function push (server/functions/push).
+   A tap brings the game to the front (or opens it) on the right page. */
+self.addEventListener('push', e => {
+  let m = {};
+  try { m = e.data ? e.data.json() : {}; } catch (x) { m = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(m.title || 'Yamb Café', {
+    body: m.body || '', icon: 'icons/v10/icon-192.png', badge: 'icons/v10/badge-96.png',
+    tag: m.tag || 'yamb', renotify: m.tag === 'duel', data: { url: m.url || '/' }
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin);
+  const d = url.searchParams.get('d');
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    const c = list.find(w => new URL(w.url).origin === self.location.origin);
+    if (c) { if (d) c.postMessage({ yamb: 'open', d }); return c.focus(); }
+    return self.clients.openWindow(url.href);
+  }));
 });

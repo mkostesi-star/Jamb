@@ -309,6 +309,87 @@ function professorMoves(seed){
   ok(await fail(g3,'select public.redeem_gift($1)',['OLD-GIFT-1'],/YC_GIFT/),'an expired code gives nothing');
   ok(await fail(g3,'select public.redeem_gift($1)',['NO-SUCH-CODE'],/YC_GIFT/),'nor does a made-up one');
   await denied('gift codes cannot be read',g3,'select * from yamb.gift_codes');
+  // a gift that starts later (testers: the free game first, Plus from the third week)
+  await S.admin(`insert into yamb.gift_codes (code, why, uses_left, until, starts) values ('LATER-GIFT', 'tester', 5, current_date + 60, current_date + 14)`);
+  r=await S.as(g3,'select public.redeem_gift($1) as p',['LATER-GIFT']);
+  ok(r.rows[0].p.plus===false&&r.rows[0].p.gift===true&&!!r.rows[0].p.from,'a later gift: a tester now, Plus not yet');
+  r=await S.admin('select yamb.has_plus($1) as h',[g3]);ok(r.rows[0].h===false,'the Professor stays locked until then');
+  r=await S.as(g3,'select public.redeem_gift($1) as p',['LATER-GIFT']);ok(r.rows[0].p.had===true,'opening it again uses nothing up');
+  r=await S.admin(`select uses_left from yamb.gift_codes where code = 'LATER-GIFT'`);ok(r.rows[0].uses_left===4,'one use taken');
+  await S.admin(`update yamb.plus_gifts set starts = current_date where user_id = $1`,[g3]);
+  r=await S.as(g3,'select public.my_plus() as p');ok(r.rows[0].p.plus===true&&r.rows[0].p.gift===true,'on its day the Plus switches on');
+  }
+  // ---- 12. duels kept here, so the challenger hears the result
+  {
+  const fail=async(uid,sql,params,re)=>{let e=null;try{await S.as(uid,sql,params);}catch(x){e=x.message;}return !!(e&&re.test(e));};
+  const cha=await S.addUser('cha@example.com','Cha'),fr=await S.addUser('fr@example.com','Fr');
+  ok(await fail(null,'select public.duel_post($1,$2,$3)',['abcdefgh2345',200,'x'],/permission denied|YC_SIGNIN/),'a visitor cannot keep a duel');
+  ok(await fail(cha,'select public.duel_post($1,$2,$3)',['bad id!',200,'x'],/YC_DUEL/),'a duel id is checked');
+  r=await S.as(cha,'select public.duel_post($1,$2,$3) as r',['abcdefgh2345',231,'f']);ok(r.rows[0].r.kept===true,'the challenger keeps a duel');
+  r=await S.as(fr,'select public.duel_post($1,$2,$3) as r',['abcdefgh2345',999,'f']);ok(r.rows[0].r.kept===false,'nobody else can take it over');
+  r=await S.as(null,'select public.duel_answer($1,$2,$3,$4) as r',['abcdefgh2345','devicecode77','Ana <b>',245]);ok(r.rows[0].r.kept===true,'a signed-out friend answers');
+  r=await S.as(null,'select public.duel_answer($1,$2,$3,$4) as r',['abcdefgh2345','devicecode77','Ana',300]);ok(r.rows[0].r.had===true,'the same device counts once');
+  r=await S.as(fr,'select public.duel_answer($1,$2,$3,$4) as r',['abcdefgh2345',null,'Fran',210]);ok(r.rows[0].r.kept===true,'a signed-in friend answers');
+  r=await S.as(cha,'select public.duel_answer($1,$2,$3,$4) as r',['abcdefgh2345','x','Me',500]);ok(r.rows[0].r.own===true,'the challenger cannot answer their own duel');
+  r=await S.as(null,'select public.duel_answer($1,$2,$3,$4) as r',['zzzzzzzzzzzz','devicecode77','Ana',1]);ok(r.rows[0].r.kept===false,'an unknown duel keeps nothing');
+  ok(await fail(null,'select public.duel_answer($1,$2,$3,$4)',['abcdefgh2345','no',null,1],/YC_DUEL/),'a signed-out answer needs a device code');
+  r=await S.as(cha,'select public.my_duels() as d');const dd=r.rows[0].d;
+  ok(dd.length===1&&dd[0].score===231&&dd[0].answers.length===2&&dd[0].answers[0].name==='Ana b'&&dd[0].answers[0].score===245&&dd[0].answers[0].seen===false,'the challenger sees who played it');
+  r=await S.as(fr,'select public.my_duels() as d');ok(r.rows[0].d.length===0,'a friend does not see it among their own');
+  r=await S.as(cha,'select public.duels_seen(null) as s');ok(r.rows[0].s.seen===2,'looked at');
+  r=await S.as(cha,'select public.my_duels() as d');ok(r.rows[0].d[0].answers.every(a=>a.seen),'and marked so');
+  await denied('duels cannot be read directly',fr,'select * from yamb.duels');
+  await denied('nor their answers',null,'select * from yamb.duel_answers');
+  for(let k=0;k<29;k++)await S.as(null,'select public.duel_answer($1,$2,$3,$4)',['abcdefgh2345','devicecode'+String(k).padStart(3,'0'),'P'+k,k]);
+  r=await S.as(null,'select public.duel_answer($1,$2,$3,$4) as r',['abcdefgh2345','devicecode999','Late',1]);ok(r.rows[0].r.full===true,'a duel takes up to 30 answers');
+  // ---- 13. notifications
+  const sub=(e,x)=>JSON.stringify(Object.assign({endpoint:'https://push.example.com/send/'+e,p256dh:'B'+'a'.repeat(86),auth:'q'.repeat(22),lang:'hr',tz:'Europe/Zagreb',daily_at:null,duels:true},x||{}));
+  ok(await fail(null,'select public.push_save($1::jsonb)',[sub('v1')],/permission denied|YC_SIGNIN/),'a visitor cannot switch notifications on');
+  ok(await fail(cha,'select public.push_save($1::jsonb)',[JSON.stringify({endpoint:'http://evil',p256dh:'x',auth:'y'})],/check|violat/i),'a bad subscription is refused');
+  r=await S.admin(`select extract(hour from now() at time zone 'Europe/Zagreb')::int as h`);const hr=r.rows[0].h;
+  r=await S.as(cha,'select public.push_save($1::jsonb) as r',[sub('cha1',{daily_at:(hr+1)%24,tz:'Not/AZone'})]);ok(r.rows[0].r.ok===true,'the challenger switches on, reminder in an hour');
+  r=await S.admin(`select tz from yamb.push_subs where endpoint like '%cha1'`);ok(r.rows[0].tz==='UTC','an unknown time zone becomes UTC');
+  await S.as(cha,'select public.push_save($1::jsonb)',[sub('cha1',{daily_at:(hr+1)%24})]);
+  const ag=await S.addUser('ag@example.com','Ag'),pl=await S.addUser('pl@example.com','Pl'),st=await S.addUser('st@example.com','St');
+  await S.as(ag,'select public.push_save($1::jsonb)',[sub('ag1',{daily_at:hr,duels:false,lang:'en'})]);
+  // a reminder hour that already passed today waits for tomorrow; switching it to this very hour does not send today either
+  r=await S.admin(`select last_daily from yamb.push_subs where endpoint like '%ag1'`);ok(r.rows[0].last_daily!==null,'a reminder hour already reached today starts tomorrow');
+  await S.admin(`update yamb.push_subs set last_daily = null where endpoint like '%ag1'`);
+  await S.as(pl,'select public.push_save($1::jsonb)',[sub('pl1',{daily_at:hr})]);await S.admin(`update yamb.push_subs set last_daily = null where endpoint like '%pl1'`);
+  const today=(await S.admin(`select (now() at time zone 'Europe/Zagreb')::date::text as d`)).rows[0].d;
+  await S.admin(`insert into public.daily_scores (day, user_id, score, moves) values ($1::date, $2, 200, '[]')`,[today,pl]);
+  await S.as(st,'select public.push_save($1::jsonb)',[sub('st1',{daily_at:hr})]);await S.admin(`update yamb.push_subs set last_daily = null where endpoint like '%st1'`);
+  for(const k of [1,2,3])await S.admin(`insert into public.daily_scores (day, user_id, score, moves) values ($1::date - $2::int, $3, 200, '[]')`,[today,k,st]);
+  await S.as(fr,'select public.duel_answer($1,$2,$3,$4)',['abcdefgh2345',null,'Fran',210]);
+  await S.as(null,'select public.duel_post($1,$2,$3)',['abcdefgh2345',1,'f']).catch(()=>{});
+  await S.as(cha,'select public.duel_post($1,$2,$3)',['qqqqqqqq2345',150,'f']);
+  await S.as(null,'select public.duel_answer($1,$2,$3,$4)',['qqqqqqqq2345','devicecode77','Ana',245]);
+  await denied('players cannot list what is due',cha,'select public.push_due()');
+  r=await S.admin('select yamb.push_has_work() as w');ok(r.rows[0].w===true,'the minute check sees work');
+  await S.admin('set role service_role');r=await S.admin('select public.push_due() as d');await S.admin('reset role');
+  const due=r.rows[0].d,kinds=due.map(x=>x.kind+':'+x.endpoint.split('/').pop()).sort();
+  ok(JSON.stringify(kinds)===JSON.stringify(['daily:ag1','daily:st1','duel:cha1']),'due now: the reminders whose hour it is (not who already played) and the new duel ('+kinds.join(', ')+')');
+  ok(due.find(x=>x.kind==='daily'&&x.endpoint.endsWith('st1')).streak===3,'the reminder knows the streak');
+  const dl=due.find(x=>x.kind==='duel');ok(dl.name==='Ana'&&dl.score===245&&dl.mine===150&&dl.lang==='hr'&&dl.n===31,'one duel message: the newest answer, and how many came ('+dl.n+')');
+  r=await S.admin('select yamb.push_has_work() as w');ok(r.rows[0].w===false,'handed over once: nothing left');
+  await S.admin('set role service_role');r=await S.admin('select public.push_due() as d');await S.admin('reset role');ok(r.rows[0].d.length===0,'and nothing goes twice');
+  // a test message, a dead address, switching off
+  await S.as(cha,'select public.push_save($1::jsonb)',[sub('cha1',{daily_at:(hr+1)%24,test:true})]);
+  await S.admin('set role service_role');r=await S.admin('select public.push_due() as d');
+  ok(r.rows[0].d.length===1&&r.rows[0].d[0].kind==='test','a test message goes on request');
+  r=await S.admin(`select public.push_result($1::jsonb) as r`,[JSON.stringify({gone:['https://push.example.com/send/ag1'],failed:['https://push.example.com/send/st1']})]);await S.admin('reset role');
+  ok(r.rows[0].r.dropped===1,'an address that is gone is dropped');
+  r=await S.as(ag,'select public.push_mine($1) as m',['https://push.example.com/send/ag1']);ok(r.rows[0].m===null,'so that device shows notifications as off');
+  r=await S.as(cha,'select public.push_mine($1) as m',['https://push.example.com/send/cha1']);ok(r.rows[0].m.daily_at===(hr+1)%24&&r.rows[0].m.duels===true,'a device reads its own settings');
+  r=await S.as(fr,'select public.push_mine($1) as m',['https://push.example.com/send/cha1']);ok(r.rows[0].m===null,'but not another account\'s');
+  for(let k=2;k<=7;k++)await S.as(cha,'select public.push_save($1::jsonb)',[sub('cha'+k)]);
+  r=await S.admin('select count(*)::int as n from yamb.push_subs where user_id = $1',[cha]);ok(r.rows[0].n===5,'five devices an account at most');
+  await S.as(cha,'select public.push_drop($1)',['https://push.example.com/send/cha7']);
+  r=await S.admin('select count(*)::int as n from yamb.push_subs where user_id = $1',[cha]);ok(r.rows[0].n===4,'switching off on a device');
+  await denied('subscriptions cannot be read directly',cha,'select * from yamb.push_subs');
+  await S.as(cha,'select public.delete_my_account()');
+  r=await S.admin('select (select count(*) from yamb.push_subs where user_id=$1)::int as p, (select count(*) from yamb.duels where owner=$1)::int as d',[cha]);
+  ok(r.rows[0].p===0&&r.rows[0].d===0,'deleting the account takes duels and notifications with it');
   }
   // ---- 11. feedback from players, read only on the Numbers page
   {

@@ -26,8 +26,14 @@ stand-in (`cloud-server.js`) that runs the same script, so nothing touches the l
 
 `friends.js` does the same for the friends' tables (Stol prijatelja): setting a table, an invite link opened signed
 out, sitting down after sign-in, the Daily on the table, the Šef sale plaque and the thank-you pin, a gift link, and
-getting up. With `SHOTS=<folder>` it also saves a picture of each page.
+getting up, feedback, Plus shown before the sale, a tester whose Plus starts later, a duel whose result comes back to
+the challenger, and switching notifications on and off (the browser's push part is a stand-in). With `SHOTS=<folder>`
+it also saves a picture of each page.
+
+`push.mjs` checks the notifications Edge Function: the locked message opens on the receiving side (Node's own crypto,
+and the reference library http_ece when it is installed), the VAPID signature, the words, and what is reported back.
 
     node sql.js            # about 10 seconds
     node cloud.js          # about 2 minutes
-    node friends.js        # about 1 minute
+    node friends.js        # about 2 minutes
+    node --experimental-strip-types --no-warnings push.mjs   # a second
