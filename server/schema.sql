@@ -894,7 +894,7 @@ grant execute on function public.my_friend_tables(date), public.make_friend_tabl
   public.friend_table_board(uuid, date), public.leave_friend_table(uuid, date), public.redeem_gift(text) to authenticated;
 grant execute on function public.peek_friend_table(text) to anon, authenticated;
 -- a gift link for testers (pick your own code; the link is then yambcafe.com/?dar=THE-CODE):
---   insert into yamb.gift_codes (code, why, uses_left, until, starts) values ('THE-CODE', 'tester', 25, '2027-01-10', '2026-12-28');
+--   insert into yamb.gift_codes (code, why, uses_left, until, starts) values ('THE-CODE', 'tester', 25, '2026-12-27', '2026-12-14');
 -- (starts: the day Plus switches on; leave it out for Plus at once)
 -- ---------------------------------------------------------------- feedback from players ("Pošalji dojam") for the Numbers page
 -- A message, its kind, optional stars, the game's version, language and device type; the account if signed in.

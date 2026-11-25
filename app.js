@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v11.8';
+const VERSION='v11.9';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -1022,7 +1022,7 @@ function renderHome(){
         ${mline('dojam',t('fbTitle'),t('fbLine'),0)}
         ${plusOpen()?mline('plus','Yamb Café Plus',hasPlus()?t('plusHave'):t('plusLine'),0,'','plusline'):''}
         </div>
-        ${testerOn()?mline('testeri',t('tsTitle'),t('tsLine'),0,`<span class="tempnote">${esc(t('tsTemp'))}</span>`,'temp'):''}
+        ${testerOn()?mline('testeri',t('tsTitle'),t('tsLine'),0,`<span class="tempnote">${esc(t('tsTemp',{date:testEndLabel()}))}</span>`,'temp'):''}
       </div></section>${nudgeHTML()}
       <p class="homefoot">Yamb Café · ${siteLinks()}</p>
     </main></div>`;
@@ -2685,9 +2685,10 @@ async function fbAct(d){
   m.busy=false;if(ui.modal===m)renderModal();
 }
 /* the testers' four weeks, from the public start */
-const TEST_START='2026-12-14',TEST_END='2027-01-10';
+const TEST_START='2026-11-30',TEST_END='2026-12-27';   /* four weeks, Monday to Sunday; testers' Plus starts on 14 Dec (the gift code's own date) */
 /* a tester: given Plus by a gift link (it may start later, in the third week), or, before the sale, anyone with Plus */
 const testerOn=()=>{const p=plusOf();return !!(p&&(p.gift||(p.plus&&!PLUS_LIVE)))&&E.localDay()<=TEST_END;};
+const testEndLabel=()=>{const d=new Date(TEST_END+'T12:00:00');return prefs.lang==='en'?d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]:d.getDate()+'. '+(d.getMonth()+1)+'.';};
 function testWeek(){const d=Math.floor((Date.parse(E.localDay()+'T12:00:00')-Date.parse(TEST_START+'T12:00:00'))/864e5);return d<0?0:Math.min(4,Math.floor(d/7)+1);}
 function testersHTML(){
   const w=testWeek(),loc=prefs.lang==='en'?'en-GB':prefs.lang;
