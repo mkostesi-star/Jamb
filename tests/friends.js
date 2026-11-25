@@ -96,6 +96,10 @@ const post=(url,body)=>fetch(url,{method:'POST',headers:{'content-type':'applica
     await a.click('[data-act=open][data-k=account]');await waitKind(a,'account');
     ok(await a.$('.proftop .plaque')!==null&&await a.$('.proftop .ppin.onprint')!==null&&await a.$('.proftop .pmark')!==null,'Ana\'s profile: the heart and Plus on her print, the Šef sale plaque under it');
     await shot(a,'f08_profile');
+    await home(a);await a.waitForSelector('.mline.plusline',{timeout:15000}).catch(()=>{});
+    ok(await a.$('.icons .ptr.hdr')!==null&&await a.$('.mline.plusline')!==null&&await a.$('.mline.temp')!==null,'Ana\'s home: her portrait in the circle, Plus set apart, the testers\' line at the bottom');
+    await a.evaluate(()=>window.scrollTo(0,0));await shot(a,'f08c_top');
+    await a.evaluate(()=>document.querySelector('.sides').scrollIntoView({block:'center'}));await shot(a,'f08b_menu');
     await home(a);await a.click('[data-act=open][data-k=records]');await waitKind(a,'records');await shot(a,'f09_records');
     await home(a);await a.click('[data-act=daily]');await waitKind(a,'daily');
     await a.evaluate(()=>{Object.keys(window.__jamb.boards).forEach(k=>delete window.__jamb.boards[k]);});await a.click('[data-act=boardtab][data-v=w]').catch(()=>{});await a.click('[data-act=boardtab][data-v=d]').catch(()=>{});

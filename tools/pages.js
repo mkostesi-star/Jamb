@@ -63,7 +63,7 @@ ${alt}
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}">
 <meta property="og:image" content="${SITE}/icons/v10/icon-512.png">
-<link rel="icon" href="${up}favicon.ico" sizes="any">
+<link rel="icon" href="${up}favicon.ico?v=11" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="${up}icons/v10/favicon-32.png">
 <style>
 ${CSS}

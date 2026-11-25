@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Yamb Café</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon.ico?v=11" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/v10/favicon-32.png">
 <link rel="icon" type="image/png" sizes="64x64" href="icons/v10/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/v10/apple-touch-icon.png">
@@ -1042,6 +1042,27 @@ button.wallwho{display:grid;justify-items:center;gap:6px;padding:0;margin:0}
 .gtop .ibtn{background:var(--paperw);box-shadow:0 3px 0 rgba(0,0,0,.35),0 6px 10px rgba(0,0,0,.3)}
 .homefoot{margin:14px auto calc(18px + env(safe-area-inset-bottom,0px));width:max-content;max-width:94%;padding:5px 14px;border-radius:999px;background:rgba(255,253,246,.88);text-align:center;font:500 13px var(--f-ui);color:#5A4A3A}
 .homefoot a{color:inherit}
+/* the menu reads like one: today's special in its own frame, à la carte as before, the sides quieter */
+.special{position:relative;display:flex;flex-direction:column;gap:10px;margin:2px -4px 4px;padding:12px 12px 6px;border-radius:12px;background:#FFF7E6;
+  border:1.5px solid #D8B98A;box-shadow:inset 0 0 0 4px #FFF7E6,inset 0 0 0 5px rgba(184,138,74,.45),0 4px 10px rgba(90,60,20,.10)}
+.special .sec{margin-top:2px}
+.special .drow h2{font-size:30px}
+.special>.mline{border-top:1px dashed rgba(120,84,50,.35);border-radius:0;padding-top:10px}
+.sides{display:flex;flex-direction:column;gap:2px}
+.sides .mline{padding:5px 4px 6px}
+.sides .mline .mt{font-size:17px}
+.sides .mline .md{font-size:13.5px}
+.mline.plusline{margin-top:4px;padding:8px 10px 9px;border-radius:10px;background:linear-gradient(180deg,rgba(242,217,142,.32),rgba(210,170,82,.18));box-shadow:inset 0 0 0 1px rgba(185,143,56,.45)}
+.mline.plusline .mt{color:#5A3E10}
+.mline.plusline .mt::before{content:'Plus';display:inline-block;margin-right:8px;padding:2px 6px 3px;border-radius:4px;vertical-align:.18em;font:700 10px var(--f-ui);letter-spacing:.05em;color:#3A2A0E;
+  background:linear-gradient(180deg,#F2D98E,#D2AA52 55%,#B98F38);box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
+/* for testers: temporary, like a little building site */
+.mline.temp{position:relative;margin-top:12px;padding:16px 12px 10px;border-radius:10px;background:#FFF4C9;box-shadow:inset 0 0 0 1px #E2B93B;overflow:hidden}
+.mline.temp::before{content:'';position:absolute;left:0;right:0;top:0;height:7px;background:repeating-linear-gradient(-45deg,#F2C230 0 9px,#2A1A12 9px 18px)}
+.mline.temp .tempnote{display:inline-block;margin-top:5px;padding:1px 7px 2px;border-radius:4px;background:#2A1A12;color:#F2C230;font:700 11px var(--f-ui);letter-spacing:.05em;text-transform:uppercase}
+/* the profile circle: the portrait fills it */
+.icons .ibtn:has(.ptr.hdr){padding:0;border:0;overflow:hidden;box-shadow:0 0 0 2px rgba(246,238,220,.85)}
+.ibtn .ptr.hdr{width:44px;height:44px;box-shadow:none}
 /* feedback */
 .fbkinds{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
 .fbkinds button{min-height:40px;padding:6px 14px;border-radius:999px;border:1.5px solid var(--line-strong);background:#FFFDF6;color:var(--text);font:600 15px var(--f-ui)}
@@ -1086,15 +1107,15 @@ button.wallwho{display:grid;justify-items:center;gap:6px;padding:0;margin:0}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js" defer></script>
-<script src="engine.js?v=1160"></script>
-<script src="ai.js?v=1160"></script>
-<script src="i18n.js?v=1160"></script>
-<script src="audio.js?v=1160"></script>
-<script src="music.js?v=1160"></script>
-<script src="fx.js?v=1160"></script>
-<script src="scan.js?v=1160"></script>
-<script src="vendor/supabase.js?v=1160" async onload="window.JambCloud&&JambCloud.boot()"></script>
-<script src="cloud.js?v=1160"></script>
-<script src="app.js?v=1160"></script>
+<script src="engine.js?v=1170"></script>
+<script src="ai.js?v=1170"></script>
+<script src="i18n.js?v=1170"></script>
+<script src="audio.js?v=1170"></script>
+<script src="music.js?v=1170"></script>
+<script src="fx.js?v=1170"></script>
+<script src="scan.js?v=1170"></script>
+<script src="vendor/supabase.js?v=1170" async onload="window.JambCloud&&JambCloud.boot()"></script>
+<script src="cloud.js?v=1170"></script>
+<script src="app.js?v=1170"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 const E=window.JambEngine,AI=window.JambAI,A=window.JambAudio,SC=window.JambScan,I=window.JambI18n;
 const FX=window.JambFX,LAND_STEP=55;
 const ROWS=E.ROWS,UPPER=E.UPPER,LOWER=E.LOWER;
-const VERSION='v11.6';
+const VERSION='v11.7';
 const FACE={1:[4],2:[2,6],3:[2,4,6],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const PCOL=['#A8505A','#4E7A55','#A07A1E','#75466F','#3F6E72','#A5532E'];
 const PCOL_LITE=['#EDA9AE','#A9D3A4','#EAC870','#D2A9CD','#98C7C9','#EDA683'];
@@ -886,8 +886,8 @@ function nudgeHTML(){
   return `<div class="nudge" role="note"><b>${esc(t('nudgeT'))}</b><span>${esc(t('nudgeD'))}</span><div class="row2"><button type="button" class="sbtn" data-act="nudgeyes">${esc(t('installShort'))}</button><button type="button" class="sbtn ghost" data-act="nudgeno">${esc(t('notNow'))}</button></div></div>`;
 }
 /* one line of the menu: the name, a dotted leader, and the player's best score where the price would be */
-function mline(k,name,desc,best,extra){
-  return `<button type="button" class="mline" data-act="open" data-k="${k}"><span class="ml1"><span class="mt">${esc(name)}</span><span class="dots" aria-hidden="true"></span><span class="pr">${ICON.chev}</span></span><span class="md">${esc(desc)}</span>${extra||''}</button>`;
+function mline(k,name,desc,best,extra,cls){
+  return `<button type="button" class="mline${cls?' '+cls:''}" data-act="open" data-k="${k}"><span class="ml1"><span class="mt">${esc(name)}</span><span class="dots" aria-hidden="true"></span><span class="pr">${ICON.chev}</span></span><span class="md">${esc(desc)}</span>${extra||''}</button>`;
 }
 /* the best score in these modes (all modes when null), from the account when signed in */
 function bestOf(modes){
@@ -935,23 +935,25 @@ function renderHome(){
       <div class="shop" aria-hidden="true"><picture><source media="(min-width:600px)" srcset="art/shop/wide-900.webp 900w, art/shop/wide-1376.webp 1376w" sizes="100vw"><img class="pic" src="art/shop/phone-768.webp" srcset="art/shop/phone-480.webp 480w, art/shop/phone-768.webp 768w" sizes="100vw" alt="" decoding="async"></picture><span class="sign">Yamb Café</span><img class="cupSign" src="art/cup/1.webp" alt="" width="192" height="169" decoding="async"></div>
       <div class="wrap"><header class="top">
         <h1 class="sr">Yamb Café</h1>
-        <div class="icons"><button type="button" class="ibtn${acctOn()?' on':''}${!acctOn()&&C&&C.available()?' signin':''}" data-act="open" data-k="account" aria-label="${esc(acctOn()?t('acSignedAs',{name:acctName()}):t('profile'))}">${myPortrait()?portraitHTML(myPortrait(),'','hdr'):ICON.user}${!acctOn()&&C&&C.available()?`<span class="si">${esc(t('acSignShort'))}</span>`:''}</button><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
+        <div class="icons"><button type="button" class="ibtn${acctOn()?' on':''}${!acctOn()&&C&&C.available()?' signin':''}" data-act="open" data-k="account" aria-label="${esc(acctOn()?t('acSignedAs',{name:acctName()}):t('profile'))}">${acctOn()&&myPortrait()?portraitHTML(myPortrait(),'','hdr'):ICON.user}${!acctOn()&&C&&C.available()?`<span class="si">${esc(t('acSignShort'))}</span>`:''}</button><button type="button" class="ibtn" data-act="open" data-k="lang" aria-label="${esc(t('language'))}">${esc(I.short(prefs.lang))}</button><button type="button" class="ibtn" data-act="open" data-k="settings" aria-label="${esc(t('settings'))}">${ICON.gear}</button></div>
       </header></div>
     </div>
     <div class="wrap"><main class="homeIn">
       ${resumes?`<div class="modes">${resumes}</div>`:''}
       <section class="menu"><div class="menuIn">
-        ${daily}
-        ${mline('stoli',t('ftTitle'),t('ftLine'),0)}
+        <div class="special">${daily}
+        ${mline('stoli',t('ftTitle'),t('ftLine'),0)}</div>
         <h2 class="sec next">${esc(t('atTable'))}</h2>
         ${mline('cpu',t('playChar'),t('cpuD'),bestOf(['cpu']),`<span class="faces" aria-hidden="true">${faces}</span>`)}
         ${mline('friends',t('friends'),t('friendsD'),bestOf(['pp','online','duel','table']))}
         <h2 class="sec next">${esc(t('menuSides'))}</h2>
+        <div class="sides">
         ${mline('records',t('records'),t('menuRecordsD'),bestOf(null))}
         ${mline('howto',t('howTo'),t('menuHowD'),0)}
-        ${testerOn()?mline('testeri',t('tsTitle'),t('tsLine'),0):''}
         ${mline('dojam',t('fbTitle'),t('fbLine'),0)}
-        ${plusOpen()?mline('plus','Yamb Café Plus',hasPlus()?t('plusHave'):t('plusLine'),0):''}
+        ${plusOpen()?mline('plus','Yamb Café Plus',hasPlus()?t('plusHave'):t('plusLine'),0,'','plusline'):''}
+        </div>
+        ${testerOn()?mline('testeri',t('tsTitle'),t('tsLine'),0,`<span class="tempnote">${esc(t('tsTemp'))}</span>`,'temp'):''}
       </div></section>${nudgeHTML()}
       <p class="homefoot">Yamb Café · ${siteLinks()}</p>
     </main></div>`;
@@ -1368,8 +1370,8 @@ function renderModal(){
         rulesRow()+`<button type="button" class="btnRed" data-act="start${m.kind}">${esc(t('startGame'))}</button>`;
       break;}
     case 'duel':
-      h=head(t('modeDuel'))+`<p>${esc(t('duelIntro'))}</p>`+seg('duelfmt',[['quick',t('quick')],['full',t('full')]],m.fmt||'quick')+
-        `<p class="fine" style="margin-top:8px">${esc((m.fmt||'quick')==='quick'?t('quickD'):t('fullD',{rules:rulesBrief(prefs.rules)}))}</p>
+      h=head(t('modeDuel'))+`<p>${esc(t('duelIntro'))}</p>`+seg('duelfmt',[['quick',t('quick')],['full',t('duelHouse')]],m.fmt||'quick')+
+        ((m.fmt||'quick')==='quick'?`<p class="fine" style="margin-top:8px">${esc(t('quickD'))}</p>`:rulesRow())+`
         ${nameField(nameVal)}
         <button type="button" class="btnRed" data-act="startduel">${esc(t('startDuel'))}</button>
         <h3>${esc(t('duelPaste'))}</h3><div class="pl"><input id="duelCode" class="linkbox" placeholder="${esc(t('duelPasteHint'))}" autocomplete="off"><button type="button" class="sbtn" style="background:var(--text);color:var(--slip)" data-act="pasteduel">${esc(t('open'))}</button></div>`;
