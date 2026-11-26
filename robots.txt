@@ -1,0 +1,8 @@
+# Yamb Café
+User-agent: *
+Allow: /
+Disallow: /tests/
+Disallow: /tools/
+Disallow: /server/
+
+Sitemap: https://yambcafe.com/sitemap.xml

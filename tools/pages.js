@@ -62,7 +62,12 @@ ${alt}
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:url" content="${url}">
-<meta property="og:image" content="${SITE}/icons/v10/icon-512.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Yamb Café">
+<meta property="og:image" content="${SITE}/icons/v10/og-1200x630.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="${up}favicon.ico?v=11" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="${up}icons/v10/favicon-32.png">
 <style>
